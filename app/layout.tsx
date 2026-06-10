@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "La Musica",
-  description: "AI Music Generator",
+  title: "La musica",
+  description: "La musica는 AI로 음악을 생성하는 웹페이지입니다.",
 };
 
 export default function RootLayout({
@@ -24,10 +24,12 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="ko"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-background text-foreground">
+        {children}
+      </body>
     </html>
   );
 }
