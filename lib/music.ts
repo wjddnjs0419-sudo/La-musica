@@ -1,9 +1,9 @@
 // Shared music-generation helpers and types.
 
-// meta/musicgen pinned version on Replicate (stereo-large).
-export const MUSICGEN_MODEL = "meta/musicgen";
-export const MUSICGEN_VERSION =
-  "671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb";
+// MiniMax Music 2.6 on Replicate. Official model — referenced by name, no
+// pinned version hash. Sings lyrics (vocals + instrumentation); model decides
+// length (2-4 min typical, 6 min max), so there is no duration control.
+export const MINIMAX_MODEL = "minimax/music-2.6";
 
 export const MUSICS_BUCKET = "musics";
 
@@ -28,17 +28,46 @@ export interface Music {
   updated_at: string;
 }
 
-// Default clip length in seconds. musicgen's own default is 8; bump it up.
-export const DEFAULT_DURATION = 30;
+// MiniMax input limits.
+const MAX_PROMPT_CHARS = 2000;
+const MAX_LYRICS_CHARS = 3500;
 
-// Build the Replicate musicgen input payload from a user prompt.
-export function buildMusicgenInput(prompt: string, duration = DEFAULT_DURATION) {
+// Payload sent from the prompt box to POST /api/music/generate.
+export interface GenerateRequest {
+  prompt: string;
+  lyrics?: string;
+  style?: string;
+  instrumental?: boolean;
+}
+
+// Build the Replicate minimax/music-2.6 input payload. `prompt` carries the
+// musical description (genre, BPM, key, vocal type, mood); `style` is folded
+// into it as a hint. `lyrics` are actually sung — unless `instrumental` is set,
+// in which case lyrics are dropped and a vocal-free track is produced.
+export function buildMinimaxInput({
+  prompt,
+  style,
+  lyrics,
+  instrumental = false,
+}: {
+  prompt: string;
+  style?: string;
+  lyrics?: string;
+  instrumental?: boolean;
+}) {
+  const styleHint = style?.trim();
+  const composedPrompt = [prompt.trim(), styleHint ? `Style: ${styleHint}` : ""]
+    .filter(Boolean)
+    .join(". ")
+    .slice(0, MAX_PROMPT_CHARS);
+
+  const trimmedLyrics = lyrics?.trim().slice(0, MAX_LYRICS_CHARS);
+
   return {
-    prompt: prompt.trim(),
-    model_version: "stereo-large",
-    output_format: "mp3",
-    normalization_strategy: "peak",
-    duration,
+    prompt: composedPrompt,
+    is_instrumental: instrumental,
+    audio_format: "mp3",
+    ...(instrumental || !trimmedLyrics ? {} : { lyrics: trimmedLyrics }),
   };
 }
 

@@ -67,7 +67,7 @@ export async function GET(
     return NextResponse.json({ music }); // still starting/processing
   }
 
-  // Succeeded: musicgen returns a single mp3 URL.
+  // Succeeded: minimax returns a single mp3 URL (string or 1-item array).
   const audioUrl = Array.isArray(prediction.output)
     ? prediction.output[0]
     : (prediction.output as string | undefined);

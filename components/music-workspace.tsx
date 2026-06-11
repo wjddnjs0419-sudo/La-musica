@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { PromptBox } from "@/components/prompt-box";
-import type { Music } from "@/lib/music";
+import type { Music, GenerateRequest } from "@/lib/music";
 
 const POLL_INTERVAL = 3000;
 
@@ -49,12 +49,12 @@ export default function MusicWorkspace() {
   );
 
   const handleSend = React.useCallback(
-    async (text: string) => {
+    async (payload: GenerateRequest) => {
       try {
         const res = await fetch("/api/music/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: text }),
+          body: JSON.stringify(payload),
         });
         const raw = await res.text();
         let json: { music?: Music; error?: string } = {};
