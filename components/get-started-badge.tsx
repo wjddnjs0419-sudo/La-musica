@@ -6,7 +6,7 @@ type GetStartedBadgeProps = {
 };
 
 export default function GetStartedBadge({
-  href = "#get-started",
+  href = "/auth",
   className = "",
 }: GetStartedBadgeProps) {
   return (

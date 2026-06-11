@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     return redirectToAuth(request, "exchange_failed");
   }
 
-  const response = NextResponse.redirect(new URL("/", request.url));
+  const response = NextResponse.redirect(new URL("/workspace", request.url));
   setAuthCookies(response.cookies, {
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
