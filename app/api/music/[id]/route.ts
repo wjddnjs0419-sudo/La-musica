@@ -119,19 +119,43 @@ export async function PATCH(
   ctx: RouteContext<"/api/music/[id]">,
 ) {
   const { id } = await ctx.params;
-  let body: { title?: unknown };
+  let body: { title?: unknown; duration_seconds?: unknown };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const title = typeof body.title === "string" ? body.title.trim() : "";
-  if (!title) {
-    return NextResponse.json({ error: "title_required" }, { status: 400 });
+  const updates: Partial<Pick<Music, "title" | "duration_seconds">> = {};
+
+  if ("title" in body) {
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title) {
+      return NextResponse.json({ error: "title_required" }, { status: 400 });
+    }
+    if (title.length > 120) {
+      return NextResponse.json({ error: "title_too_long" }, { status: 400 });
+    }
+    updates.title = title;
   }
-  if (title.length > 120) {
-    return NextResponse.json({ error: "title_too_long" }, { status: 400 });
+
+  if ("duration_seconds" in body) {
+    const durationSeconds = Number(body.duration_seconds);
+    if (
+      !Number.isFinite(durationSeconds) ||
+      durationSeconds <= 0 ||
+      durationSeconds > 60 * 60
+    ) {
+      return NextResponse.json(
+        { error: "duration_seconds_invalid" },
+        { status: 400 },
+      );
+    }
+    updates.duration_seconds = Math.round(durationSeconds);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "empty_update" }, { status: 400 });
   }
 
   const client = createServerClient({ cookies: await cookies() });
@@ -142,7 +166,7 @@ export async function PATCH(
 
   const { data: updated, error } = await client.database
     .from("musics")
-    .update({ title })
+    .update(updates)
     .eq("id", id)
     .select();
 

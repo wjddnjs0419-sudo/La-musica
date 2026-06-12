@@ -76,8 +76,11 @@ export default function WorkspaceMusicPlayer({
   onVolumeChange,
   onClose,
 }: WorkspaceMusicPlayerProps) {
-  const resolvedDuration = duration || track.duration_seconds || 60;
-  const progressValue = Math.min(currentTime, resolvedDuration);
+  const resolvedDuration = duration || track.duration_seconds || 0;
+  const seekMax = resolvedDuration || 1;
+  const progressValue = resolvedDuration
+    ? Math.min(currentTime, resolvedDuration)
+    : 0;
 
   return (
     <section
@@ -91,23 +94,24 @@ export default function WorkspaceMusicPlayer({
         <div className="relative h-1 bg-white/10">
           <progress
             value={progressValue}
-            max={resolvedDuration}
+            max={seekMax}
             aria-hidden
             className="absolute inset-0 h-1 w-full appearance-none overflow-hidden [&::-moz-progress-bar]:bg-white [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-white"
           />
           <input
             type="range"
             min={0}
-            max={resolvedDuration}
+            max={seekMax}
             step={1}
             value={progressValue}
+            disabled={!resolvedDuration}
             onChange={(event) => onSeek(Number(event.target.value))}
             aria-label="Seek track"
             className="absolute inset-0 h-1 w-full cursor-pointer appearance-none bg-transparent opacity-0"
           />
         </div>
         <span className="text-[10px] tabular-nums text-white/45">
-          {formatTime(resolvedDuration)}
+          {resolvedDuration ? formatTime(resolvedDuration) : "--:--"}
         </span>
       </div>
       <div className="grid min-h-16 grid-cols-[minmax(0,1fr)] items-center gap-3 px-3 py-2 lg:grid-cols-[minmax(220px,1fr)_minmax(260px,1.2fr)_minmax(180px,0.8fr)]">

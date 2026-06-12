@@ -222,6 +222,36 @@ export default function MusicWorkspace({
     setCurrentTime(seconds);
   }, []);
 
+  const persistTrackDuration = React.useCallback(
+    async (trackId: string, seconds: number) => {
+      const roundedSeconds = Math.round(seconds);
+      setTracks((prev) =>
+        prev.map((track) =>
+          track.id === trackId
+            ? { ...track, duration_seconds: roundedSeconds }
+            : track,
+        ),
+      );
+
+      try {
+        const res = await fetch(`/api/music/${trackId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ duration_seconds: roundedSeconds }),
+        });
+        const json = (await res.json().catch(() => ({}))) as {
+          music?: Music;
+        };
+        if (res.ok && json.music) {
+          upsertTrack(json.music);
+        }
+      } catch (err) {
+        console.error("duration persist failed", err);
+      }
+    },
+    [upsertTrack],
+  );
+
   const handleClosePlayer = React.useCallback(() => {
     const audio = audioRef.current;
     audio?.pause();
@@ -399,6 +429,12 @@ export default function MusicWorkspace({
           const nextDuration = event.currentTarget.duration;
           if (Number.isFinite(nextDuration)) {
             setDuration(nextDuration);
+            if (
+              activeTrackId &&
+              Math.round(nextDuration) !== activeTrack?.duration_seconds
+            ) {
+              void persistTrackDuration(activeTrackId, nextDuration);
+            }
           }
         }}
         onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
@@ -436,6 +472,7 @@ function TrackRow({
 }) {
   const pending = track.status === "pending" || track.status === "processing";
   const playable = track.status === "completed" && Boolean(track.audio_url);
+  const showMetadata = !pending;
 
   return (
     <div
@@ -475,11 +512,12 @@ function TrackRow({
           </p>
           <StatusBadge status={track.status} />
         </div>
-        <div className="mt-1 flex items-center gap-2 text-[11px] text-white/35">
-          <span>{formatDuration(track.duration_seconds)}</span>
-          <span aria-hidden>*</span>
-          <span>{formatDate(track.created_at)}</span>
-        </div>
+        {showMetadata && (
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-white/35">
+            <span>{formatDuration(track.duration_seconds)}</span>
+            <span>{formatDate(track.created_at)}</span>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-end gap-2">
@@ -563,7 +601,7 @@ function statusLabel(status: Music["status"]) {
 }
 
 function formatDuration(seconds: number | null) {
-  if (!seconds) return "1:00";
+  if (!seconds) return "--:--";
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${String(secs).padStart(2, "0")}`;
