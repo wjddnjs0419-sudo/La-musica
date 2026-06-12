@@ -114,6 +114,97 @@ export async function GET(
   return NextResponse.json({ music: updated[0] });
 }
 
+export async function PATCH(
+  request: NextRequest,
+  ctx: RouteContext<"/api/music/[id]">,
+) {
+  const { id } = await ctx.params;
+  let body: { title?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+  }
+
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  if (!title) {
+    return NextResponse.json({ error: "title_required" }, { status: 400 });
+  }
+  if (title.length > 120) {
+    return NextResponse.json({ error: "title_too_long" }, { status: 400 });
+  }
+
+  const client = createServerClient({ cookies: await cookies() });
+  const { data: userData } = await client.auth.getCurrentUser();
+  if (!userData?.user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const { data: updated, error } = await client.database
+    .from("musics")
+    .update({ title })
+    .eq("id", id)
+    .select();
+
+  if (error) {
+    console.error("music rename failed", error);
+    return NextResponse.json({ error: "db_update_failed" }, { status: 500 });
+  }
+  if (!updated?.[0]) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ music: updated[0] });
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  ctx: RouteContext<"/api/music/[id]">,
+) {
+  const { id } = await ctx.params;
+
+  const client = createServerClient({ cookies: await cookies() });
+  const { data: userData } = await client.auth.getCurrentUser();
+  if (!userData?.user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const { data: row, error: readError } = await client.database
+    .from("musics")
+    .select("id, audio_key, cover_key")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (readError) {
+    console.error("music delete read failed", readError);
+    return NextResponse.json({ error: "db_read_failed" }, { status: 500 });
+  }
+  if (!row) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  const { error: deleteError } = await client.database
+    .from("musics")
+    .delete()
+    .eq("id", id);
+
+  if (deleteError) {
+    console.error("music delete failed", deleteError);
+    return NextResponse.json({ error: "db_delete_failed" }, { status: 500 });
+  }
+
+  const audioKey = (row as Pick<Music, "audio_key" | "cover_key">).audio_key;
+  const coverKey = (row as Pick<Music, "audio_key" | "cover_key">).cover_key;
+  for (const key of [audioKey, coverKey].filter(Boolean) as string[]) {
+    const { error } = await client.storage.from(MUSICS_BUCKET).remove(key);
+    if (error) {
+      console.error("music storage cleanup failed", { key, error });
+    }
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
 async function markFailed(
   client: ReturnType<typeof createServerClient>,
   id: string,

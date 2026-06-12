@@ -2,12 +2,29 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@insforge/sdk/ssr";
 import WorkspaceNavbar from "@/components/workspace-navbar";
 import MusicWorkspace from "@/components/music-workspace";
+import type { Music } from "@/lib/music";
 
 export default async function Workspace() {
   const cookieStore = await cookies();
   const client = createServerClient({ cookies: cookieStore });
   const { data } = await client.auth.getCurrentUser();
   const user = data?.user ?? null;
+  let initialTracks: Music[] = [];
+
+  if (user) {
+    const { data: tracks, error } = await client.database
+      .from("musics")
+      .select()
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error("workspace music list failed", error);
+    } else {
+      initialTracks = (tracks ?? []) as Music[];
+    }
+  }
 
   return (
     <div className="relative isolate flex min-h-screen flex-col overflow-hidden bg-slate-950 text-white">
@@ -27,7 +44,7 @@ export default async function Workspace() {
         }
       />
 
-      <MusicWorkspace />
+      <MusicWorkspace initialTracks={initialTracks} />
     </div>
   );
 }

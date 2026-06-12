@@ -4,6 +4,120 @@
 
 ---
 
+# RESULT: Workspace 하단 연동 음악 플레이어 — 2026-06-11
+
+## 배경
+- 요청: `/workspace`의 `PromptBox` 아래에 현재 디자인에 맞는 음악 재생 바를 추가.
+- 요청: 위쪽 뮤직 카드에서 재생하면 아래쪽 플레이어가 뜨고, 카드와 플레이어가 같은 재생 상태로 연동되어야 함.
+- 요청: 기본 앨범 썸네일을 만들고, inline style을 지양하며 컴포넌트화.
+
+## 구현
+- **`components/workspace-music-player.tsx`**: 하단 플레이어 컴포넌트 추가. 기본 앨범 썸네일, 중앙 play/pause, seek bar, 시간 표시, 볼륨 슬라이더, 닫기 버튼을 Tailwind class 기반으로 구현.
+- **`components/music-workspace.tsx`**: 카드별 로컬 `<audio>`를 제거하고 단일 `audioRef`/`activeTrackId`/`playing`/`currentTime`/`duration`/`volume` 상태를 상위에서 관리하도록 변경.
+- **`components/music-workspace.tsx`**: 위쪽 트랙 행의 재생 버튼 클릭 시 active track 설정, 단일 오디오 즉시 재생, 하단 플레이어 표시, 카드 아이콘 상태 동기화.
+- **`components/music-workspace.tsx`**: 하단 플레이어의 play/pause, seek, volume, close 조작이 같은 오디오 상태를 제어하도록 연결.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| 전체 코드 | `npm run lint` | 통과 |
+| 타입/빌드 | `npm run build` | 통과 |
+
+## 교훈
+- 카드와 하단 플레이어처럼 같은 미디어 상태를 보여주는 UI는 각 컴포넌트에 audio를 따로 두지 않고 상위에서 단일 오디오 상태를 소유해야 동기화가 안정적임.
+- React 19 lint 규칙상 삭제 후 상태 정리는 effect보다 삭제 성공 이벤트 핸들러에서 처리하는 편이 더 명확하고 경고가 없음.
+
+## 배포
+- 미배포(로컬). git 커밋/푸시는 사용자 요청 필요.
+
+---
+
+# RESULT: Workspace 검색/액션 아이콘 정리 — 2026-06-11
+
+## 배경
+- 요청: 새로 넣은 workspace 중앙 SearchInput 기능을 기존 navbar search input으로 옮기고, 중복 검색 입력 UI를 제거.
+- 요청: 트랙 오른쪽 보라색 파형 컴포넌트 제거.
+- 요청: `...` 드롭다운 트리거를 가로 점이 아닌 세로 점 SVG로 변경.
+
+## 구현
+- **`components/workspace-navbar.tsx`**: 기존 search input placeholder를 `Search...`로 정리하고, 입력 변경 시 `workspace-search` 커스텀 이벤트를 발행하도록 연결.
+- **`components/music-workspace.tsx`**: 중앙 검색 입력/SVG 제거. `workspace-search` 이벤트 수신을 기존 트랙 필터링 로직에 연결.
+- **`components/music-workspace.tsx`**: 보라색 `WaveIcon` 컴포넌트와 렌더링 제거. pending spinner 색상은 amber 계열로 정리.
+- **`components/music-workspace.tsx`**: 드롭다운 트리거를 세로 점 3개 SVG로 변경.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| 전체 코드 | `npm run lint` | 통과 |
+| 타입/빌드 | `npm run build` | 통과 |
+
+## 교훈
+- 검색 UI는 한 곳(navbar)에만 두고 목록 컴포넌트는 필터 상태만 받는 쪽이 화면 중복을 줄임.
+- 아이콘성 장식은 별도 컴포넌트보다 요구한 SVG를 직접 유지하는 편이 변경 의도가 명확함.
+
+## 배포
+- 미배포(로컬). git 커밋/푸시는 사용자 요청 필요.
+
+---
+
+# RESULT: Workspace DB 곡 목록/관리 액션 — 2026-06-11
+
+## 배경
+- 문제: `musics` 테이블에는 완료 곡 3개가 저장되어 있지만, workspace 클라이언트 상태가 빈 배열로 시작해서 기존 DB 곡이 보이지 않음.
+- 목표: 저장된 내 곡을 화면 중앙 목록으로 표시하고, 각 곡을 Rename/Download/Delete 드롭다운 액션으로 관리.
+
+## 구현
+- **`app/workspace/page.tsx`**: 서버 컴포넌트에서 로그인 사용자의 `musics`를 조회해 `MusicWorkspace initialTracks`로 전달.
+- **`components/music-workspace.tsx`**: 초기 DB 목록 렌더링, 중앙 Search 입력, 트랙 행 UI, 커스텀 play/pause, 상태 배지, 행별 액션 드롭다운 추가.
+- **`app/api/music/[id]/route.ts`**: `PATCH`로 title 업데이트, `DELETE`로 소유자 행 삭제 및 저장소 cleanup 추가.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| 전체 코드 | `npm run lint` | 통과 |
+| 타입·컴파일 | `npm run build` | 통과 |
+| workspace 응답 | `Invoke-WebRequest http://localhost:3000/workspace` | 200 OK |
+
+## 교훈
+- workspace 목록은 서버에서 초기 DB 상태를 내려줘야 새로고침/재방문 시 비어 보이지 않음.
+- Delete는 DB 삭제를 우선 성공시키고 Storage 정리는 best-effort로 처리.
+
+## 배포
+- 미배포(로컬). git 커밋·푸시는 사용자 요청 시.
+
+---
+
+# RESULT: musicgen → minimax/music-2.6 교체 — 2026-06-11
+
+## 배경
+- 문제: musicgen 은 instrumental — lyrics 가 실제 노래로 안 불림. "멜로디 따로 + 다른 AI 로 노래" 는 비효율.
+- 결정(사용자): Replicate 인프라 유지, 보컬 부르는 모델 `minimax/music-2.6` 로 교체. 파이프라인(비동기 예측→폴링→버킷 복사→finalize)은 그대로.
+- minimax 입력: `prompt`(필수, 스타일·BPM·키·보컬 묘사 ≤2000자) + `lyrics`(≤3500자, 실제 보컬). **duration 파라미터 없음**(모델이 2~4분 자동, 최대 6분).
+
+## 구현
+- **`lib/music.ts`**: `MUSICGEN_MODEL/VERSION`·`DURATION_OPTIONS/DEFAULT_DURATION/DurationSeconds/normalizeDuration` 삭제. `MINIMAX_MODEL="minimax/music-2.6"` 추가. `GenerateRequest` 에서 `duration` 제거, `instrumental?:boolean` 추가. `buildMusicgenInput`→`buildMinimaxInput({prompt,style,lyrics,instrumental})`.
+- **`app/api/music/generate/route.ts`**: body `duration`→`instrumental` 파싱. `predictions.create({ model: MINIMAX_MODEL, input: buildMinimaxInput(...) })`. 행 insert: `model:MINIMAX_MODEL`, `duration_seconds:null`, `metadata.{prediction_id,instrumental,lyrics?,style?}`.
+- **`app/api/music/[id]/route.ts`**: 출력 파싱 로직 동일(string|array 호환), 주석만 minimax 로 수정.
+- **`components/prompt-box.tsx`**: duration UI 제거. `Instrumental` 토글 추가. onSend payload `duration`→`instrumental`.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| 전체 코드 | `npm run lint` | 통과(무경고) |
+| 타입·컴파일 | `npm run build` | 통과 |
+| minimax 스키마 | Replicate 모델 페이지 확인 | prompt/lyrics/is_instrumental/audio_format 검증 |
+| 실제 생성 E2E | 로그인 세션 + 실생성 | **미검증(세션 필요)** |
+
+## 교훈
+- minimax/music-2.6 은 공식 모델 → `predictions.create` 에 `version` 대신 `model` 이름만 넘기면 됨.
+- 길이 제어 불가가 핵심 제약 — 1m/2m/3m UI 제거, 실제 기능인 Instrumental 토글로 교체.
+- lyrics 가 이제 진짜 보컬로 불림.
+
+## 배포
+- 미배포(로컬). `REPLICATE_API_TOKEN` 은 `.env.local` 만(하드코딩·커밋 금지). git 커밋·푸시는 사용자 요청 시.
+
+---
+
 # RESULT: PromptBox 개편 — Lyrics·Style·Duration — 2026-06-11
 
 ## 배경

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { Cutive_Mono } from "next/font/google";
 
 const cutiveMono = Cutive_Mono({
@@ -29,10 +29,17 @@ export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
 
   const displayName = user?.name || user?.email?.split("@")[0] || "Guest";
 
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    window.dispatchEvent(
+      new CustomEvent("workspace-search", {
+        detail: event.target.value,
+      }),
+    );
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full px-3 pt-4 sm:px-6 lg:px-8">
       <div className="relative flex items-center gap-4 px-1 py-3 sm:px-2">
-        {/* left: logo */}
         <Link
           href="/"
           className={`${cutiveMono.className} relative shrink-0 text-lg font-bold tracking-[0.14em] text-white transition-colors hover:text-white/80 sm:text-xl`}
@@ -40,7 +47,6 @@ export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
           La Musica
         </Link>
 
-        {/* center: search */}
         <div className="relative flex flex-1 justify-center">
           <div className="relative w-full max-w-md">
             <svg
@@ -49,7 +55,13 @@ export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
               fill="none"
               className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40"
             >
-              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
               <path
                 d="m20 20-3-3"
                 stroke="currentColor"
@@ -60,13 +72,13 @@ export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
             <input
               type="text"
               aria-label="Search"
-              placeholder="검색"
+              placeholder="Search..."
+              onChange={handleSearchChange}
               className="h-10 w-full rounded-full border border-white/12 bg-white/[0.05] pl-10 pr-4 text-sm text-white placeholder:text-white/35 transition-colors focus:border-white/25 focus:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-white/10"
             />
           </div>
         </div>
 
-        {/* right: profile + hover signout */}
         <div
           className="relative shrink-0"
           onMouseEnter={() => setMenuOpen(true)}
@@ -95,7 +107,6 @@ export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
             </span>
           </button>
 
-          {/* hover dropdown */}
           <div
             role="menu"
             className={`absolute right-0 top-full w-44 pt-2 transition-all duration-150 ${

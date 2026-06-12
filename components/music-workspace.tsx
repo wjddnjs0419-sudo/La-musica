@@ -2,18 +2,86 @@
 
 import * as React from "react";
 import { PromptBox } from "@/components/prompt-box";
-import type { Music, GenerateRequest } from "@/lib/music";
+import WorkspaceMusicPlayer from "@/components/workspace-music-player";
+import type { GenerateRequest, Music } from "@/lib/music";
 
 const POLL_INTERVAL = 3000;
 
-export default function MusicWorkspace() {
-  const [tracks, setTracks] = React.useState<Music[]>([]);
+type ClassValue = string | number | boolean | null | undefined;
+
+function cn(...inputs: ClassValue[]): string {
+  return inputs.filter(Boolean).join(" ");
+}
+
+type MusicWorkspaceProps = {
+  initialTracks?: Music[];
+};
+
+const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden
+    {...props}
+  >
+    <path d="M8 5v14l11-7z" />
+  </svg>
+);
+
+const PauseIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden
+    {...props}
+  >
+    <path d="M7 5h4v14H7zM13 5h4v14h-4z" />
+  </svg>
+);
+
+const MoreIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden
+    {...props}
+  >
+    <circle cx="12" cy="5" r="1.5" />
+    <circle cx="12" cy="12" r="1.5" />
+    <circle cx="12" cy="19" r="1.5" />
+  </svg>
+);
+
+export default function MusicWorkspace({
+  initialTracks = [],
+}: MusicWorkspaceProps) {
+  const [tracks, setTracks] = React.useState<Music[]>(initialTracks);
+  const [query, setQuery] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
+  const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [activeTrackId, setActiveTrackId] = React.useState<string | null>(null);
+  const [playing, setPlaying] = React.useState(false);
+  const [currentTime, setCurrentTime] = React.useState(0);
+  const [duration, setDuration] = React.useState(0);
+  const [volume, setVolume] = React.useState(0.85);
+  const audioRef = React.useRef<HTMLAudioElement>(null);
   const polling = React.useRef<Set<string>>(new Set());
+
+  const activeTrack = React.useMemo(
+    () => tracks.find((track) => track.id === activeTrackId) ?? null,
+    [activeTrackId, tracks],
+  );
 
   const upsertTrack = React.useCallback((music: Music) => {
     setTracks((prev) => {
-      const idx = prev.findIndex((t) => t.id === music.id);
+      const idx = prev.findIndex((track) => track.id === music.id);
       if (idx === -1) return [music, ...prev];
       const next = [...prev];
       next[idx] = music;
@@ -29,16 +97,19 @@ export default function MusicWorkspace() {
       const tick = async () => {
         try {
           const res = await fetch(`/api/music/${id}`);
-          const json = await res.json();
+          const json = (await res.json()) as { music?: Music };
           if (json.music) {
             upsertTrack(json.music);
-            if (json.music.status === "completed" || json.music.status === "failed") {
+            if (
+              json.music.status === "completed" ||
+              json.music.status === "failed"
+            ) {
               polling.current.delete(id);
               return;
             }
           }
         } catch {
-          // network blip — keep polling
+          // Keep polling through temporary network failures.
         }
         window.setTimeout(tick, POLL_INTERVAL);
       };
@@ -47,6 +118,119 @@ export default function MusicWorkspace() {
     },
     [upsertTrack],
   );
+
+  React.useEffect(() => {
+    tracks.forEach((track) => {
+      if (track.status === "pending" || track.status === "processing") {
+        poll(track.id);
+      }
+    });
+  }, [poll, tracks]);
+
+  React.useEffect(() => {
+    const handleSearch = (event: Event) => {
+      const nextQuery =
+        event instanceof CustomEvent && typeof event.detail === "string"
+          ? event.detail
+          : "";
+      setQuery(nextQuery);
+    };
+
+    window.addEventListener("workspace-search", handleSearch);
+    return () => window.removeEventListener("workspace-search", handleSearch);
+  }, []);
+
+  React.useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.volume = volume;
+  }, [volume]);
+
+  const playAudio = React.useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    try {
+      await audio.play();
+      setPlaying(true);
+    } catch {
+      setPlaying(false);
+    }
+  }, []);
+
+  const loadAndPlayTrack = React.useCallback(
+    async (track: Music) => {
+      const audio = audioRef.current;
+      if (!audio || !track.audio_url) return;
+
+      audio.pause();
+      audio.src = track.audio_url;
+      audio.currentTime = 0;
+      audio.volume = volume;
+      audio.load();
+
+      setActiveTrackId(track.id);
+      setCurrentTime(0);
+      setDuration(track.duration_seconds ?? 0);
+      await playAudio();
+    },
+    [playAudio, volume],
+  );
+
+  const handleToggleTrackPlayback = React.useCallback(
+    async (track: Music) => {
+      if (track.status !== "completed" || !track.audio_url) return;
+
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      if (activeTrackId === track.id) {
+        if (playing) {
+          audio.pause();
+          setPlaying(false);
+          return;
+        }
+        await playAudio();
+        return;
+      }
+
+      await loadAndPlayTrack(track);
+    },
+    [activeTrackId, loadAndPlayTrack, playAudio, playing],
+  );
+
+  const handleTogglePlayerPlayback = React.useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio || !activeTrack?.audio_url) return;
+
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+      return;
+    }
+
+    if (!audio.src) {
+      audio.src = activeTrack.audio_url;
+      audio.load();
+    }
+    await playAudio();
+  }, [activeTrack, playAudio, playing]);
+
+  const handleSeek = React.useCallback((seconds: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = seconds;
+    setCurrentTime(seconds);
+  }, []);
+
+  const handleClosePlayer = React.useCallback(() => {
+    const audio = audioRef.current;
+    audio?.pause();
+    if (audio) audio.currentTime = 0;
+    setActiveTrackId(null);
+    setPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+  }, []);
 
   const handleSend = React.useCallback(
     async (payload: GenerateRequest) => {
@@ -74,69 +258,273 @@ export default function MusicWorkspace() {
         poll(json.music.id);
       } catch (err) {
         console.error("generate request failed", err);
-        setError("요청 실패 (네트워크)");
+        setError("Request failed. Check your network and try again.");
       }
     },
     [poll, upsertTrack],
   );
 
+  const handleRename = React.useCallback(
+    async (track: Music) => {
+      setOpenMenuId(null);
+      const nextTitle = window.prompt("Rename track", track.title)?.trim();
+      if (!nextTitle || nextTitle === track.title) return;
+
+      setBusyId(track.id);
+      try {
+        const res = await fetch(`/api/music/${track.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: nextTitle }),
+        });
+        const json = (await res.json()) as { music?: Music; error?: string };
+        if (!res.ok || !json.music) {
+          setError(json.error || `Rename failed (${res.status})`);
+          return;
+        }
+        setError(null);
+        upsertTrack(json.music);
+      } catch (err) {
+        console.error("rename failed", err);
+        setError("Rename failed. Check your network and try again.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [upsertTrack],
+  );
+
+  const handleDelete = React.useCallback(
+    async (track: Music) => {
+      setOpenMenuId(null);
+      if (!window.confirm(`Delete "${track.title}"?`)) return;
+
+      setBusyId(track.id);
+      try {
+        const res = await fetch(`/api/music/${track.id}`, { method: "DELETE" });
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          setError(json.error || `Delete failed (${res.status})`);
+          return;
+        }
+        setError(null);
+        if (activeTrackId === track.id) {
+          handleClosePlayer();
+        }
+        setTracks((prev) => prev.filter((item) => item.id !== track.id));
+      } catch (err) {
+        console.error("delete failed", err);
+        setError("Delete failed. Check your network and try again.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [activeTrackId, handleClosePlayer],
+  );
+
+  const filteredTracks = React.useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return tracks;
+    return tracks.filter((track) =>
+      [track.title, track.prompt, track.status]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(needle)),
+    );
+  }, [query, tracks]);
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="custom-scrollbar flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4 py-6">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-5 md:py-8">
           {tracks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center text-white/40">
-              <p className="text-sm">프롬프트를 입력해 음악을 만들어보세요</p>
+              <p className="text-sm">Create a song and it will appear here.</p>
+            </div>
+          ) : filteredTracks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center text-white/40">
+              <p className="text-sm">No tracks match your search.</p>
             </div>
           ) : (
-            tracks.map((track) => <TrackCard key={track.id} track={track} />)
+            <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
+              {filteredTracks.map((track) => (
+                <TrackRow
+                  key={track.id}
+                  track={track}
+                  busy={busyId === track.id}
+                  menuOpen={openMenuId === track.id}
+                  active={activeTrackId === track.id}
+                  playing={activeTrackId === track.id && playing}
+                  onTogglePlayback={() => handleToggleTrackPlayback(track)}
+                  onToggleMenu={() =>
+                    setOpenMenuId((id) => (id === track.id ? null : track.id))
+                  }
+                  onRename={() => handleRename(track)}
+                  onDelete={() => handleDelete(track)}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-3xl px-4 pb-6">
-        {error && (
-          <p className="mb-2 px-2 text-xs text-red-400/80">에러: {error}</p>
+      <div className="w-full px-4 pb-6">
+        <div className="mx-auto w-full max-w-3xl">
+          {error && (
+            <p className="mb-2 px-2 text-xs text-red-400/80">Error: {error}</p>
+          )}
+          <PromptBox onSend={handleSend} />
+        </div>
+        {activeTrack && activeTrack.audio_url && (
+          <div className="w-full">
+            <WorkspaceMusicPlayer
+              track={activeTrack}
+              playing={playing}
+              currentTime={currentTime}
+              duration={duration}
+              volume={volume}
+              onTogglePlay={handleTogglePlayerPlayback}
+              onSeek={handleSeek}
+              onVolumeChange={setVolume}
+              onClose={handleClosePlayer}
+            />
+          </div>
         )}
-        <PromptBox onSend={handleSend} />
       </div>
+
+      <audio
+        ref={audioRef}
+        preload="metadata"
+        className="hidden"
+        onLoadedMetadata={(event) => {
+          const nextDuration = event.currentTarget.duration;
+          if (Number.isFinite(nextDuration)) {
+            setDuration(nextDuration);
+          }
+        }}
+        onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false);
+          setCurrentTime(0);
+        }}
+      />
     </div>
   );
 }
 
-function TrackCard({ track }: { track: Music }) {
+function TrackRow({
+  track,
+  busy,
+  menuOpen,
+  active,
+  playing,
+  onTogglePlayback,
+  onToggleMenu,
+  onRename,
+  onDelete,
+}: {
+  track: Music;
+  busy: boolean;
+  menuOpen: boolean;
+  active: boolean;
+  playing: boolean;
+  onTogglePlayback: () => void;
+  onToggleMenu: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
   const pending = track.status === "pending" || track.status === "processing";
+  const playable = track.status === "completed" && Boolean(track.audio_url);
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-white/90">{track.title}</p>
-          <p className="mt-0.5 line-clamp-2 text-xs text-white/40">{track.prompt}</p>
+    <div
+      className={cn(
+        "group relative grid min-h-20 grid-cols-[42px_minmax(0,1fr)_36px] items-center gap-3 rounded-lg border border-white/7 bg-[#171a20]/92 px-4 py-3 shadow-[0_12px_34px_rgba(0,0,0,0.2)] transition",
+        active && "border-emerald-300/35 bg-[#18201f]/95",
+        busy && "pointer-events-none opacity-60",
+      )}
+    >
+      <button
+        type="button"
+        onClick={onTogglePlayback}
+        disabled={!playable}
+        title={
+          playable ? (playing ? "Pause" : "Play") : statusLabel(track.status)
+        }
+        className={cn(
+          "flex h-9 w-9 items-center justify-center rounded-lg border border-white/8 bg-white/[0.06] text-white/70 transition",
+          playable && "hover:bg-white/[0.12] hover:text-white",
+          active && "border-emerald-300/30 bg-emerald-300/10 text-emerald-100",
+          pending && "text-amber-300",
+        )}
+      >
+        {pending ? (
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300/30 border-t-amber-300" />
+        ) : playing ? (
+          <PauseIcon className="h-4 w-4" />
+        ) : (
+          <PlayIcon className="h-4 w-4" />
+        )}
+      </button>
+
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-sm font-semibold text-white/88">
+            {track.title}
+          </p>
+          <StatusBadge status={track.status} />
         </div>
-        <StatusBadge status={track.status} />
+        <div className="mt-1 flex items-center gap-2 text-[11px] text-white/35">
+          <span>{formatDuration(track.duration_seconds)}</span>
+          <span aria-hidden>*</span>
+          <span>{formatDate(track.created_at)}</span>
+        </div>
       </div>
 
-      {track.status === "completed" && track.audio_url && (
-        <audio
-          controls
-          src={track.audio_url}
-          className="mt-3 w-full"
-          preload="none"
-        />
-      )}
+      <div className="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onToggleMenu}
+          title="Track actions"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/[0.08] hover:text-white"
+          aria-expanded={menuOpen}
+        >
+          <MoreIcon className="h-4 w-4" />
+          <span className="sr-only">Open track actions</span>
+        </button>
+      </div>
 
-      {pending && (
-        <div className="mt-3 flex items-center gap-2 text-xs text-white/50">
-          <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white/80" />
-          음악을 생성하는 중...
+      {menuOpen && (
+        <div className="absolute right-4 top-14 z-20 w-40 overflow-hidden rounded-lg border border-white/10 bg-[#22252c] p-1 shadow-2xl">
+          <button
+            type="button"
+            onClick={onRename}
+            className="block w-full rounded-md px-3 py-2 text-left text-sm text-white/80 hover:bg-white/[0.08] hover:text-white"
+          >
+            Rename
+          </button>
+          {track.audio_url ? (
+            <a
+              href={track.audio_url}
+              download={`${safeFileName(track.title)}.mp3`}
+              className="block rounded-md px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08] hover:text-white"
+            >
+              Download
+            </a>
+          ) : (
+            <span className="block cursor-not-allowed rounded-md px-3 py-2 text-sm text-white/30">
+              Download
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            className="block w-full rounded-md px-3 py-2 text-left text-sm text-red-300 hover:bg-red-500/10 hover:text-red-200"
+          >
+            Delete
+          </button>
         </div>
-      )}
-
-      {track.status === "failed" && (
-        <p className="mt-3 text-xs text-red-400/80">
-          생성 실패{track.error_message ? `: ${track.error_message}` : ""}
-        </p>
       )}
     </div>
   );
@@ -150,16 +538,48 @@ function StatusBadge({ status }: { status: Music["status"] }) {
     failed: "bg-red-400/15 text-red-300",
   };
   const labels: Record<Music["status"], string> = {
-    pending: "대기",
-    processing: "생성 중",
-    completed: "완료",
-    failed: "실패",
+    pending: "Pending",
+    processing: "Generating",
+    completed: "Ready",
+    failed: "Failed",
   };
   return (
     <span
-      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${styles[status]}`}
+      className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${styles[status]}`}
     >
       {labels[status]}
     </span>
   );
+}
+
+function statusLabel(status: Music["status"]) {
+  const labels: Record<Music["status"], string> = {
+    pending: "Pending",
+    processing: "Generating",
+    completed: "Ready",
+    failed: "Failed",
+  };
+  return labels[status];
+}
+
+function formatDuration(seconds: number | null) {
+  if (!seconds) return "1:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Saved";
+  const now = new Date();
+  if (date.toDateString() === now.toDateString()) return "Today";
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function safeFileName(title: string) {
+  return title.trim().replace(/[\\/:*?"<>|]+/g, "-").slice(0, 80) || "track";
 }
