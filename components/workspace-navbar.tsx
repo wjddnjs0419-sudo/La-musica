@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState, type ChangeEvent } from "react";
 import { Cutive_Mono } from "next/font/google";
 
+import CreditModal from "@/components/credit-modal";
+
 const cutiveMono = Cutive_Mono({
   subsets: ["latin"],
   weight: "400",
@@ -24,8 +26,28 @@ function getInitial(user?: WorkspaceNavbarUser | null) {
   return source.trim().charAt(0).toUpperCase() || "?";
 }
 
+function MusicNoteIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+      <path
+        d="M9 18.5V6.75L18 5v11.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M9 18.5c0 1.1-1.12 2-2.5 2S4 19.6 4 18.5 5.12 16.5 6.5 16.5 9 17.4 9 18.5ZM18 16.5c0 1.1-1.12 2-2.5 2s-2.5-.9-2.5-2 1.12-2 2.5-2 2.5.9 2.5 2Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
 export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
 
   const displayName = user?.name || user?.email?.split("@")[0] || "Guest";
 
@@ -125,6 +147,18 @@ export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
                   {user.email}
                 </p>
               ) : null}
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+                onClick={() => {
+                  setCreditModalOpen(true);
+                  setMenuOpen(false);
+                }}
+              >
+                <MusicNoteIcon />
+                Upgrade
+              </button>
               <form action="/api/auth/signout" method="post">
                 <button
                   type="submit"
@@ -152,6 +186,10 @@ export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
           </div>
         </div>
       </div>
+      <CreditModal
+        open={creditModalOpen}
+        onClose={() => setCreditModalOpen(false)}
+      />
     </header>
   );
 }

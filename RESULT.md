@@ -1,21 +1,33 @@
-# RESULT: Music card metadata cleanup — 2026-06-12
+# RESULT: InsForge credit and payments schema - 2026-06-12
 
-## 배경
-- 요청: 생성 중인 음악 카드 제목 아래에 `--:-- * Today`처럼 보이는 메타 정보를 숨김.
-- 요청: 완료된 음악 카드에서도 길이와 날짜 사이의 `*` 구분자 제거.
+## Background
+- Request: use InsForge CLI to create a credit field.
+- Request: create a new payments table with only the minimum needed fields.
+- Prior inspection: no existing `credit` column and no app-owned `public.payments` table existed.
+- Constraint: avoid modifying InsForge-managed schemas such as `auth` and the existing managed `payments` schema.
 
-## 구현
-- **`components/music-workspace.tsx`**: `pending`/`processing` 상태에서는 제목 아래 메타 줄을 렌더링하지 않도록 변경.
-- **`components/music-workspace.tsx`**: 완료된 곡의 메타 줄에서 `*` 구분자를 제거하고, 길이와 날짜만 간격으로 표시하도록 정리.
+## Implementation
+- **`migrations/20260612055742_add-credit-and-payments.sql`**: added `public.user_credits` with `user_id`, `credit`, `created_at`, and `updated_at`.
+- **`migrations/20260612055742_add-credit-and-payments.sql`**: added minimal app ledger `public.payments` with user, credit amount, monetary amount/currency, status, provider, optional provider payment id, and timestamps.
+- **RLS**: enabled row level security on both tables.
+- **Access**: authenticated users can only `SELECT` their own rows; runtime `INSERT`, `UPDATE`, and `DELETE` privileges were revoked for `anon` and `authenticated`.
+- **Indexes**: added user/date lookup indexes and a unique provider payment id index for webhook/idempotency safety.
 
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
-| 전체 코드 | `npm run lint` | 통과 |
-| 타입/프로덕션 빌드 | `npm run build` | 통과 |
+| Migration apply | `npx @insforge/cli db migrations up 20260612055742_add-credit-and-payments.sql` | Passed |
+| Table existence | `information_schema.tables` query for `public.user_credits`, `public.payments` | Passed |
+| Columns | `information_schema.columns` query | Passed |
+| RLS policies | `pg_policies` query | Passed |
+| Runtime grants | `information_schema.role_table_grants` query | Passed |
+| Full codebase | `npm run build` | Passed |
+| Full codebase | `npm run lint` | Passed |
 
-## 교훈
-- 생성 중인 항목은 아직 확정된 길이가 없으므로, placeholder metadata를 보여주는 것보다 조용히 비워두는 편이 덜 헷갈린다.
+## Lessons
+- App credit state should live in `public` app-owned tables instead of altering InsForge-managed `auth.users`.
+- The managed `payments` schema already exists for provider integration, so app-facing payment history should be explicitly schema-qualified as `public.payments`.
 
-## 배포
-- 미배포(로컬). git 커밋/푸시는 사용자 요청 필요.
+## Deployment
+- Migration applied to linked InsForge project `La Musica`.
+- Not deployed as a frontend release. Commit/push still required when ready.

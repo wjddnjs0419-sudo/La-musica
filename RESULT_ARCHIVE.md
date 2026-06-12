@@ -4,6 +4,61 @@
 
 ---
 
+# RESULT: Credit modal entry from profile popover - 2026-06-12
+
+## Background
+- Request: add an `Upgrade` button in the profile navbar popover.
+- Request: use a minimal music-note SVG icon.
+- Request: open a React Portal based credit modal from the popover.
+- Request: keep styling componentized and Tailwind-based, without inline styles.
+- Pricing model: Starter `$2.99 / 5 songs`, Creator `$7.99 / 20 songs`, Viral Pack `$14.99 / 50 songs`.
+
+## Implementation
+- **`components/credit-modal.tsx`**: added a client-side portal modal using `createPortal(..., document.body)`.
+- **`components/credit-modal.tsx`**: added three compact Tailwind pricing cards showing only price and song credits.
+- **`components/credit-modal.tsx`**: added overlay click close, close button, and Escape-key close.
+- **`components/workspace-navbar.tsx`**: added an `Upgrade` popover item with a minimal music-note SVG and connected it to the modal state.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Full codebase | `npm run build` | Passed |
+| Full codebase | `npm run lint` | Passed |
+| Inline style guard | `rg -n "style=|<style" components/credit-modal.tsx components/workspace-navbar.tsx` | No matches |
+| Browser check | in-app Browser plugin | Blocked: `iab` browser unavailable in this session |
+
+## Lessons
+- Next.js client components can safely render portal UI by guarding `document` access during prerender instead of using a mount-state effect.
+
+## Deployment
+- Not deployed locally. Commit/push still required when ready.
+
+---
+
+# RESULT: Music card metadata cleanup ??2026-06-12
+
+## Background
+- Request: hide pending music card metadata such as `--:-- * Today`.
+- Request: remove the `*` separator between duration and date on completed music cards.
+
+## Implementation
+- **`components/music-workspace.tsx`**: skipped the metadata row for `pending` and `processing` cards.
+- **`components/music-workspace.tsx`**: removed the `*` separator and displayed duration/date with spacing only.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Full codebase | `npm run lint` | Passed |
+| Production build | `npm run build` | Passed |
+
+## Lessons
+- Pending cards should avoid placeholder metadata that looks like final track data.
+
+## Deployment
+- Not deployed locally. Commit/push still required when ready.
+
+---
+
 # RESULT: Music card duration fallback fix — 2026-06-12
 
 ## 배경
