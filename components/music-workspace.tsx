@@ -6,6 +6,7 @@ import WorkspaceMusicPlayer from "@/components/workspace-music-player";
 import type { GenerateRequest, Music } from "@/lib/music";
 
 const POLL_INTERVAL = 3000;
+const PAGE_SIZE = 7;
 
 type ClassValue = string | number | boolean | null | undefined;
 
@@ -58,11 +59,46 @@ const MoreIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const ChevronLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#ffffff"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+    {...props}
+  >
+    <path d="M15 6l-6 6 6 6" />
+  </svg>
+);
+
+const ChevronRightIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#ffffff"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+    {...props}
+  >
+    <path d="M9 6l6 6-6 6" />
+  </svg>
+);
+
 export default function MusicWorkspace({
   initialTracks = [],
 }: MusicWorkspaceProps) {
   const [tracks, setTracks] = React.useState<Music[]>(initialTracks);
   const [query, setQuery] = React.useState("");
+  const [page, setPage] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
@@ -73,6 +109,7 @@ export default function MusicWorkspace({
   const [volume, setVolume] = React.useState(0.85);
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const polling = React.useRef<Set<string>>(new Set());
+  const scrollRef = React.useRef<HTMLDivElement>(null);
 
   const activeTrack = React.useMemo(
     () => tracks.find((track) => track.id === activeTrackId) ?? null,
@@ -362,9 +399,44 @@ export default function MusicWorkspace({
     );
   }, [query, tracks]);
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredTracks.length / PAGE_SIZE),
+  );
+
+  // Reset to the first page whenever the search query changes (render-time
+  // adjustment per React's "storing info from previous renders" pattern).
+  const [prevQuery, setPrevQuery] = React.useState(query);
+  if (query !== prevQuery) {
+    setPrevQuery(query);
+    setPage(0);
+  }
+
+  // Clamp the page during render so a shrinking list never leaves us stranded
+  // on an out-of-range page.
+  const safePage = Math.min(page, totalPages - 1);
+
+  const pagedTracks = React.useMemo(
+    () =>
+      filteredTracks.slice(
+        safePage * PAGE_SIZE,
+        safePage * PAGE_SIZE + PAGE_SIZE,
+      ),
+    [filteredTracks, safePage],
+  );
+
+  const goToPage = React.useCallback(
+    (next: number) => {
+      const clamped = Math.min(Math.max(next, 0), totalPages - 1);
+      setPage(clamped);
+      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [totalPages],
+  );
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="custom-scrollbar flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="custom-scrollbar flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-5 md:py-8">
           {tracks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center text-white/40">
@@ -376,7 +448,7 @@ export default function MusicWorkspace({
             </div>
           ) : (
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
-              {filteredTracks.map((track) => (
+              {pagedTracks.map((track) => (
                 <TrackRow
                   key={track.id}
                   track={track}
@@ -392,6 +464,34 @@ export default function MusicWorkspace({
                   onDelete={() => handleDelete(track)}
                 />
               ))}
+
+              {totalPages > 1 && (
+                <div className="mt-3 flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => goToPage(safePage - 1)}
+                    disabled={safePage === 0}
+                    title="Previous page"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/8 bg-white/[0.06] transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <ChevronLeftIcon className="h-4 w-4" />
+                    <span className="sr-only">Previous page</span>
+                  </button>
+                  <span className="min-w-16 text-center text-xs font-medium text-white/55">
+                    {safePage + 1} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => goToPage(safePage + 1)}
+                    disabled={safePage >= totalPages - 1}
+                    title="Next page"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/8 bg-white/[0.06] transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <ChevronRightIcon className="h-4 w-4" />
+                    <span className="sr-only">Next page</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -612,7 +712,7 @@ function formatDate(value: string) {
   if (Number.isNaN(date.getTime())) return "Saved";
   const now = new Date();
   if (date.toDateString() === now.toDateString()) return "Today";
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString("ko-KR", {
     month: "short",
     day: "numeric",
   });

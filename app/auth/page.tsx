@@ -98,11 +98,11 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
 
             <p className="mx-auto mt-8 max-w-[260px] text-[10px] leading-4 text-white/28">
               By continuing, you agree to our{" "}
-              <a href="#" className="text-white/40 hover:text-white/60">
+              <a href="/terms" className="text-white/40 hover:text-white/60">
                 Terms of Service
               </a>{" "}
               and{" "}
-              <a href="#" className="text-white/40 hover:text-white/60">
+              <a href="/privacy" className="text-white/40 hover:text-white/60">
                 Privacy Policy
               </a>
               .

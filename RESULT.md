@@ -1,33 +1,26 @@
-# RESULT: InsForge credit and payments schema - 2026-06-12
+# RESULT: Workspace track list pagination (7/page) - 2026-06-13
 
 ## Background
-- Request: use InsForge CLI to create a credit field.
-- Request: create a new payments table with only the minimum needed fields.
-- Prior inspection: no existing `credit` column and no app-owned `public.payments` table existed.
-- Constraint: avoid modifying InsForge-managed schemas such as `auth` and the existing managed `payments` schema.
+- Request: limit generated tracks to 7 per page in `components/music-workspace.tsx`.
+- Request: page navigation via white `<` / `>` SVG icons, smooth transitions.
+- Goal: prevent the track list page from growing infinitely long.
 
 ## Implementation
-- **`migrations/20260612055742_add-credit-and-payments.sql`**: added `public.user_credits` with `user_id`, `credit`, `created_at`, and `updated_at`.
-- **`migrations/20260612055742_add-credit-and-payments.sql`**: added minimal app ledger `public.payments` with user, credit amount, monetary amount/currency, status, provider, optional provider payment id, and timestamps.
-- **RLS**: enabled row level security on both tables.
-- **Access**: authenticated users can only `SELECT` their own rows; runtime `INSERT`, `UPDATE`, and `DELETE` privileges were revoked for `anon` and `authenticated`.
-- **Indexes**: added user/date lookup indexes and a unique provider payment id index for webhook/idempotency safety.
+- **`components/music-workspace.tsx`**: added `PAGE_SIZE = 7` and `page` state plus a `scrollRef` on the scroll container.
+- **Icons**: added white-stroke `ChevronLeftIcon` / `ChevronRightIcon` SVGs.
+- **Derivation**: `totalPages` from `filteredTracks`; `safePage` clamps the page at render time so a shrinking list never strands an out-of-range page.
+- **Query reset**: render-time "previous render" pattern (`prevQuery` state) resets to page 0 when the search query changes — avoids `react-hooks/set-state-in-effect`.
+- **Render**: list maps `pagedTracks` (current 7-slice); pagination controls show only when `totalPages > 1`, with `N / total` indicator and end-disabled buttons.
+- **Smooth**: `goToPage` scrolls the list container to top with `behavior: "smooth"`.
 
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
-| Migration apply | `npx @insforge/cli db migrations up 20260612055742_add-credit-and-payments.sql` | Passed |
-| Table existence | `information_schema.tables` query for `public.user_credits`, `public.payments` | Passed |
-| Columns | `information_schema.columns` query | Passed |
-| RLS policies | `pg_policies` query | Passed |
-| Runtime grants | `information_schema.role_table_grants` query | Passed |
+| Pagination + icons | `npm run lint` | Passed |
 | Full codebase | `npm run build` | Passed |
-| Full codebase | `npm run lint` | Passed |
 
 ## Lessons
-- App credit state should live in `public` app-owned tables instead of altering InsForge-managed `auth.users`.
-- The managed `payments` schema already exists for provider integration, so app-facing payment history should be explicitly schema-qualified as `public.payments`.
+- React 19 / Next 16 lint forbids `setState` inside `useEffect` (`react-hooks/set-state-in-effect`); use render-time state adjustment (clamp via derived value, reset via previous-value comparison) instead of effects.
 
 ## Deployment
-- Migration applied to linked InsForge project `La Musica`.
-- Not deployed as a frontend release. Commit/push still required when ready.
+- Frontend change only; not yet released. Commit/push pending.
