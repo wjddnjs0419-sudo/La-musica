@@ -1,51 +1,43 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+
+import { startCheckout } from "@/lib/checkout-client";
+import { PLANS, type Plan, type PlanKey } from "@/lib/plans";
 
 type CreditModalProps = {
   open: boolean;
   onClose: () => void;
 };
 
-const creditPlans = [
-  {
-    name: "Starter",
-    price: "$2.99",
-    credits: "5 songs",
-  },
-  {
-    name: "Creator",
-    price: "$7.99",
-    credits: "20 songs",
-  },
-  {
-    name: "Viral Pack",
-    price: "$14.99",
-    credits: "50 songs",
-  },
-];
-
 function CreditPlanCard({
-  name,
-  price,
-  credits,
+  plan,
+  loading,
+  onSelect,
 }: {
-  name: string;
-  price: string;
-  credits: string;
+  plan: Plan;
+  loading: boolean;
+  onSelect: (key: PlanKey) => void;
 }) {
   return (
-    <article className="flex min-h-40 flex-col justify-between rounded-lg border border-white/12 bg-white/[0.06] p-5 text-left transition-colors hover:border-white/25 hover:bg-white/[0.09]">
+    <button
+      type="button"
+      disabled={loading}
+      onClick={() => onSelect(plan.key)}
+      className="flex min-h-40 flex-col justify-between rounded-lg border border-white/12 bg-white/[0.06] p-5 text-left transition-colors hover:border-white/25 hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-white/20"
+    >
       <div>
-        <p className="text-sm font-medium text-white/55">{name}</p>
-        <p className="mt-3 text-3xl font-semibold text-white">{price}</p>
+        <p className="text-sm font-medium text-white/55">{plan.name}</p>
+        <p className="mt-3 text-3xl font-semibold text-white">{plan.price}</p>
       </div>
       <div className="mt-6 border-t border-white/10 pt-4">
         <p className="text-sm text-white/45">Credits</p>
-        <p className="mt-1 text-lg font-medium text-white">{credits}</p>
+        <p className="mt-1 text-lg font-medium text-white">
+          {loading ? "Redirecting…" : plan.credits}
+        </p>
       </div>
-    </article>
+    </button>
   );
 }
 
@@ -63,6 +55,19 @@ function CloseIcon() {
 }
 
 export default function CreditModal({ open, onClose }: CreditModalProps) {
+  const [pendingPlan, setPendingPlan] = useState<PlanKey | null>(null);
+
+  const handleSelect = async (key: PlanKey) => {
+    if (pendingPlan) return;
+    setPendingPlan(key);
+    try {
+      await startCheckout(key);
+    } catch (error) {
+      console.error("credit checkout failed", error);
+      setPendingPlan(null);
+    }
+  };
+
   useEffect(() => {
     if (!open) return;
 
@@ -118,8 +123,13 @@ export default function CreditModal({ open, onClose }: CreditModalProps) {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          {creditPlans.map((plan) => (
-            <CreditPlanCard key={plan.name} {...plan} />
+          {PLANS.map((plan) => (
+            <CreditPlanCard
+              key={plan.key}
+              plan={plan}
+              loading={pendingPlan === plan.key}
+              onSelect={handleSelect}
+            />
           ))}
         </div>
       </section>

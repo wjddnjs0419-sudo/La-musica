@@ -1,10 +1,8 @@
 import Link from "next/link";
-import { Cutive_Mono } from "next/font/google";
-
-const cutiveMono = Cutive_Mono({
-  subsets: ["latin"],
-  weight: "400",
-});
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { createServerClient } from "@insforge/sdk/ssr";
+import Logo from "@/components/logo";
 
 const authErrors: Record<string, string> = {
   exchange_failed: "Google sign-in could not be completed. Please try again.",
@@ -20,6 +18,13 @@ type AuthPageProps = {
 };
 
 export default async function AuthPage({ searchParams }: AuthPageProps) {
+  const cookieStore = await cookies();
+  const client = createServerClient({ cookies: cookieStore });
+  const { data } = await client.auth.getCurrentUser();
+  if (data?.user) {
+    redirect("/workspace");
+  }
+
   const params = await searchParams;
   const error = Array.isArray(params?.error) ? params.error[0] : params?.error;
   const errorMessage = error ? authErrors[error] : null;
@@ -53,9 +58,10 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
           <div className="relative">
             <Link
               href="/"
-              className={`${cutiveMono.className} inline-flex text-2xl font-bold tracking-[-0.04em] text-white transition-colors hover:text-white/80`}
+              aria-label="La Musica"
+              className="inline-flex text-white transition-colors hover:text-white/80"
             >
-              La Musica
+              <Logo className="h-10 w-auto" />
             </Link>
             <p className="mt-2 text-xs font-medium text-white/35">
               Moments connected through music

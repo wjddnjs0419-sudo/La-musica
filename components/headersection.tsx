@@ -1,11 +1,6 @@
 import Link from "next/link";
-import { Cutive_Mono } from "next/font/google";
 import GetStartedBadge from "@/components/get-started-badge";
-
-const cutiveMono = Cutive_Mono({
-  subsets: ["latin"],
-  weight: "400",
-});
+import Logo from "@/components/logo";
 
 const navItems = [
   { label: "Features", href: "#features" },
@@ -13,15 +8,16 @@ const navItems = [
   { label: "Contact", href: "#contact" },
 ];
 
-export default function HeaderSection() {
+type HeaderSectionProps = {
+  ctaHref?: string;
+};
+
+export default function HeaderSection({ ctaHref }: HeaderSectionProps) {
   return (
     <header className="sticky top-0 z-50 w-full">
       <div className="flex w-full items-center justify-between px-3 py-5 sm:px-4 lg:px-20">
-        <Link
-          href="/"
-          className={`${cutiveMono.className} text-xl font-bold tracking-[0.16em] text-white sm:text-[1.55rem]`}
-        >
-          La Musica
+        <Link href="/" aria-label="La Musica" className="text-white">
+          <Logo className="h-9 w-auto sm:h-10" />
         </Link>
 
         <div className="flex items-center gap-4 sm:gap-6">
@@ -37,7 +33,7 @@ export default function HeaderSection() {
             ))}
           </nav>
 
-          <GetStartedBadge />
+          <GetStartedBadge href={ctaHref} />
         </div>
       </div>
     </header>

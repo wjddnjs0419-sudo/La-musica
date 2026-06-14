@@ -3,7 +3,11 @@
 import { LiquidMetal, liquidMetalPresets } from "@paper-design/shaders-react";
 import GetStartedBadge from "@/components/get-started-badge";
 
-export default function HeroSection() {
+type HeroSectionProps = {
+  ctaHref?: string;
+};
+
+export default function HeroSection({ ctaHref }: HeroSectionProps) {
   return (
     <section className="relative isolate overflow-hidden px-6 pb-10 pt-2 sm:px-8 lg:px-12 lg:pb-14 lg:pt-4">
       <div className="mx-auto grid min-h-[calc(100vh-7rem)] max-w-7xl gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.9fr)] lg:gap-12">
@@ -40,7 +44,7 @@ export default function HeroSection() {
 <br/>From a simple concept, melody, or mood, create polished tracks faster and <br/>more effortlessly than ever.
             </p>
             <div className="mt-6">
-              <GetStartedBadge />
+              <GetStartedBadge href={ctaHref} />
             </div>
           </div>
         </div>

@@ -2,14 +2,9 @@
 
 import Link from "next/link";
 import { useState, type ChangeEvent } from "react";
-import { Cutive_Mono } from "next/font/google";
 
 import CreditModal from "@/components/credit-modal";
-
-const cutiveMono = Cutive_Mono({
-  subsets: ["latin"],
-  weight: "400",
-});
+import Logo from "@/components/logo";
 
 type WorkspaceNavbarUser = {
   name?: string | null;
@@ -64,9 +59,10 @@ export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
       <div className="relative flex items-center gap-4 px-1 py-3 sm:px-2">
         <Link
           href="/"
-          className={`${cutiveMono.className} relative shrink-0 text-lg font-bold tracking-[0.14em] text-white transition-colors hover:text-white/80 sm:text-xl`}
+          aria-label="La Musica"
+          className="relative shrink-0 text-white transition-colors hover:text-white/80"
         >
-          La Musica
+          <Logo className="h-7 w-auto sm:h-8" />
         </Link>
 
         <div className="relative flex flex-1 justify-center">

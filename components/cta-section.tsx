@@ -1,7 +1,11 @@
 import GetStartedBadge from "@/components/get-started-badge";
 import LineWaves from "@/components/LineWaves";
 
-export default function CtaSection() {
+type CtaSectionProps = {
+  ctaHref?: string;
+};
+
+export default function CtaSection({ ctaHref }: CtaSectionProps) {
   return (
     <section className="relative isolate overflow-hidden px-6 py-24 sm:px-8 sm:py-32 lg:px-12">
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
@@ -31,7 +35,7 @@ export default function CtaSection() {
           song in seconds.
         </p>
         <div className="pointer-events-auto mt-8">
-          <GetStartedBadge href="/auth" />
+          <GetStartedBadge href={ctaHref} />
         </div>
       </div>
     </section>

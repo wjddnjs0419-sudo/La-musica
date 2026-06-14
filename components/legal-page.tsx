@@ -1,10 +1,5 @@
 import Link from "next/link";
-import { Cutive_Mono } from "next/font/google";
-
-const cutiveMono = Cutive_Mono({
-  subsets: ["latin"],
-  weight: "400",
-});
+import Logo from "@/components/logo";
 
 type LegalPageProps = {
   title: string;
@@ -28,11 +23,8 @@ export default function LegalPage({
 
       <header className="sticky top-0 z-50 w-full">
         <div className="flex w-full items-center justify-between px-3 py-5 sm:px-4 lg:px-20">
-          <Link
-            href="/"
-            className={`${cutiveMono.className} text-xl font-bold tracking-[0.16em] text-white sm:text-[1.55rem]`}
-          >
-            La Musica
+          <Link href="/" aria-label="La Musica" className="text-white">
+            <Logo className="h-9 w-auto sm:h-10" />
           </Link>
           <Link
             href="/"
