@@ -1,3 +1,4 @@
+import CtaSection from "@/components/cta-section";
 import HeaderSection from "@/components/headersection";
 import HeroSection from "@/components/herosection";
 
@@ -11,6 +12,7 @@ export default function Home() {
 
       <HeaderSection />
       <HeroSection />
+      <CtaSection />
     </main>
   );
 }

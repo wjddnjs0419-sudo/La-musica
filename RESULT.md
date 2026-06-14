@@ -1,26 +1,25 @@
-# RESULT: Workspace track list pagination (7/page) - 2026-06-13
+# RESULT: Main-page LineWaves CTA section - 2026-06-13
 
 ## Background
-- Request: limit generated tracks to 7 per page in `components/music-workspace.tsx`.
-- Request: page navigation via white `<` / `>` SVG icons, smooth transitions.
-- Goal: prevent the track list page from growing infinitely long.
+- Request: add a CTA section to the main page using the reactbits `LineWaves` WebGL background (props supplied by user).
+- Constraint: componentize, Tailwind only, no inline styles.
 
 ## Implementation
-- **`components/music-workspace.tsx`**: added `PAGE_SIZE = 7` and `page` state plus a `scrollRef` on the scroll container.
-- **Icons**: added white-stroke `ChevronLeftIcon` / `ChevronRightIcon` SVGs.
-- **Derivation**: `totalPages` from `filteredTracks`; `safePage` clamps the page at render time so a shrinking list never strands an out-of-range page.
-- **Query reset**: render-time "previous render" pattern (`prevQuery` state) resets to page 0 when the search query changes — avoids `react-hooks/set-state-in-effect`.
-- **Render**: list maps `pagedTracks` (current 7-slice); pagination controls show only when `totalPages > 1`, with `N / total` indicator and end-disabled buttons.
-- **Smooth**: `goToPage` scrolls the list container to top with `behavior: "smooth"`.
+- **`components/LineWaves.tsx`**: ported the reactbits ts-tailwind `LineWaves` source (OGL shader). Added `"use client"`. Reordered init so `program` is created before `resize()`, allowing `const` (satisfies `prefer-const`). Container uses Tailwind `h-full w-full`, no inline styles.
+- **`components/cta-section.tsx`**: full-width section. `LineWaves` sits in a `pointer-events-none absolute inset-0 -z-10` background layer with the user-supplied props (color1 `#00296a`, color2 `#a4aab2`, color3 `#6c7d98`, brightness 0.2, rotation -45, mouse interaction on). Centered copy overlay is `pointer-events-none`; the reused `GetStartedBadge` (`/auth`) wrapper is `pointer-events-auto`.
+- **Copy**: headline "Your next track starts here." + subtext + Get Started button.
+- **`app/page.tsx`**: render `<CtaSection />` below `<HeroSection />`.
+- **Dependency**: added `ogl`.
 
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
-| Pagination + icons | `npm run lint` | Passed |
+| LineWaves + CTA | `npm run lint` | Passed |
 | Full codebase | `npm run build` | Passed |
 
 ## Lessons
-- React 19 / Next 16 lint forbids `setState` inside `useEffect` (`react-hooks/set-state-in-effect`); use render-time state adjustment (clamp via derived value, reset via previous-value comparison) instead of effects.
+- reactbits ships a `ts-tailwind` variant (`src/ts-tailwind/Backgrounds/<Name>/<Name>.tsx`) — already Tailwind, no inline styles; just add `"use client"` and the `ogl` dep.
+- ESLint `prefer-const` fires on `let x; ... x = ...` assigned once; create the value before any closure that reads it so it can be `const`.
 
 ## Deployment
 - Frontend change only; not yet released. Commit/push pending.
