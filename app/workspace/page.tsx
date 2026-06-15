@@ -10,6 +10,7 @@ export default async function Workspace() {
   const { data } = await client.auth.getCurrentUser();
   const user = data?.user ?? null;
   let initialTracks: Music[] = [];
+  let initialCredit = 0;
 
   if (user) {
     const { data: tracks, error } = await client.database
@@ -23,6 +24,21 @@ export default async function Workspace() {
       console.error("workspace music list failed", error);
     } else {
       initialTracks = (tracks ?? []) as Music[];
+    }
+
+    const { data: creditRow, error: creditError } = await client.database
+      .from("user_credits")
+      .select("credit")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (creditError) {
+      console.error("workspace credit read failed", creditError);
+    } else if (
+      creditRow &&
+      typeof (creditRow as { credit?: unknown }).credit === "number"
+    ) {
+      initialCredit = (creditRow as { credit: number }).credit;
     }
   }
 
@@ -44,7 +60,10 @@ export default async function Workspace() {
         }
       />
 
-      <MusicWorkspace initialTracks={initialTracks} />
+      <MusicWorkspace
+        initialTracks={initialTracks}
+        initialCredit={initialCredit}
+      />
     </div>
   );
 }

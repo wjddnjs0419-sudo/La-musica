@@ -81,14 +81,48 @@ const InstrumentalIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const CreditStackIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden
+    {...props}
+  >
+    <path
+      d="M5 15.5 12 19l7-3.5"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.6"
+      opacity="0.55"
+    />
+    <path
+      d="M5 11.5 12 15l7-3.5"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.6"
+      opacity="0.75"
+    />
+    <path
+      d="M5 7.5 12 4l7 3.5-7 3.5-7-3.5Z"
+      fill="currentColor"
+      opacity="0.95"
+    />
+  </svg>
+);
+
 export interface PromptBoxProps
   extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onSubmit"> {
   /** Called with the composed generation request when the user submits. */
   onSend?: (payload: GenerateRequest) => void;
+  remainingCredits?: number;
 }
 
 export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
-  ({ className, onSend, ...props }, ref) => {
+  ({ className, onSend, remainingCredits = 0, ...props }, ref) => {
     const internalTextareaRef = React.useRef<HTMLTextAreaElement>(null);
     const [value, setValue] = React.useState("");
     const [lyrics, setLyrics] = React.useState("");
@@ -206,21 +240,29 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
             Style
           </button>
 
+          <button
+            type="button"
+            onClick={() => setInstrumental((v) => !v)}
+            aria-pressed={instrumental}
+            className={cn(
+              "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-sm transition-colors focus-visible:outline-none",
+              instrumental
+                ? "dark:text-[#99ceff] text-[#2294ff] dark:bg-[#3b4045] bg-accent"
+                : "text-foreground dark:text-white hover:bg-accent dark:hover:bg-[#515151]",
+            )}
+          >
+            <InstrumentalIcon className="h-4 w-4" />
+            Instrumental
+          </button>
+
           <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setInstrumental((v) => !v)}
-              aria-pressed={instrumental}
-              className={cn(
-                "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-sm transition-colors focus-visible:outline-none",
-                instrumental
-                  ? "dark:text-[#99ceff] text-[#2294ff] dark:bg-[#3b4045] bg-accent"
-                  : "text-foreground dark:text-white hover:bg-accent dark:hover:bg-[#515151]",
-              )}
+            <div
+              className="flex h-8 shrink-0 items-center gap-1.5 px-1 text-sm text-foreground dark:text-white"
+              title="Remaining credits"
             >
-              <InstrumentalIcon className="h-4 w-4" />
-              Instrumental
-            </button>
+              <CreditStackIcon className="h-4 w-4 opacity-80" />
+              <span className="font-medium tabular-nums">{remainingCredits}</span>
+            </div>
 
             <button
               type="submit"

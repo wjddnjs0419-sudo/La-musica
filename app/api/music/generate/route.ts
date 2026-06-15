@@ -1,16 +1,28 @@
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { createServerClient } from "@insforge/sdk/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+import {
+  createServerClient,
+  refreshAuth,
+  setAuthCookies,
+} from "@insforge/sdk/ssr";
 import Replicate from "replicate";
+
+import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import {
   MINIMAX_MODEL,
   buildMinimaxInput,
   deriveTitle,
+  type Music,
 } from "@/lib/music";
+
+type AuthTokens = {
+  accessToken: string;
+  refreshToken?: string | null;
+};
 
 // Kick off an async minimax/music-2.6 prediction and persist a `processing`
 // row. The client polls GET /api/music/[id] until it resolves.
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   let body: {
     prompt?: unknown;
     lyrics?: unknown;
@@ -32,25 +44,53 @@ export async function POST(request: Request) {
   const style = typeof body.style === "string" ? body.style.trim() : "";
   const instrumental = body.instrumental === true;
 
-  const cookieStore = await cookies();
-  const client = createServerClient({ cookies: cookieStore });
-  const { data: userData, error: authError } =
-    await client.auth.getCurrentUser();
-  const user = userData?.user;
+  const auth = await getAuthenticatedClient(request);
+  const { client, user, refreshedTokens } = auth;
   if (!user) {
-    // TEMP diagnostic — remove after debugging the 401.
-    console.error("generate auth check failed", {
-      hasAccessTokenCookie: Boolean(
-        cookieStore.get("insforge_access_token")?.value,
-      ),
-      hasRefreshTokenCookie: Boolean(
-        cookieStore.get("insforge_refresh_token")?.value,
-      ),
-      authError,
-    });
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return jsonWithAuthCookies(
+      { error: "unauthorized" },
+      { status: 401 },
+      refreshedTokens,
+    );
   }
 
+  const initialMetadata = {
+    instrumental,
+    ...(lyrics ? { lyrics } : {}),
+    ...(style ? { style } : {}),
+  };
+
+  const admin = createInsforgeAdminClient();
+  const { data: reserved, error: reserveError } = await admin.database.rpc(
+    "create_music_with_credit",
+    {
+      p_user_id: user.id,
+      p_prompt: prompt,
+      p_title: deriveTitle(prompt),
+      p_model: MINIMAX_MODEL,
+      p_metadata: initialMetadata,
+    },
+  );
+
+  if (reserveError || !reserved) {
+    const message = reserveError?.message ?? "";
+    if (message.includes("insufficient_credit")) {
+      const remainingCredit = await readRemainingCredit(admin, user.id);
+      return jsonWithAuthCookies(
+        { error: "insufficient_credit", remaining_credit: remainingCredit },
+        { status: 402 },
+        refreshedTokens,
+      );
+    }
+    console.error("music credit reservation failed", reserveError);
+    return jsonWithAuthCookies(
+      { error: "db_insert_failed" },
+      { status: 500 },
+      refreshedTokens,
+    );
+  }
+
+  const music = reserved as Music;
   const replicate = new Replicate(); // reads REPLICATE_API_TOKEN
 
   let predictionId: string;
@@ -62,33 +102,115 @@ export async function POST(request: Request) {
     predictionId = prediction.id;
   } catch (err) {
     console.error("replicate create failed", err);
-    return NextResponse.json({ error: "generation_failed" }, { status: 502 });
+    await admin.database.rpc("refund_failed_music_credit", {
+      p_user_id: user.id,
+      p_music_id: music.id,
+      p_message: "generation failed",
+    });
+    return jsonWithAuthCookies(
+      { error: "generation_failed" },
+      { status: 502 },
+      refreshedTokens,
+    );
   }
 
   const { data: rows, error } = await client.database
     .from("musics")
-    .insert([
-      {
-        user_id: user.id,
-        prompt,
-        title: deriveTitle(prompt),
-        status: "processing",
-        model: MINIMAX_MODEL,
-        duration_seconds: null,
-        metadata: {
-          prediction_id: predictionId,
-          instrumental,
-          ...(lyrics ? { lyrics } : {}),
-          ...(style ? { style } : {}),
-        },
+    .update({
+      status: "processing",
+      metadata: {
+        ...music.metadata,
+        prediction_id: predictionId,
       },
-    ])
+    })
+    .eq("id", music.id)
     .select();
 
   if (error || !rows?.[0]) {
-    console.error("music insert failed", error);
-    return NextResponse.json({ error: "db_insert_failed" }, { status: 500 });
+    console.error("music prediction attach failed", error);
+    return jsonWithAuthCookies(
+      { error: "db_update_failed" },
+      { status: 500 },
+      refreshedTokens,
+    );
   }
 
-  return NextResponse.json({ music: rows[0] });
+  const remainingCredit = await readRemainingCredit(admin, user.id);
+  return jsonWithAuthCookies(
+    {
+      music: rows[0],
+      remaining_credit: remainingCredit,
+    },
+    undefined,
+    refreshedTokens,
+  );
+}
+
+async function getAuthenticatedClient(request: NextRequest) {
+  const cookieStore = await cookies();
+  let client = createServerClient({ cookies: cookieStore });
+  let { data: userData, error: authError } = await client.auth.getCurrentUser();
+
+  if (userData?.user) {
+    return { client, user: userData.user, refreshedTokens: null };
+  }
+
+  const refreshResult = await refreshAuth({ request, cookies: cookieStore });
+  if (refreshResult.accessToken) {
+    client = createServerClient({ accessToken: refreshResult.accessToken });
+    const retry = await client.auth.getCurrentUser();
+    userData = retry.data;
+    authError = retry.error;
+  }
+
+  if (!userData?.user) {
+    console.error("generate auth check failed", {
+      hasAccessTokenCookie: Boolean(
+        cookieStore.get("insforge_access_token")?.value,
+      ),
+      hasRefreshTokenCookie: Boolean(
+        cookieStore.get("insforge_refresh_token")?.value,
+      ),
+      refreshed: Boolean(refreshResult.accessToken),
+      authError,
+      refreshError: refreshResult.error,
+    });
+  }
+
+  return {
+    client,
+    user: userData?.user ?? null,
+    refreshedTokens: refreshResult.accessToken
+      ? {
+          accessToken: refreshResult.accessToken,
+          refreshToken: refreshResult.refreshToken,
+        }
+      : null,
+  };
+}
+
+function jsonWithAuthCookies(
+  body: unknown,
+  init?: ResponseInit,
+  tokens?: AuthTokens | null,
+) {
+  const response = NextResponse.json(body, init);
+  if (tokens) {
+    setAuthCookies(response.cookies, tokens);
+  }
+  return response;
+}
+
+async function readRemainingCredit(
+  admin: ReturnType<typeof createInsforgeAdminClient>,
+  userId: string,
+) {
+  const { data } = await admin.database
+    .from("user_credits")
+    .select("credit")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const credit = (data as { credit?: unknown } | null)?.credit;
+  return typeof credit === "number" ? credit : 0;
 }

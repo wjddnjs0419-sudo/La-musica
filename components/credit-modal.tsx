@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { startCheckout } from "@/lib/checkout-client";
-import { PLANS, type Plan, type PlanKey } from "@/lib/plans";
+import { CREDIT_PLANS, type CreditPlanId } from "@/lib/credits";
 
 type CreditModalProps = {
   open: boolean;
@@ -12,29 +11,36 @@ type CreditModalProps = {
 };
 
 function CreditPlanCard({
-  plan,
+  id,
+  name,
+  price,
+  credits,
   loading,
-  onSelect,
+  onCheckout,
 }: {
-  plan: Plan;
+  id: CreditPlanId;
+  name: string;
+  price: string;
+  credits: number;
   loading: boolean;
-  onSelect: (key: PlanKey) => void;
+  onCheckout: (planId: CreditPlanId) => void;
 }) {
   return (
     <button
       type="button"
+      className="flex min-h-44 flex-col justify-between rounded-lg border border-white/12 bg-white/[0.06] p-5 text-left transition-colors hover:border-white/25 hover:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-white/15 disabled:cursor-wait disabled:opacity-65"
       disabled={loading}
-      onClick={() => onSelect(plan.key)}
-      className="flex min-h-40 flex-col justify-between rounded-lg border border-white/12 bg-white/[0.06] p-5 text-left transition-colors hover:border-white/25 hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-white/20"
+      onClick={() => onCheckout(id)}
     >
       <div>
-        <p className="text-sm font-medium text-white/55">{plan.name}</p>
-        <p className="mt-3 text-3xl font-semibold text-white">{plan.price}</p>
+        <p className="text-sm font-medium text-white/55">{name}</p>
+        <p className="mt-3 text-3xl font-semibold text-white">{price}</p>
       </div>
       <div className="mt-6 border-t border-white/10 pt-4">
         <p className="text-sm text-white/45">Credits</p>
-        <p className="mt-1 text-lg font-medium text-white">
-          {loading ? "Redirecting…" : plan.credits}
+        <p className="mt-1 text-lg font-medium text-white">{credits} songs</p>
+        <p className="mt-4 text-sm font-medium text-white/70">
+          {loading ? "Opening..." : "Checkout"}
         </p>
       </div>
     </button>
@@ -55,31 +61,53 @@ function CloseIcon() {
 }
 
 export default function CreditModal({ open, onClose }: CreditModalProps) {
-  const [pendingPlan, setPendingPlan] = useState<PlanKey | null>(null);
+  const [loadingPlanId, setLoadingPlanId] = useState<CreditPlanId | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSelect = async (key: PlanKey) => {
-    if (pendingPlan) return;
-    setPendingPlan(key);
-    try {
-      await startCheckout(key);
-    } catch (error) {
-      console.error("credit checkout failed", error);
-      setPendingPlan(null);
-    }
-  };
+  const handleClose = useCallback(() => {
+    setLoadingPlanId(null);
+    setErrorMessage(null);
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose();
+        handleClose();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, open]);
+  }, [handleClose, open]);
+
+  const handleCheckout = async (planId: CreditPlanId) => {
+    setLoadingPlanId(planId);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/credits/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ planId }),
+      });
+
+      const data = (await response.json()) as { url?: unknown; error?: string };
+      if (!response.ok || typeof data.url !== "string") {
+        throw new Error(data.error ?? "checkout_failed");
+      }
+
+      window.location.assign(data.url);
+    } catch (err) {
+      console.error("credit checkout failed", err);
+      setLoadingPlanId(null);
+      setErrorMessage("Checkout could not be opened. Please try again.");
+    }
+  };
 
   if (!open || typeof document === "undefined") {
     return null;
@@ -89,7 +117,7 @@ export default function CreditModal({ open, onClose }: CreditModalProps) {
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm"
       role="presentation"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <section
         aria-labelledby="credit-modal-title"
@@ -116,22 +144,26 @@ export default function CreditModal({ open, onClose }: CreditModalProps) {
             type="button"
             aria-label="Close credit modal"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/[0.05] text-white/70 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15"
-            onClick={onClose}
+            onClick={handleClose}
           >
             <CloseIcon />
           </button>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          {PLANS.map((plan) => (
+          {CREDIT_PLANS.map((plan) => (
             <CreditPlanCard
-              key={plan.key}
-              plan={plan}
-              loading={pendingPlan === plan.key}
-              onSelect={handleSelect}
+              key={plan.id}
+              {...plan}
+              loading={loadingPlanId === plan.id}
+              onCheckout={handleCheckout}
             />
           ))}
         </div>
+
+        {errorMessage ? (
+          <p className="mt-4 text-sm text-red-200">{errorMessage}</p>
+        ) : null}
       </section>
     </div>,
     document.body,

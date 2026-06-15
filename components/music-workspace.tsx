@@ -16,6 +16,7 @@ function cn(...inputs: ClassValue[]): string {
 
 type MusicWorkspaceProps = {
   initialTracks?: Music[];
+  initialCredit?: number;
 };
 
 const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -95,8 +96,10 @@ const ChevronRightIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export default function MusicWorkspace({
   initialTracks = [],
+  initialCredit = 0,
 }: MusicWorkspaceProps) {
   const [tracks, setTracks] = React.useState<Music[]>(initialTracks);
+  const [remainingCredit, setRemainingCredit] = React.useState(initialCredit);
   const [query, setQuery] = React.useState("");
   const [page, setPage] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
@@ -308,7 +311,11 @@ export default function MusicWorkspace({
           body: JSON.stringify(payload),
         });
         const raw = await res.text();
-        let json: { music?: Music; error?: string } = {};
+        let json: {
+          music?: Music;
+          error?: string;
+          remaining_credit?: number;
+        } = {};
         try {
           json = raw ? JSON.parse(raw) : {};
         } catch {
@@ -317,8 +324,14 @@ export default function MusicWorkspace({
         if (!res.ok || !json.music) {
           const reason = json.error || `HTTP ${res.status}` || "unknown";
           console.error("generate failed:", res.status, raw);
+          if (typeof json.remaining_credit === "number") {
+            setRemainingCredit(json.remaining_credit);
+          }
           setError(reason);
           return;
+        }
+        if (typeof json.remaining_credit === "number") {
+          setRemainingCredit(json.remaining_credit);
         }
         setError(null);
         upsertTrack(json.music);
@@ -502,7 +515,10 @@ export default function MusicWorkspace({
           {error && (
             <p className="mb-2 px-2 text-xs text-red-400/80">Error: {error}</p>
           )}
-          <PromptBox onSend={handleSend} />
+          <PromptBox
+            onSend={handleSend}
+            remainingCredits={remainingCredit}
+          />
         </div>
         {activeTrack && activeTrack.audio_url && (
           <div className="w-full">

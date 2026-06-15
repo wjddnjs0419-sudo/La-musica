@@ -4,6 +4,222 @@
 
 ---
 
+# RESULT: Pricing section credit checkout wiring - 2026-06-14
+
+## Background
+- Request: make `components/pricing-section.tsx` Get credits buttons open the real checkout flow.
+- Existing issue: pricing cards were wired to the remote Stripe `/api/checkout` helper, while the workspace Upgrade modal uses the local Polar credit checkout at `/api/credits/checkout`.
+
+## Implementation
+- **`components/pricing-section.tsx`**: switched plan data from `lib/plans` to `lib/credits` so plan IDs match the workspace Upgrade modal and Polar checkout API.
+- **`components/pricing-section.tsx`**: wired Get credits buttons to `POST /api/credits/checkout` with `{ planId }`, then redirects to the returned checkout URL.
+- **`components/pricing-section.tsx`**: added unauthenticated handling (`401` redirects to `/auth`) plus a small error message when checkout creation fails.
+- **`components/pricing-section.tsx`**: kept the existing pricing copy and highlighted Creator plan via local presentation metadata.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Pricing section lint | `npx eslint components/pricing-section.tsx` | Passed |
+| Full codebase | `npm run build` | Passed |
+| Full codebase | `npm run lint` | Passed |
+
+## Lessons
+- Shared billing UI should use the same plan ID source as the checkout API to avoid provider mismatches after merges.
+
+## Deployment
+- Not deployed as a frontend release. Commit/push still required when ready.
+
+---
+
+# RESULT: Origin main update merge - 2026-06-14
+
+## Background
+- Request: apply only the GitHub update delta from `wjddnjs0419-sudo/La-musica` without cloning a fresh copy.
+- Local working tree had uncommitted app, billing, migration, and workflow-document changes, so the update needed to preserve local work while fast-forwarding to `origin/main`.
+
+## Implementation
+- Fetched and fast-forwarded `main` from `77cc1ed` to `e4be16a`.
+- Temporarily stashed local changes, applied the remote update, then restored the stash.
+- Resolved conflicts in `PLAN.md`, `RESULT.md`, `RESULT_ARCHIVE.md`, and `components/credit-modal.tsx`.
+- Kept the local Polar credit modal flow wired to `/api/credits/checkout` while preserving the remote Stripe checkout files and pricing-page additions.
+- Preserved local untracked credit/webhook helpers and migration files from the stash.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Merge conflict cleanup | `Select-String` conflict marker scan | Passed |
+| Full codebase | `npm run build` | Passed |
+| Full codebase | `npm run lint` | Passed |
+
+## Lessons
+- When remote billing work and local billing work diverge, resolve UI entry points deliberately so the existing checkout provider does not silently switch.
+
+## Deployment
+- Not deployed as a frontend release. Commit/push still required when ready.
+
+---
+
+# RESULT: Main-page LineWaves CTA section - 2026-06-13
+
+## Background
+- Request: add a CTA section to the main page using the reactbits `LineWaves` WebGL background (props supplied by user).
+- Constraint: componentize, Tailwind only, no inline styles.
+
+## Implementation
+- **`components/LineWaves.tsx`**: ported the reactbits ts-tailwind `LineWaves` source (OGL shader). Added `"use client"`. Reordered init so `program` is created before `resize()`, allowing `const` (satisfies `prefer-const`). Container uses Tailwind `h-full w-full`, no inline styles.
+- **`components/cta-section.tsx`**: full-width section. `LineWaves` sits in a `pointer-events-none absolute inset-0 -z-10` background layer with the user-supplied props (color1 `#00296a`, color2 `#a4aab2`, color3 `#6c7d98`, brightness 0.2, rotation -45, mouse interaction on). Centered copy overlay is `pointer-events-none`; the reused `GetStartedBadge` (`/auth`) wrapper is `pointer-events-auto`.
+- **Copy**: headline "Your next track starts here." + subtext + Get Started button.
+- **`app/page.tsx`**: render `<CtaSection />` below `<HeroSection />`.
+- **Dependency**: added `ogl`.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| LineWaves + CTA | `npm run lint` | Passed |
+| Full codebase | `npm run build` | Passed |
+
+## Lessons
+- reactbits ships a `ts-tailwind` variant (`src/ts-tailwind/Backgrounds/<Name>/<Name>.tsx`) already Tailwind, no inline styles; just add `"use client"` and the `ogl` dep.
+- ESLint `prefer-const` fires on `let x; ... x = ...` assigned once; create the value before any closure that reads it so it can be `const`.
+
+## Deployment
+- Frontend change only; not yet released. Commit/push pending.
+
+---
+
+# RESULT: Music generation API auth refresh fix - 2026-06-12
+
+## Background
+- Reported error: `POST /api/music/generate` returned `401 {"error":"unauthorized"}` during music generation.
+- The API route was reading only the existing server cookie access token. Because `/api/*` is excluded from the proxy refresh path, an expired/missing access token with a valid refresh token could still fail as unauthorized.
+
+## Implementation
+- **`app/api/music/generate/route.ts`**: added route-local auth recovery using `refreshAuth({ request, cookies })` when `getCurrentUser()` fails from cookies.
+- **`app/api/music/generate/route.ts`**: retries the user lookup with the refreshed access token before returning `401`.
+- **`app/api/music/generate/route.ts`**: writes refreshed auth cookies back on JSON responses with `setAuthCookies(...)`, including error responses.
+- **`app/api/music/generate/route.ts`**: preserved the credit reservation, Replicate prediction creation, failed-generation refund, and `remaining_credit` response behavior.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| API route typecheck | `npm run build` | Passed |
+| Full codebase | `npm run lint` | Passed |
+| Full codebase | `npm run build` | Passed |
+
+## Lessons
+- API routes that bypass the session-refresh proxy need their own refresh fallback when they depend on a live InsForge user session.
+
+## Deployment
+- Not deployed as a frontend release. Commit/push still required when ready.
+
+---
+
+# RESULT: Manual credit grant and workspace credit display - 2026-06-12
+
+## Background
+- Request: manually grant 100 credits to `jake051096@gmail.com`.
+- Request: move Instrumental next to Style in `components/prompt-box.tsx`.
+- Request: put remaining credits where Instrumental used to be.
+- Request: use a minimal BlueStacks-style SVG icon and keep the credit display visually aligned with the other controls.
+- Follow-up: remove the badge wrapper styling and make the credit display flatter/minimal.
+
+## Implementation
+- **Database**: inserted one manual paid payment ledger row for `jake051096@gmail.com` with `provider='manual'`, `credit=100`, and `amount_cents=0`.
+- **Database**: upserted `public.user_credits` for the same user, bringing the current balance to 100.
+- **`app/workspace/page.tsx`**: reads the signed-in user's `user_credits.credit` and passes it to the client workspace.
+- **`components/music-workspace.tsx`**: owns `remainingCredit` client state and updates it from `/api/music/generate` responses.
+- **`app/api/music/generate/route.ts`**: returns `remaining_credit` on successful generation and insufficient-credit responses.
+- **`components/prompt-box.tsx`**: moved Instrumental beside Style and replaced its former right-side spot with a minimal credit count plus stacked-square SVG icon.
+- **`components/prompt-box.tsx`**: flattened the credit indicator by removing the separate pill background/ring and matching the default control text color.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Manual payment ledger | `public.payments` query by provider payment id | Passed |
+| Manual credit balance | `auth.users` + `public.user_credits` query | Passed: `100` |
+| Full codebase | `npm run lint` | Passed |
+| Full codebase | `npm run build` | Passed |
+
+## Lessons
+- The credit count should be server-seeded for the initial workspace render, then updated from generation API responses so the UI stays in sync without a full refresh.
+
+## Deployment
+- Manual credit grant applied to linked InsForge project `La Musica`.
+- Not deployed as a frontend release. Commit/push still required when ready.
+
+---
+
+# RESULT: Minimal Polar fulfillment and credit spending - 2026-06-12
+
+## Background
+- Request: handle the minimum needed Polar webhook behavior only.
+- Request: when a user pays, record the payment in `public.payments`.
+- Request: credit Starter with 5 songs, Creator with 20 songs, and Viral Pack with 50 songs.
+- Request: spend 1 credit for each music generation.
+
+## Implementation
+- **`migrations/20260612104325_polar-credit-fulfillment.sql`**: added `polar` to the `public.payments.provider` check constraint.
+- **`migrations/20260612104325_polar-credit-fulfillment.sql`**: added admin-only `public.fulfill_polar_credit_order(...)` to insert paid Polar orders idempotently and upsert `public.user_credits`.
+- **`migrations/20260612104325_polar-credit-fulfillment.sql`**: added admin-only `public.create_music_with_credit(...)` and `public.refund_failed_music_credit(...)` for atomic credit spending and startup-failure refund.
+- **`app/api/webhooks/polar/route.ts`**: added signed Polar webhook handling with `POLAR_WEBHOOK_SECRET`; only `order.paid` is fulfilled, all other events are acknowledged and ignored.
+- **`app/api/music/generate/route.ts`**: reserves a music row by spending 1 credit before starting Replicate; insufficient balance returns `402 insufficient_credit`.
+- **`lib/insforge-admin.ts`**: added a server-only admin client helper using `INSFORGE_API_KEY`.
+- **`package.json` / `package-lock.json`**: added `@polar-sh/sdk` for official webhook signature validation.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Migration apply | `npx @insforge/cli db migrations up 20260612104325_polar-credit-fulfillment.sql` | Passed |
+| Provider constraint | `payments_provider_check` catalog query | Passed: includes `polar` |
+| RPC existence | `pg_proc` query for 3 fulfillment/credit functions | Passed |
+| RPC permissions | `information_schema.routine_privileges` query | Passed: `project_admin` only |
+| Credit guard | Direct SQL call with no balance | Passed: `insufficient_credit` |
+| Webhook signature guard | unsigned `POST /api/webhooks/polar` | Passed: `403` |
+| Full codebase | `npm run lint` | Passed |
+| Full codebase | `npm run build` | Passed |
+
+## Lessons
+- Fulfillment should be idempotent on the provider order id, not on redirect success URLs.
+- Credit balance changes are safest as database functions so payment recording, balance top-up, and generation spending cannot drift apart.
+
+## Deployment
+- Migration applied to linked InsForge project `La Musica`.
+- Not deployed as a frontend release. Commit/push still required when ready.
+
+---
+
+# RESULT: Polar credit checkout session wiring - 2026-06-12
+
+## Background
+- Request: connect the credit modal buttons to real Polar checkout sessions.
+- Environment: `.env.local` has `POLAR_API_TOKEN`, `POLAR_STARTER_PRODUCT_ID`, `POLAR_CREATOR_PRODUCT_ID`, and `POLAR_VIRAL_PACK_PRODUCT_ID`.
+- Constraint: keep Polar token and product IDs server-side; do not hardcode secrets.
+
+## Implementation
+- **`lib/credits.ts`**: added the shared Starter, Creator, and Viral Pack credit plan definitions.
+- **`app/api/credits/checkout/route.ts`**: added authenticated `POST /api/credits/checkout` that validates the requested plan, reads the matching Polar product ID from env, creates a Polar checkout session, and returns the checkout URL.
+- **`app/api/credits/checkout/route.ts`**: sends Polar `external_customer_id`, customer email/name when available, `success_url`, `return_url`, and metadata (`user_id`, `plan_id`, `credit`) for later fulfillment/webhook reconciliation.
+- **`components/credit-modal.tsx`**: turned plan cards into checkout buttons with loading and error states, then redirects the browser to the returned Polar checkout URL.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Polar product env | Product lookup for `POLAR_STARTER_PRODUCT_ID` | Passed: Starter, active one-time product |
+| Polar product env | Product lookup for `POLAR_CREATOR_PRODUCT_ID` | Passed: Creator, active one-time product |
+| Polar product env | Product lookup for `POLAR_VIRAL_PACK_PRODUCT_ID` | Passed: Viral Pack, active one-time product |
+| API guard | `POST /api/credits/checkout` without auth | Passed: `401 {"error":"unauthorized"}` |
+| Full codebase | `npm run lint` | Passed |
+| Full codebase | `npm run build` | Passed |
+
+## Lessons
+- Polar checkout sessions require a product ID; keeping the IDs in env lets the client stay plan-based while the server owns billing configuration.
+- Polar supports copying checkout metadata to the resulting order/subscription, so plan and user metadata should be present at checkout creation time for later webhook fulfillment.
+
+## Deployment
+- Not deployed as a frontend release. Commit/push still required when ready.
+
+---
+
 # RESULT: Workspace track list pagination (7/page) - 2026-06-13
 
 ## Background

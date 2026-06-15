@@ -4,6 +4,7 @@ import CtaSection from "@/components/cta-section";
 import HeaderSection from "@/components/headersection";
 import HeroSection from "@/components/herosection";
 import PricingSection from "@/components/pricing-section";
+import SampleMusicSection from "@/components/sample-music-section";
 
 export default async function Home() {
   const cookieStore = await cookies();
@@ -20,6 +21,7 @@ export default async function Home() {
 
       <HeaderSection ctaHref={ctaHref} />
       <HeroSection ctaHref={ctaHref} />
+      <SampleMusicSection />
       <PricingSection />
       <CtaSection ctaHref={ctaHref} />
     </main>
