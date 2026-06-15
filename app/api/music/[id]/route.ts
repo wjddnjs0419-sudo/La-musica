@@ -2,7 +2,10 @@ import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@insforge/sdk/ssr";
 import Replicate from "replicate";
+import { generateThumbnail } from "@/lib/image/generateThumbnail";
+import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import { MUSICS_BUCKET, type Music } from "@/lib/music";
+import { buildThumbnailPrompt } from "@/lib/prompts/buildThumbnailPrompt";
 
 // Poll endpoint: resolves a `processing` row by checking the Replicate
 // prediction, copying the finished mp3 into Storage, and finalizing the row.
@@ -34,14 +37,19 @@ export async function GET(
 
   const music = row as Music;
 
-  // Terminal states need no further work.
+  if (music.status === "completed" && music.thumbnail_status === "pending") {
+    const updated = await generateAndPersistThumbnail(client, user.id, music);
+    return NextResponse.json({ music: updated });
+  }
+
+  // Terminal states need no further music-generation work.
   if (music.status === "completed" || music.status === "failed") {
     return NextResponse.json({ music });
   }
 
   const predictionId = music.metadata?.prediction_id as string | undefined;
   if (!predictionId) {
-    const failed = await markFailed(client, id, "missing prediction id");
+    const failed = await refundAndMarkFailed(user.id, id, "missing prediction id");
     return NextResponse.json({ music: failed ?? music });
   }
 
@@ -55,8 +63,8 @@ export async function GET(
   }
 
   if (prediction.status === "failed" || prediction.status === "canceled") {
-    const failed = await markFailed(
-      client,
+    const failed = await refundAndMarkFailed(
+      user.id,
       id,
       prediction.error ? String(prediction.error) : "generation failed",
     );
@@ -73,7 +81,7 @@ export async function GET(
     : (prediction.output as string | undefined);
 
   if (!audioUrl) {
-    const failed = await markFailed(client, id, "empty output");
+    const failed = await refundAndMarkFailed(user.id, id, "empty output");
     return NextResponse.json({ music: failed ?? music });
   }
 
@@ -96,13 +104,20 @@ export async function GET(
     url = uploaded.url;
   } catch (err) {
     console.error("audio persist failed", err);
-    const failed = await markFailed(client, id, "could not store audio");
+    const failed = await refundAndMarkFailed(user.id, id, "could not store audio");
     return NextResponse.json({ music: failed ?? music });
   }
 
+  const thumbnailPrompt = buildPromptForMusic(music);
   const { data: updated, error: updateError } = await client.database
     .from("musics")
-    .update({ status: "completed", audio_url: url, audio_key: key })
+    .update({
+      status: "completed",
+      audio_url: url,
+      audio_key: key,
+      thumbnail_prompt: thumbnailPrompt,
+      thumbnail_status: "pending",
+    })
     .eq("id", id)
     .select();
 
@@ -111,7 +126,14 @@ export async function GET(
     return NextResponse.json({ music }); // audio is stored; client can retry
   }
 
-  return NextResponse.json({ music: updated[0] });
+  const withThumbnail = await generateAndPersistThumbnail(
+    client,
+    user.id,
+    updated[0] as Music,
+    thumbnailPrompt,
+  );
+
+  return NextResponse.json({ music: withThumbnail });
 }
 
 export async function PATCH(
@@ -195,7 +217,7 @@ export async function DELETE(
 
   const { data: row, error: readError } = await client.database
     .from("musics")
-    .select("id, audio_key, cover_key")
+    .select("id, audio_key, cover_key, thumbnail_key")
     .eq("id", id)
     .maybeSingle();
 
@@ -217,9 +239,10 @@ export async function DELETE(
     return NextResponse.json({ error: "db_delete_failed" }, { status: 500 });
   }
 
-  const audioKey = (row as Pick<Music, "audio_key" | "cover_key">).audio_key;
-  const coverKey = (row as Pick<Music, "audio_key" | "cover_key">).cover_key;
-  for (const key of [audioKey, coverKey].filter(Boolean) as string[]) {
+  const keys = row as Pick<Music, "audio_key" | "cover_key" | "thumbnail_key">;
+  for (const key of [keys.audio_key, keys.cover_key, keys.thumbnail_key].filter(
+    Boolean,
+  ) as string[]) {
     const { error } = await client.storage.from(MUSICS_BUCKET).remove(key);
     if (error) {
       console.error("music storage cleanup failed", { key, error });
@@ -229,15 +252,99 @@ export async function DELETE(
   return NextResponse.json({ ok: true });
 }
 
-async function markFailed(
-  client: ReturnType<typeof createServerClient>,
+async function refundAndMarkFailed(
+  userId: string,
   id: string,
   message: string,
 ): Promise<Music | null> {
-  const { data } = await client.database
-    .from("musics")
-    .update({ status: "failed", error_message: message })
-    .eq("id", id)
-    .select();
-  return (data?.[0] as Music) ?? null;
+  const admin = createInsforgeAdminClient();
+  const { data, error } = await admin.database.rpc("refund_failed_music_credit", {
+    p_user_id: userId,
+    p_music_id: id,
+    p_message: message,
+  });
+
+  if (error) {
+    console.error("music failure refund failed", error);
+  }
+
+  return (data as Music | null) ?? null;
+}
+
+async function generateAndPersistThumbnail(
+  client: ReturnType<typeof createServerClient>,
+  userId: string,
+  music: Music,
+  prompt = music.thumbnail_prompt ?? buildPromptForMusic(music),
+): Promise<Music> {
+  try {
+    const blob = await generateThumbnail(prompt);
+    const file = new File([blob], `${music.id}.webp`, { type: "image/webp" });
+    const uploadKey = `${userId}/${music.id}-thumbnail-${Date.now()}.webp`;
+    const { data: uploaded, error: uploadError } = await client.storage
+      .from(MUSICS_BUCKET)
+      .upload(uploadKey, file);
+
+    if (uploadError || !uploaded) {
+      throw uploadError ?? new Error("thumbnail_upload_failed");
+    }
+
+    const { data: updated, error: updateError } = await client.database
+      .from("musics")
+      .update({
+        thumbnail_url: uploaded.url,
+        thumbnail_key: uploaded.key,
+        thumbnail_prompt: prompt,
+        thumbnail_status: "succeeded",
+      })
+      .eq("id", music.id)
+      .select();
+
+    if (updateError || !updated?.[0]) {
+      throw updateError ?? new Error("thumbnail_update_failed");
+    }
+
+    return updated[0] as Music;
+  } catch (err) {
+    console.error("thumbnail generation failed", { musicId: music.id, err });
+    const { data: updated, error } = await client.database
+      .from("musics")
+      .update({
+        thumbnail_url: null,
+        thumbnail_key: null,
+        thumbnail_prompt: prompt,
+        thumbnail_status: "failed",
+      })
+      .eq("id", music.id)
+      .select();
+
+    if (error) {
+      console.error("thumbnail failure status update failed", {
+        musicId: music.id,
+        error,
+      });
+      return { ...music, thumbnail_prompt: prompt, thumbnail_status: "failed" };
+    }
+
+    return (updated?.[0] as Music) ?? {
+      ...music,
+      thumbnail_prompt: prompt,
+      thumbnail_status: "failed",
+    };
+  }
+}
+
+function buildPromptForMusic(music: Music) {
+  return buildThumbnailPrompt({
+    title: music.title,
+    genre: metadataString(music.metadata, "style"),
+    mood: music.prompt,
+    lyrics: metadataString(music.metadata, "lyrics"),
+    musicPrompt: music.prompt,
+  });
+}
+
+function metadataString(metadata: Record<string, unknown>, key: string) {
+  const value = metadata[key];
+  return typeof value === "string" ? value : null;
 }

@@ -5,12 +5,14 @@ import HeaderSection from "@/components/headersection";
 import HeroSection from "@/components/herosection";
 import PricingSection from "@/components/pricing-section";
 import SampleMusicSection from "@/components/sample-music-section";
+import { getLandingSampleTracks } from "@/lib/landing-samples";
 
 export default async function Home() {
   const cookieStore = await cookies();
   const client = createServerClient({ cookies: cookieStore });
   const { data } = await client.auth.getCurrentUser();
   const ctaHref = data?.user ? "/workspace" : "/auth";
+  const sampleTracks = await getLandingSampleTracks();
 
   return (
     <main className="relative isolate min-h-screen overflow-hidden bg-slate-950 text-white">
@@ -21,7 +23,7 @@ export default async function Home() {
 
       <HeaderSection ctaHref={ctaHref} />
       <HeroSection ctaHref={ctaHref} />
-      <SampleMusicSection />
+      <SampleMusicSection tracks={sampleTracks} />
       <PricingSection />
       <CtaSection ctaHref={ctaHref} />
     </main>

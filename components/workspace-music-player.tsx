@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import MusicThumbnail from "@/components/music-thumbnail";
 import type { Music } from "@/lib/music";
 
 type WorkspaceMusicPlayerProps = {
@@ -116,7 +117,11 @@ export default function WorkspaceMusicPlayer({
       </div>
       <div className="grid min-h-16 grid-cols-[minmax(0,1fr)] items-center gap-3 px-3 py-2 lg:grid-cols-[minmax(220px,1fr)_minmax(260px,1.2fr)_minmax(180px,0.8fr)]">
         <div className="flex min-w-0 items-center gap-3">
-          <DefaultAlbumThumbnail />
+          <MusicThumbnail
+            track={track}
+            className="h-12 w-12"
+            showTitle={Boolean(track.thumbnail_url)}
+          />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white/90">
               {track.title}
@@ -185,33 +190,6 @@ export default function WorkspaceMusicPlayer({
         </div>
       </div>
     </section>
-  );
-}
-
-function DefaultAlbumThumbnail() {
-  return (
-    <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-white/15 bg-gradient-to-br from-violet-500 via-indigo-500 to-sky-500">
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-white/[0.06]"
-      />
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden
-        className="relative h-6 w-6 text-white"
-      >
-        <path
-          d="M9 18V7l10-2v11"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
-        <circle cx="6.5" cy="18" r="2.5" fill="currentColor" />
-        <circle cx="16.5" cy="16" r="2.5" fill="currentColor" />
-      </svg>
-    </div>
   );
 }
 

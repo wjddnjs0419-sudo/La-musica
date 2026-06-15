@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import MusicThumbnail from "@/components/music-thumbnail";
 import { PromptBox } from "@/components/prompt-box";
 import WorkspaceMusicPlayer from "@/components/workspace-music-player";
 import type { GenerateRequest, Music } from "@/lib/music";
@@ -593,7 +594,7 @@ function TrackRow({
   return (
     <div
       className={cn(
-        "group relative grid min-h-20 grid-cols-[42px_minmax(0,1fr)_36px] items-center gap-3 rounded-lg border border-white/7 bg-[#171a20]/92 px-4 py-3 shadow-[0_12px_34px_rgba(0,0,0,0.2)] transition",
+        "group relative grid min-h-20 grid-cols-[42px_44px_minmax(0,1fr)_36px] items-center gap-3 rounded-lg border border-white/7 bg-[#171a20]/92 px-4 py-3 shadow-[0_12px_34px_rgba(0,0,0,0.2)] transition",
         active && "border-emerald-300/35 bg-[#18201f]/95",
         busy && "pointer-events-none opacity-60",
       )}
@@ -620,6 +621,8 @@ function TrackRow({
           <PlayIcon className="h-4 w-4" />
         )}
       </button>
+
+      <MusicThumbnail track={track} className="h-11 w-11" />
 
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">

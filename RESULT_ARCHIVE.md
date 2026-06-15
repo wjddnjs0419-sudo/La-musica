@@ -4,6 +4,74 @@
 
 ---
 
+# RESULT: AI music thumbnail generation - 2026-06-16
+
+## Background
+- Request: after successful AI music generation, automatically generate a square album-cover thumbnail with Replicate.
+- Existing flow: `/api/music/generate` spends one credit and starts MiniMax on Replicate; `/api/music/[id]` polls, stores the mp3, and finalizes the `musics` row.
+- Constraint: previous songs should keep the default image, thumbnail failures must not fail music generation or refund credits, and Replicate tokens must stay server-only.
+
+## Implementation
+- **`migrations/20260613000000_add-music-thumbnails.sql`**: added nullable `thumbnail_url`, `thumbnail_key`, `thumbnail_prompt`, and `thumbnail_status` columns, leaving existing songs unbackfilled so they keep fallback artwork.
+- **`lib/prompts/buildThumbnailPrompt.ts`**: added the album-cover prompt builder with title/style/lyrics/music prompt context and required `No text, no logo, no watermark.` instruction.
+- **`lib/image/generateThumbnail.ts`**: added server-only Replicate Flux Schnell thumbnail generation with `aspect_ratio: "1:1"` and `output_format: "webp"`.
+- **`app/api/music/[id]/route.ts`**: after successful audio persistence, marks `thumbnail_status=pending`, generates/stores the webp thumbnail, then updates `thumbnail_status=succeeded`; failures are logged and recorded as `failed` without changing music success or credits.
+- **`app/api/music/[id]/route.ts`**: changed music failure paths in the polling route to use `refund_failed_music_credit`, preserving the one-credit refund policy for actual music failures only.
+- **`components/music-thumbnail.tsx`**, **`components/music-workspace.tsx`**, **`components/workspace-music-player.tsx`**: show generated thumbnails when present, otherwise keep the existing music-icon fallback; player thumbnails can overlay the title.
+- **`.env.example`**, **`.gitignore`**: documented `REPLICATE_API_TOKEN` and existing app/server environment variables, and allowed the example env file to be tracked.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| DB migration | `npx @insforge/cli db migrations up 20260613000000_add-music-thumbnails.sql` | Passed |
+| DB schema | `npx @insforge/cli db query "select column_name, data_type ... thumbnail_%"` | Passed |
+| Full codebase | `npm run build` | Passed |
+| Full codebase | `npm run lint` | Passed |
+| Existing songs fallback | Migration uses nullable thumbnail columns and no backfill | Passed by inspection |
+| Credit policy | Thumbnail failure path only updates thumbnail fields; music failure path calls `refund_failed_music_credit` | Passed by inspection |
+
+## Lessons
+- In this app, "generation success" happens in the polling route, so post-success media work belongs there rather than in the initial POST route.
+- The thumbnail migration needed to be timestamped before the unrelated pending Stripe migration so it could be applied without touching billing schema.
+
+## Deployment
+- Migration applied to the currently linked InsForge project. Frontend not deployed; commit/push still required when ready.
+
+---
+
+# RESULT: Landing pricing anchor and sample music gallery - 2026-06-16
+
+## Background
+- Request: connect the Header Pricing menu so it scrolls to the pricing section.
+- Request: add a listenable sample songs section above pricing, using temporary album-cover style artwork and a centered SVG play button.
+- Constraint: avoid inline styles; componentize and use Tailwind styling.
+
+## Implementation
+- **`components/pricing-section.tsx`**: added `id="pricing"` and sticky-header scroll offset so the existing Header Pricing link targets the section correctly.
+- **`components/sample-music-section.tsx`**: added a client component with four sample cards, Tailwind-only cover art, clip-path utility classes, single-audio playback, active state, and playback error handling.
+- **`public/icons/play-sample.svg`**: added the centered play button SVG asset used on each album cover.
+- **`public/samples/*.wav`**: generated four short local preview WAV files so samples do not depend on remote audio URLs.
+- **`app/page.tsx`**: placed the sample music section between Hero and Pricing.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Inline style guard | `rg -n "style=|<style" components/sample-music-section.tsx components/pricing-section.tsx app/page.tsx` | Passed |
+| Full codebase | `npm run build` | Passed |
+| Full codebase | `npm run lint` | Passed |
+| Local HTML response | `Invoke-WebRequest http://localhost:3000` contains `id="pricing"`, `id="features"`, sample title, and play SVG path | Passed |
+| Static assets | HTTP 200 for `/icons/play-sample.svg` and all four `/samples/*.wav` files | Passed |
+| Browser plugin check | In-app Browser and Chrome extension surfaces | Blocked: unavailable in this session |
+
+## Lessons
+- Hash navigation with a sticky header needs a target id plus scroll offset on the target section.
+- Tailwind arbitrary utilities are enough for temporary clipped album art, avoiding inline `style` props while keeping the component flexible.
+
+## Deployment
+- Not deployed as a frontend release. Commit/push still required when ready.
+
+---
+
 # RESULT: Pricing section credit checkout wiring - 2026-06-14
 
 ## Background
