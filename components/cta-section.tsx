@@ -7,7 +7,7 @@ type CtaSectionProps = {
 
 export default function CtaSection({ ctaHref }: CtaSectionProps) {
   return (
-    <section className="relative isolate overflow-hidden px-6 py-24 sm:px-8 sm:py-32 lg:px-12">
+    <section className="relative isolate overflow-hidden px-4 py-16 sm:px-8 sm:py-32 lg:px-12">
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <LineWaves
           speed={0.3}
@@ -27,12 +27,12 @@ export default function CtaSection({ ctaHref }: CtaSectionProps) {
       </div>
 
       <div className="pointer-events-none mx-auto flex max-w-3xl flex-col items-center text-center">
-        <h2 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+        <h2 className="text-3xl font-semibold text-white sm:text-5xl lg:text-6xl">
           Your next track starts here.
         </h2>
         <p className="mt-5 max-w-xl text-base leading-7 text-white/70 sm:text-lg">
-          Describe a mood, a melody, or a moment — Musica turns it into a finished
-          song in seconds.
+          Describe a mood, a melody, or a moment. Musica turns it into a
+          finished song in seconds.
         </p>
         <div className="pointer-events-auto mt-8">
           <GetStartedBadge href={ctaHref} />

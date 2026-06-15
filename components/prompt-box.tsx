@@ -177,7 +177,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
       <form
         onSubmit={handleSubmit}
         className={cn(
-          "dark flex flex-col rounded-[28px] p-2 shadow-sm transition-colors bg-white border dark:bg-[#303030] dark:border-transparent cursor-text",
+          "dark flex flex-col rounded-[22px] border bg-white p-2 shadow-sm transition-colors dark:border-transparent dark:bg-[#303030] sm:rounded-[28px]",
           className,
         )}
       >
@@ -188,7 +188,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder="Describe your music..."
-          className="custom-scrollbar w-full resize-none border-0 bg-transparent p-3 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-gray-300 focus:ring-0 focus-visible:outline-none min-h-12"
+          className="custom-scrollbar min-h-12 w-full resize-none border-0 bg-transparent p-3 text-foreground placeholder:text-muted-foreground focus:ring-0 focus-visible:outline-none dark:text-white dark:placeholder:text-gray-300"
           {...props}
         />
 
@@ -211,7 +211,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
           />
         )}
 
-        <div className="mt-0.5 flex items-center gap-2 p-1 pt-0">
+        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 p-1 pt-0 sm:gap-2">
           <button
             type="button"
             onClick={() => setLyricsOpen((v) => !v)}

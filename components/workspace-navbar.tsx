@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import CreditModal from "@/components/credit-modal";
 import Logo from "@/components/logo";
@@ -43,8 +43,30 @@ function MusicNoteIcon() {
 export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [creditModalOpen, setCreditModalOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const displayName = user?.name || user?.email?.split("@")[0] || "Guest";
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [menuOpen]);
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     window.dispatchEvent(
@@ -55,18 +77,18 @@ export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full px-3 pt-4 sm:px-6 lg:px-8">
-      <div className="relative flex items-center gap-4 px-1 py-3 sm:px-2">
+    <header className="sticky top-0 z-50 w-full px-3 pt-3 sm:px-6 sm:pt-4 lg:px-8">
+      <div className="relative flex flex-wrap items-center gap-3 px-1 py-3 sm:flex-nowrap sm:gap-4 sm:px-2">
         <Link
           href="/"
           aria-label="La Musica"
-          className="relative shrink-0 text-white transition-colors hover:text-white/80"
+          className="relative order-1 shrink-0 text-white transition-colors hover:text-white/80 sm:order-none"
         >
           <Logo className="h-7 w-auto sm:h-8" />
         </Link>
 
-        <div className="relative flex flex-1 justify-center">
-          <div className="relative w-full max-w-md">
+        <div className="relative order-3 flex w-full justify-center sm:order-none sm:flex-1">
+          <div className="relative w-full sm:max-w-md">
             <svg
               aria-hidden
               viewBox="0 0 24 24"
@@ -98,36 +120,33 @@ export default function WorkspaceNavbar({ user }: WorkspaceNavbarProps) {
         </div>
 
         <div
-          className="relative shrink-0"
-          onMouseEnter={() => setMenuOpen(true)}
-          onMouseLeave={() => setMenuOpen(false)}
+          ref={menuRef}
+          className="relative order-2 ml-auto shrink-0 sm:order-none sm:ml-0"
         >
           <button
             type="button"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            className="flex items-center gap-2.5 rounded-full border border-white/12 bg-white/[0.05] py-1 pl-1 pr-3 transition-colors hover:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-white/15"
+            onClick={() => setMenuOpen((open) => !open)}
+            className="flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-white/20"
           >
             {user?.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={user.avatarUrl}
                 alt=""
-                className="h-8 w-8 rounded-full object-cover"
+                className="h-9 w-9 rounded-full object-cover"
               />
             ) : (
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white">
                 {getInitial(user)}
               </span>
             )}
-            <span className="hidden max-w-[120px] truncate text-sm font-medium text-white/85 sm:block">
-              {displayName}
-            </span>
           </button>
 
           <div
             role="menu"
-            className={`absolute right-0 top-full w-44 pt-2 transition-all duration-150 ${
+            className={`fixed right-3 top-[7.25rem] w-44 pt-2 transition-all duration-150 sm:absolute sm:right-0 sm:top-full ${
               menuOpen
                 ? "pointer-events-auto translate-y-0 opacity-100"
                 : "pointer-events-none -translate-y-1 opacity-0"

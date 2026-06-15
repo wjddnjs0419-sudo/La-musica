@@ -1,28 +1,32 @@
-# RESULT: Landing fixed generated sample tracks - 2026-06-16
+# RESULT: Main and workspace mobile optimization - 2026-06-16
 
 ## Background
-- Request: replace the landing sample section with the four most recently created songs at the time of the request.
-- Constraint: do not hardcode titles, audio URLs, or thumbnail URLs; fetch them from InsForge.
-- Constraint: keep this section pinned to those four songs, so newer generated songs do not rotate into the section automatically.
+- Request: optimize the homepage and workspace for mobile.
+- Follow-up: homepage mobile navigation should use a hamburger side menu.
+- Follow-up: workspace profile should be a plain circular avatar only, with no glass capsule or visible username on desktop.
+- Follow-up: mobile profile dropdown must stay open long enough to tap Upgrade or Sign out.
 
 ## Implementation
-- **`lib/landing-samples.ts`**: added a server-side fixed ID list for the four selected `musics` rows and fetches their `title`, `prompt`, `audio_url`, `thumbnail_url`, and `duration_seconds` through the InsForge admin client.
-- **`lib/landing-samples.ts`**: derives each card description from the first phrase of the stored prompt, so descriptions come from the selected song data rather than duplicated card metadata.
-- **`app/page.tsx`**: loads the fixed sample tracks on the server and passes serializable track props into the client sample section.
-- **`components/sample-music-section.tsx`**: removed the temporary local WAV/sample art array and renders the fetched title, thumbnail, audio URL, derived description, and duration label.
-- **Landing copy**: changed the section heading/subcopy to present the tracks as pinned real La Musica creations.
+- **`components/headersection.tsx`**: converted the homepage header to a client component with an inline SVG hamburger button on mobile, a right-side slide-out menu, backdrop close, close icon, and mobile nav links.
+- **`components/herosection.tsx`**: moved mobile hero copy ahead of the shader visual, removed forced `<br />` line breaks, reduced mobile visual height, and tightened mobile spacing.
+- **`components/sample-music-section.tsx`**, **`components/pricing-section.tsx`**, **`components/cta-section.tsx`**: reduced mobile padding, card rounding, and heading scale so sections scan better on narrow screens.
+- **`components/workspace-navbar.tsx`**: made the search bar wrap to a second row on mobile, changed the profile button to a plain circular avatar/initial with no username, switched the dropdown from hover-close behavior to click plus outside-click/Escape close, and moved the mobile dropdown below the search input so it does not overlap the field.
+- **`components/music-workspace.tsx`**, **`components/prompt-box.tsx`**, **`components/workspace-music-player.tsx`**: tightened mobile gutters, made track metadata and prompt controls wrap, and stacked player controls more comfortably on small screens.
 
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
-| Full codebase | `npm run build` | Passed |
 | Full codebase | `npm run lint` | Passed |
-| Landing data | `Invoke-WebRequest http://localhost:3000` contains `Hiphop Style`, `EDM Style`, `House Style`, `Techno Style`, and `Featured creations` | Passed |
-| Pinning behavior | Sample query uses `LANDING_SAMPLE_MUSIC_IDS` instead of `order by created_at desc limit 4` at render time | Passed by inspection |
+| Full codebase | `npm run build` | Passed |
+| Homepage mobile nav | `Invoke-WebRequest http://localhost:3000` includes `Open menu`, `Mobile primary`, and updated mobile classes | Passed |
+| Workspace profile | `Invoke-WebRequest http://localhost:3000/workspace` shows circular avatar classes and no visible username span | Passed |
+| Dropdown tap behavior | Dropdown now uses click state with outside-click/Escape close instead of mouse leave close | Passed by inspection |
+| Mobile dropdown placement | Dropdown uses mobile fixed positioning below the wrapped search row, then returns to avatar-relative positioning at `sm` and above | Passed by inspection |
 
 ## Lessons
-- Pinning a generated-content showcase should fix only stable row IDs, then fetch mutable display fields from the database.
-- Server Components are a good fit for loading selected public-facing media while keeping the admin API key server-only.
+- Mobile dropdowns should not depend on hover or mouse leave semantics; tap targets need click ownership and outside-click dismissal.
+- Keeping mobile nav as a drawer avoids squeezing desktop nav links into a header that needs strong brand presence.
 
 ## Deployment
-- Not deployed as a frontend release. Commit/push still required when ready.
+- Not deployed. Local dev server was already running on port 3000 during verification.
+- In-app Browser was unavailable in this session, so visual screenshot verification could not be completed here.

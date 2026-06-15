@@ -67,7 +67,7 @@ function PricingCard({
 
   return (
     <article
-      className={`flex flex-col rounded-xl border p-6 text-left transition-colors ${
+      className={`flex flex-col rounded-lg border p-5 text-left transition-colors sm:p-6 ${
         highlight
           ? "border-sky-400/40 bg-white/[0.08] hover:border-sky-300/60"
           : "border-white/12 bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.07]"
@@ -76,7 +76,7 @@ function PricingCard({
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-white/55">{name}</p>
         {highlight ? (
-          <span className="rounded-full border border-sky-400/40 bg-sky-400/10 px-2.5 py-0.5 text-xs font-medium text-sky-200">
+          <span className="shrink-0 rounded-full border border-sky-400/40 bg-sky-400/10 px-2.5 py-0.5 text-xs font-medium text-sky-200">
             Most popular
           </span>
         ) : null}
@@ -152,11 +152,11 @@ export default function PricingSection() {
   return (
     <section
       id="pricing"
-      className="relative isolate scroll-mt-24 px-6 py-24 sm:px-8 sm:py-28 lg:px-12"
+      className="relative isolate scroll-mt-24 px-4 py-16 sm:px-8 sm:py-28 lg:px-12"
     >
       <div className="mx-auto max-w-5xl">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
+          <h2 className="text-2xl font-semibold text-white sm:text-4xl lg:text-5xl">
             Simple, pay-as-you-go pricing.
           </h2>
           <p className="mt-4 text-base leading-7 text-white/65 sm:text-lg">
@@ -165,7 +165,7 @@ export default function PricingSection() {
           </p>
         </div>
 
-        <div className="mt-14 grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:mt-14 md:grid-cols-3">
           {CREDIT_PLANS.map((plan) => (
             <PricingCard
               key={plan.id}

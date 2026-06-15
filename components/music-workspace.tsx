@@ -451,7 +451,7 @@ export default function MusicWorkspace({
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div ref={scrollRef} className="custom-scrollbar flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-5 md:py-8">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-3 py-4 sm:px-4 md:py-8">
           {tracks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center text-white/40">
               <p className="text-sm">Create a song and it will appear here.</p>
@@ -511,7 +511,7 @@ export default function MusicWorkspace({
         </div>
       </div>
 
-      <div className="w-full px-4 pb-6">
+      <div className="w-full px-3 pb-4 sm:px-4 sm:pb-6">
         <div className="mx-auto w-full max-w-3xl">
           {error && (
             <p className="mb-2 px-2 text-xs text-red-400/80">Error: {error}</p>
@@ -594,7 +594,7 @@ function TrackRow({
   return (
     <div
       className={cn(
-        "group relative grid min-h-20 grid-cols-[42px_44px_minmax(0,1fr)_36px] items-center gap-3 rounded-lg border border-white/7 bg-[#171a20]/92 px-4 py-3 shadow-[0_12px_34px_rgba(0,0,0,0.2)] transition",
+        "group relative grid min-h-20 grid-cols-[38px_42px_minmax(0,1fr)_32px] items-center gap-2 rounded-lg border border-white/7 bg-[#171a20]/92 px-3 py-3 shadow-[0_12px_34px_rgba(0,0,0,0.2)] transition sm:grid-cols-[42px_44px_minmax(0,1fr)_36px] sm:gap-3 sm:px-4",
         active && "border-emerald-300/35 bg-[#18201f]/95",
         busy && "pointer-events-none opacity-60",
       )}
@@ -622,7 +622,7 @@ function TrackRow({
         )}
       </button>
 
-      <MusicThumbnail track={track} className="h-11 w-11" />
+      <MusicThumbnail track={track} className="h-10 w-10 sm:h-11 sm:w-11" />
 
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
@@ -632,7 +632,7 @@ function TrackRow({
           <StatusBadge status={track.status} />
         </div>
         {showMetadata && (
-          <div className="mt-1 flex items-center gap-2 text-[11px] text-white/35">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-white/35">
             <span>{formatDuration(track.duration_seconds)}</span>
             <span>{formatDate(track.created_at)}</span>
           </div>
@@ -653,7 +653,7 @@ function TrackRow({
       </div>
 
       {menuOpen && (
-        <div className="absolute right-4 top-14 z-20 w-40 overflow-hidden rounded-lg border border-white/10 bg-[#22252c] p-1 shadow-2xl">
+        <div className="absolute right-3 top-14 z-20 w-40 overflow-hidden rounded-lg border border-white/10 bg-[#22252c] p-1 shadow-2xl sm:right-4">
           <button
             type="button"
             onClick={onRename}

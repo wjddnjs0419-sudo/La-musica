@@ -115,11 +115,11 @@ export default function WorkspaceMusicPlayer({
           {resolvedDuration ? formatTime(resolvedDuration) : "--:--"}
         </span>
       </div>
-      <div className="grid min-h-16 grid-cols-[minmax(0,1fr)] items-center gap-3 px-3 py-2 lg:grid-cols-[minmax(220px,1fr)_minmax(260px,1.2fr)_minmax(180px,0.8fr)]">
+      <div className="grid min-h-16 grid-cols-[minmax(0,1fr)] items-center gap-3 px-3 py-3 lg:grid-cols-[minmax(220px,1fr)_minmax(260px,1.2fr)_minmax(180px,0.8fr)] lg:py-2">
         <div className="flex min-w-0 items-center gap-3">
           <MusicThumbnail
             track={track}
-            className="h-12 w-12"
+            className="h-11 w-11 sm:h-12 sm:w-12"
             showTitle={Boolean(track.thumbnail_url)}
           />
           <div className="min-w-0">
@@ -131,7 +131,7 @@ export default function WorkspaceMusicPlayer({
         </div>
 
         <div className="flex min-w-0 items-center justify-center">
-          <div className="flex items-center gap-5 text-white/60">
+          <div className="flex items-center gap-4 text-white/60 sm:gap-5">
             <button
               type="button"
               className="flex h-10 w-10 items-center justify-center rounded-md transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15"
@@ -166,7 +166,7 @@ export default function WorkspaceMusicPlayer({
           </div>
         </div>
 
-        <div className="flex min-w-0 items-center justify-end gap-2 text-white/50">
+        <div className="flex min-w-0 items-center justify-between gap-2 text-white/50 lg:justify-end">
           <VolumeIcon className="h-4 w-4 shrink-0" />
           <input
             type="range"
@@ -176,7 +176,7 @@ export default function WorkspaceMusicPlayer({
             value={volume}
             onChange={(event) => onVolumeChange(Number(event.target.value))}
             aria-label="Volume"
-            className="h-1 w-24 accent-white"
+            className="h-1 min-w-0 flex-1 accent-white sm:max-w-32 lg:w-24 lg:flex-none"
           />
           <button
             type="button"

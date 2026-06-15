@@ -51,14 +51,14 @@ export default function SampleMusicSection({ tracks }: SampleMusicSectionProps) 
   return (
     <section
       id="features"
-      className="relative isolate px-6 py-20 sm:px-8 sm:py-24 lg:px-12"
+      className="relative isolate px-4 py-14 sm:px-8 sm:py-24 lg:px-12"
     >
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-4 sm:max-w-2xl">
           <p className="text-sm font-semibold uppercase text-sky-200/80">
             Featured creations
           </p>
-          <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
+          <h2 className="text-2xl font-semibold text-white sm:text-4xl lg:text-5xl">
             Hear four tracks made with La Musica.
           </h2>
           <p className="text-base leading-7 text-white/62 sm:text-lg">
@@ -67,20 +67,20 @@ export default function SampleMusicSection({ tracks }: SampleMusicSectionProps) 
           </p>
         </div>
 
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid gap-4 sm:mt-12 sm:grid-cols-2 lg:grid-cols-4">
           {tracks.map((track) => {
             const isActive = activeTrackId === track.id && playing;
 
             return (
               <article
                 key={track.id}
-                className="group rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition-colors hover:border-white/25 hover:bg-white/[0.07]"
+                className="group rounded-lg border border-white/10 bg-white/[0.04] p-3 transition-colors hover:border-white/25 hover:bg-white/[0.07] sm:p-4"
               >
                 <button
                   type="button"
                   onClick={() => void handleToggle(track)}
                   aria-label={formatButtonLabel(track, isActive)}
-                  className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-black transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-300/60"
+                  className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg bg-black transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-300/60"
                 >
                   {track.thumbnailSrc ? (
                     <Image
@@ -118,7 +118,7 @@ export default function SampleMusicSection({ tracks }: SampleMusicSectionProps) 
                 </button>
 
                 <div className="mt-4 flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="text-base font-semibold text-white">
                       {track.title}
                     </h3>
