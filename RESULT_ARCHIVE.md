@@ -4,6 +4,113 @@
 
 ---
 
+# RESULT: Google OAuth production redirect fix - 2026-06-16
+
+## Background
+- Request: production auth page showed `Google sign-in could not be started. Please try again.`
+- InsForge auth logs showed `https://la-musica.vercel.app/api/auth/callback is not in the allowed redirect URLs`.
+- Metadata confirmed only the localhost callback was allowed.
+
+## Implementation
+- Updated `insforge.toml` auth `allowed_redirect_urls` to include `https://la-musica.vercel.app/api/auth/callback`.
+- Applied the InsForge backend config with `npx @insforge/cli config apply --file insforge.toml --auto-approve --json`.
+- No frontend code change or Vercel redeploy was needed; the deployed app already sends the production callback URL through `NEXT_PUBLIC_APP_URL`.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Diagnosis | `npx @insforge/cli logs insforge.logs --limit 80` | Found production callback URL rejection |
+| Backend metadata before fix | `npx @insforge/cli metadata --json` | Only localhost callback was allowed |
+| Config preview | `npx @insforge/cli config plan --file insforge.toml --json` | One auth redirect change; no skips |
+| Config apply | `npx @insforge/cli config apply --file insforge.toml --auto-approve --json` | Applied; no skips |
+| Backend metadata after fix | `npx @insforge/cli metadata --json` | Production callback URL present |
+| OAuth start | `Invoke-WebRequest https://la-musica.vercel.app/api/auth/google -Method POST -MaximumRedirection 0` | 307 to Google OAuth URL |
+| Full codebase | `npm run lint` | Passed |
+| Full codebase | `npm run build` | Passed |
+
+## Lessons
+- OAuth production launches need the frontend app URL and backend allowed redirect list updated together.
+- InsForge `config plan` is a clean way to confirm auth redirect changes before applying them.
+
+## Deployment
+- Frontend redeploy not required.
+- Backend auth config updated for `https://la-musica.vercel.app/api/auth/callback`.
+
+---
+
+# RESULT: Vercel production publishing - 2026-06-16
+
+## Background
+- Request: publish La Musica to Vercel.
+- The repo had no existing `.vercel` link and no Vercel project named `la-musica`.
+- Local Vercel login was completed by the user before deployment.
+
+## Implementation
+- Created and linked the Vercel project `jeongwon-kim-s-projects/la-musica` through Vercel CLI.
+- Synced production environment variables from `.env.local` without printing secret values.
+- Set production `NEXT_PUBLIC_APP_URL` to `https://la-musica.vercel.app` instead of the local development URL.
+- Deployed production build `dpl_8i7fTjRfRa6DQtPwnDjqPcCZSCot`.
+- Confirmed the production alias `https://la-musica.vercel.app`.
+- Cleaned up the duplicate `.vercel` ignore entry added by the Vercel link command.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Full codebase | `npm run lint` | Passed |
+| Full codebase | `npm run build` | Passed |
+| Vercel auth | `npx vercel whoami` | Passed (`jake051096-4385`) |
+| Vercel project | `npx vercel project inspect la-musica` | Passed; project linked |
+| Production env | `npx vercel env ls production` | Passed; 10 variables present |
+| Production deploy | `npx vercel --prod --yes` | Passed; deployment ready |
+| Production alias | `npx vercel inspect https://la-musica.vercel.app` | Ready; alias attached |
+| Live homepage | `Invoke-WebRequest https://la-musica.vercel.app` | 200; content includes `La Musica` |
+
+## Lessons
+- Vercel CLI can deploy without GitHub integration; the GitHub repository connection failed only because the Vercel account needs a GitHub Login Connection.
+- For this app, `NEXT_PUBLIC_APP_URL` must be production-specific so auth and payment redirect URLs do not point back to localhost.
+
+## Deployment
+- Production URL: `https://la-musica.vercel.app`
+- Inspector URL: `https://vercel.com/jeongwon-kim-s-projects/la-musica/8i7fTjRfRa6DQtPwnDjqPcCZSCot`
+- Default deployment URL: `https://la-musica-k9bgwexmb-jeongwon-kim-s-projects.vercel.app`
+
+---
+
+# RESULT: Main and workspace mobile optimization - 2026-06-16
+
+## Background
+- Request: optimize the homepage and workspace for mobile.
+- Follow-up: homepage mobile navigation should use a hamburger side menu.
+- Follow-up: workspace profile should be a plain circular avatar only, with no glass capsule or visible username on desktop.
+- Follow-up: mobile profile dropdown must stay open long enough to tap Upgrade or Sign out.
+
+## Implementation
+- **`components/headersection.tsx`**: converted the homepage header to a client component with an inline SVG hamburger button on mobile, a right-side slide-out menu, backdrop close, close icon, and mobile nav links.
+- **`components/herosection.tsx`**: moved mobile hero copy ahead of the shader visual, removed forced `<br />` line breaks, reduced mobile visual height, and tightened mobile spacing.
+- **`components/sample-music-section.tsx`**, **`components/pricing-section.tsx`**, **`components/cta-section.tsx`**: reduced mobile padding, card rounding, and heading scale so sections scan better on narrow screens.
+- **`components/workspace-navbar.tsx`**: made the search bar wrap to a second row on mobile, changed the profile button to a plain circular avatar/initial with no username, switched the dropdown from hover-close behavior to click plus outside-click/Escape close, and moved the mobile dropdown below the search input so it does not overlap the field.
+- **`components/music-workspace.tsx`**, **`components/prompt-box.tsx`**, **`components/workspace-music-player.tsx`**: tightened mobile gutters, made track metadata and prompt controls wrap, and stacked player controls more comfortably on small screens.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Full codebase | `npm run lint` | Passed |
+| Full codebase | `npm run build` | Passed |
+| Homepage mobile nav | `Invoke-WebRequest http://localhost:3000` includes `Open menu`, `Mobile primary`, and updated mobile classes | Passed |
+| Workspace profile | `Invoke-WebRequest http://localhost:3000/workspace` shows circular avatar classes and no visible username span | Passed |
+| Dropdown tap behavior | Dropdown now uses click state with outside-click/Escape close instead of mouse leave close | Passed by inspection |
+| Mobile dropdown placement | Dropdown uses mobile fixed positioning below the wrapped search row, then returns to avatar-relative positioning at `sm` and above | Passed by inspection |
+
+## Lessons
+- Mobile dropdowns should not depend on hover or mouse leave semantics; tap targets need click ownership and outside-click dismissal.
+- Keeping mobile nav as a drawer avoids squeezing desktop nav links into a header that needs strong brand presence.
+
+## Deployment
+- Not deployed. Local dev server was already running on port 3000 during verification.
+- In-app Browser was unavailable in this session, so visual screenshot verification could not be completed here.
+
+---
+
 # RESULT: Landing fixed generated sample tracks - 2026-06-16
 
 ## Background

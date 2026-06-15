@@ -1,5 +1,8 @@
 [auth]
-allowed_redirect_urls = ["http://localhost:3000/api/auth/callback"]
+allowed_redirect_urls = [
+  "http://localhost:3000/api/auth/callback",
+  "https://la-musica.vercel.app/api/auth/callback",
+]
 require_email_verification = true
 verify_email_method = "code"
 reset_password_method = "code"
