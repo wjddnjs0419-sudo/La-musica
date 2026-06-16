@@ -13,8 +13,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://la-musica.vercel.app"),
   title: "La musica",
   description: "La musica는 AI로 음악을 생성하는 웹페이지입니다.",
+  openGraph: {
+    title: "La musica",
+    description: "La musica는 AI로 음악을 생성하는 웹페이지입니다.",
+    url: "https://la-musica.vercel.app",
+    siteName: "La musica",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "La musica" }],
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "La musica",
+    description: "La musica는 AI로 음악을 생성하는 웹페이지입니다.",
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({
