@@ -2,12 +2,67 @@
 
 import * as React from "react";
 import { type GenerateRequest } from "@/lib/music";
+import type {
+  MusicGenre,
+  MusicMood,
+  MusicUseCase,
+  VocalMode,
+} from "@/lib/music-prompt/types";
 
 // --- Utility ---
 type ClassValue = string | number | boolean | null | undefined;
 function cn(...inputs: ClassValue[]): string {
   return inputs.filter(Boolean).join(" ");
 }
+
+const GENRE_OPTIONS: { value: MusicGenre; label: string }[] = [
+  { value: "edm", label: "EDM" },
+  { value: "reggaeton", label: "Reggaeton" },
+  { value: "hiphop_trap", label: "Hip-hop / Trap" },
+  { value: "techno", label: "Techno" },
+  { value: "korean_ballad", label: "Korean Ballad" },
+  { value: "brazilian_funk", label: "Brazilian Funk" },
+  { value: "afropop_festival", label: "Afropop Festival" },
+  { value: "french_maghreb_hiphop", label: "French Maghreb Hip-hop" },
+  { value: "football_chant", label: "Football Chant" },
+];
+
+const MOOD_OPTIONS: { value: MusicMood; label: string }[] = [
+  { value: "hard", label: "Hard" },
+  { value: "energetic", label: "Energetic" },
+  { value: "dark", label: "Dark" },
+  { value: "happy", label: "Happy" },
+  { value: "emotional", label: "Emotional" },
+  { value: "sexy", label: "Sexy" },
+  { value: "epic", label: "Epic" },
+  { value: "funny", label: "Funny" },
+  { value: "nostalgic", label: "Nostalgic" },
+  { value: "romantic", label: "Romantic" },
+  { value: "aggressive", label: "Aggressive" },
+  { value: "festival", label: "Festival" },
+];
+
+const USE_CASE_OPTIONS: { value: MusicUseCase; label: string }[] = [
+  { value: "workout", label: "Workout" },
+  { value: "club", label: "Club" },
+  { value: "party", label: "Party" },
+  { value: "short_form", label: "Short-form" },
+  { value: "gaming", label: "Gaming" },
+  { value: "travel_vlog", label: "Travel Vlog" },
+  { value: "sports_chant", label: "Sports Chant" },
+  { value: "comedy_roast", label: "Comedy Roast" },
+  { value: "background", label: "Background" },
+  { value: "personal_song", label: "Personal Song" },
+];
+
+const VOCAL_OPTIONS: { value: VocalMode; label: string }[] = [
+  { value: "auto", label: "Auto" },
+  { value: "instrumental", label: "Instrumental" },
+  { value: "male_vocal", label: "Male vocal" },
+  { value: "female_vocal", label: "Female vocal" },
+  { value: "rap_vocal", label: "Rap vocal" },
+  { value: "crowd_chant", label: "Crowd chant" },
+];
 
 // --- Minimal SVG icons ---
 const SendIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -129,7 +184,11 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
     const [style, setStyle] = React.useState("");
     const [lyricsOpen, setLyricsOpen] = React.useState(false);
     const [styleOpen, setStyleOpen] = React.useState(false);
-    const [instrumental, setInstrumental] = React.useState(false);
+    const [genre, setGenre] = React.useState<MusicGenre | "">("");
+    const [moods, setMoods] = React.useState<MusicMood[]>([]);
+    const [useCase, setUseCase] = React.useState<MusicUseCase | "">("");
+    const [vocalMode, setVocalMode] = React.useState<VocalMode>("auto");
+    const [optionsOpen, setOptionsOpen] = React.useState(false);
 
     React.useImperativeHandle(ref, () => internalTextareaRef.current!, []);
     React.useLayoutEffect(() => {
@@ -155,14 +214,23 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
         prompt: text,
         lyrics: lyrics.trim() || undefined,
         style: style.trim() || undefined,
-        instrumental,
+        instrumental: vocalMode === "instrumental",
+        genre: genre || undefined,
+        moods: moods.length ? moods : undefined,
+        useCase: useCase || undefined,
+        vocalMode,
+        language: undefined,
       });
       setValue("");
       setLyrics("");
       setStyle("");
+      setGenre("");
+      setMoods([]);
+      setUseCase("");
+      setVocalMode("auto");
       setLyricsOpen(false);
       setStyleOpen(false);
-      setInstrumental(false);
+      setOptionsOpen(false);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -211,6 +279,81 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
           />
         )}
 
+        {optionsOpen && (
+          <div className="mx-1 mb-1 grid grid-cols-1 gap-2 rounded-2xl bg-black/5 p-3 dark:bg-white/5 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground dark:text-gray-400">
+              Genre
+              <select
+                value={genre}
+                onChange={(e) => setGenre(e.target.value as MusicGenre | "")}
+                className="rounded-lg border-0 bg-white/70 p-2 text-sm text-foreground dark:bg-[#3a3a3a] dark:text-white focus:ring-0 focus-visible:outline-none"
+              >
+                <option value="">Auto</option>
+                {GENRE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground dark:text-gray-400">
+              Vocal
+              <select
+                value={vocalMode}
+                onChange={(e) => setVocalMode(e.target.value as VocalMode)}
+                className="rounded-lg border-0 bg-white/70 p-2 text-sm text-foreground dark:bg-[#3a3a3a] dark:text-white focus:ring-0 focus-visible:outline-none"
+              >
+                {VOCAL_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground dark:text-gray-400">
+              Use case
+              <select
+                value={useCase}
+                onChange={(e) => setUseCase(e.target.value as MusicUseCase | "")}
+                className="rounded-lg border-0 bg-white/70 p-2 text-sm text-foreground dark:bg-[#3a3a3a] dark:text-white focus:ring-0 focus-visible:outline-none"
+              >
+                <option value="">Auto</option>
+                {USE_CASE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <div className="flex flex-col gap-1 text-xs text-muted-foreground dark:text-gray-400">
+              Mood
+              <div className="flex flex-wrap gap-1">
+                {MOOD_OPTIONS.map((o) => {
+                  const active = moods.includes(o.value);
+                  return (
+                    <button
+                      key={o.value}
+                      type="button"
+                      onClick={() =>
+                        setMoods((prev) =>
+                          prev.includes(o.value)
+                            ? prev.filter((m) => m !== o.value)
+                            : [...prev, o.value],
+                        )
+                      }
+                      className={cn(
+                        "rounded-full px-2 py-1 text-xs transition-colors",
+                        active
+                          ? "bg-[#2294ff] text-white dark:bg-[#99ceff] dark:text-black"
+                          : "bg-white/70 text-foreground dark:bg-[#3a3a3a] dark:text-white",
+                      )}
+                    >
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5 p-1 pt-0 sm:gap-2">
           <button
             type="button"
@@ -242,17 +385,17 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
 
           <button
             type="button"
-            onClick={() => setInstrumental((v) => !v)}
-            aria-pressed={instrumental}
+            onClick={() => setOptionsOpen((v) => !v)}
+            aria-pressed={optionsOpen}
             className={cn(
               "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-sm transition-colors focus-visible:outline-none",
-              instrumental
+              optionsOpen
                 ? "dark:text-[#99ceff] text-[#2294ff] dark:bg-[#3b4045] bg-accent"
                 : "text-foreground dark:text-white hover:bg-accent dark:hover:bg-[#515151]",
             )}
           >
             <InstrumentalIcon className="h-4 w-4" />
-            Instrumental
+            Options
           </button>
 
           <div className="ml-auto flex items-center gap-2">
