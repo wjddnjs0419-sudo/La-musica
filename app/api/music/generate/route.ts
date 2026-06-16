@@ -14,6 +14,13 @@ import {
   deriveTitle,
   type Music,
 } from "@/lib/music";
+import { compileMusicPrompt } from "@/lib/music-prompt";
+import type {
+  MusicGenre,
+  MusicMood,
+  MusicUseCase,
+  VocalMode,
+} from "@/lib/music-prompt/types";
 
 type AuthTokens = {
   accessToken: string;
@@ -28,6 +35,11 @@ export async function POST(request: NextRequest) {
     lyrics?: unknown;
     style?: unknown;
     instrumental?: unknown;
+    genre?: unknown;
+    moods?: unknown;
+    useCase?: unknown;
+    vocalMode?: unknown;
+    language?: unknown;
   };
   try {
     body = await request.json();
@@ -44,6 +56,32 @@ export async function POST(request: NextRequest) {
   const style = typeof body.style === "string" ? body.style.trim() : "";
   const instrumental = body.instrumental === true;
 
+  const genre =
+    typeof body.genre === "string" ? (body.genre as MusicGenre) : undefined;
+  const moods = Array.isArray(body.moods)
+    ? (body.moods.filter((m): m is MusicMood => typeof m === "string"))
+    : undefined;
+  const useCase =
+    typeof body.useCase === "string"
+      ? (body.useCase as MusicUseCase)
+      : undefined;
+  const vocalMode =
+    typeof body.vocalMode === "string"
+      ? (body.vocalMode as VocalMode)
+      : undefined;
+  const language =
+    typeof body.language === "string" ? body.language : undefined;
+
+  const compiled = compileMusicPrompt({
+    userDescription: [prompt, style].filter(Boolean).join(". "),
+    genre,
+    moods,
+    useCase,
+    vocalMode: vocalMode ?? (instrumental ? "instrumental" : undefined),
+    language,
+    lyrics: lyrics || undefined,
+  });
+
   const auth = await getAuthenticatedClient(request);
   const { client, user, refreshedTokens } = auth;
   if (!user) {
@@ -55,9 +93,11 @@ export async function POST(request: NextRequest) {
   }
 
   const initialMetadata = {
-    instrumental,
+    instrumental: compiled.instrumental,
     ...(lyrics ? { lyrics } : {}),
     ...(style ? { style } : {}),
+    ...compiled.metadata,
+    ...(compiled.lyrics ? { lyrics_payload: compiled.lyrics } : {}),
   };
 
   const admin = createInsforgeAdminClient();
@@ -97,7 +137,11 @@ export async function POST(request: NextRequest) {
   try {
     const prediction = await replicate.predictions.create({
       model: MINIMAX_MODEL,
-      input: buildMinimaxInput({ prompt, style, lyrics, instrumental }),
+      input: buildMinimaxInput({
+        prompt: compiled.prompt,
+        lyrics: compiled.lyrics,
+        instrumental: compiled.instrumental,
+      }),
     });
     predictionId = prediction.id;
   } catch (err) {
