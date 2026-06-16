@@ -5,13 +5,13 @@ describe("sanitizeReferences", () => {
   it("replaces Bad Bunny with generic descriptors", () => {
     const out = sanitizeReferences("Bad Bunny style fast reggaeton");
     expect(out.toLowerCase()).not.toContain("bad bunny");
-    expect(out).toContain("Latin trap");
+    expect(out).toContain("Latin urban");
   });
 
   it("replaces 임창정", () => {
     const out = sanitizeReferences("임창정 느낌 발라드");
     expect(out).not.toContain("임창정");
-    expect(out).toContain("Korean male karaoke ballad");
+    expect(out).toContain("Korean karaoke ballad");
   });
 
   it("strips risky phrasing", () => {

@@ -22,7 +22,7 @@ describe("presets", () => {
 
   it("has mood/use-case/vocal presets", () => {
     expect(MOOD_PRESETS.hard).toContain("aggressive");
-    expect(USE_CASE_PRESETS.workout).toContain("gym");
+    expect(USE_CASE_PRESETS.workout).toContain("physical momentum");
     expect(VOCAL_PRESETS.male_vocal).toContain("male vocal");
   });
 
@@ -32,7 +32,7 @@ describe("presets", () => {
     const hit = REFERENCE_MAP.find(([re]) =>
       new RegExp(re.source, re.flags).test("bad bunny style"),
     );
-    expect(hit?.[1]).toContain("Latin trap");
+    expect(hit?.[1]).toContain("Latin urban");
   });
 
   it("resolveVocalMode: explicit wins", () => {

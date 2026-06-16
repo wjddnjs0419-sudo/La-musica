@@ -48,7 +48,6 @@ const MAX_LYRICS_CHARS = 3500;
 export interface GenerateRequest {
   prompt: string;
   lyrics?: string;
-  style?: string;
   instrumental?: boolean;
   genre?: MusicGenre;
   moods?: MusicMood[];
@@ -58,26 +57,19 @@ export interface GenerateRequest {
 }
 
 // Build the Replicate minimax/music-2.6 input payload. `prompt` carries the
-// musical description (genre, BPM, key, vocal type, mood); `style` is folded
-// into it as a hint. `lyrics` are actually sung — unless `instrumental` is set,
-// in which case lyrics are dropped and a vocal-free track is produced.
+// musical description (genre, BPM, key, vocal type, mood). `lyrics` are actually
+// sung — unless `instrumental` is set, in which case lyrics are dropped and a
+// vocal-free track is produced.
 export function buildMinimaxInput({
   prompt,
-  style,
   lyrics,
   instrumental = false,
 }: {
   prompt: string;
-  style?: string;
   lyrics?: string;
   instrumental?: boolean;
 }) {
-  const styleHint = style?.trim();
-  const composedPrompt = [prompt.trim(), styleHint ? `Style: ${styleHint}` : ""]
-    .filter(Boolean)
-    .join(". ")
-    .slice(0, MAX_PROMPT_CHARS);
-
+  const composedPrompt = prompt.trim().slice(0, MAX_PROMPT_CHARS);
   const trimmedLyrics = lyrics?.trim().slice(0, MAX_LYRICS_CHARS);
 
   return {

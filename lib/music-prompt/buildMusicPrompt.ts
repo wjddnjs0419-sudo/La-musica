@@ -24,6 +24,11 @@ const INSTRUMENTAL_BOOSTER =
 const VOCAL_BOOSTER =
   "vocal-centered but with rich full instrumental backing, strong chorus impact, polished professional mix, no acapella sections, no empty background";
 
+const LYRICLESS_VOCAL_GUIDANCE =
+  "if no lyrics are provided, generate original simple singable lyrics that match the user's idea";
+
+const MAX_MOOD_GUIDANCE = 2;
+
 // De-duplicate comma-separated descriptor segments case-insensitively,
 // preserving first-occurrence order. Genre presets + sanitized references
 // often emit the same phrase (e.g. "deep 808 bass") twice.
@@ -40,7 +45,8 @@ function dedupeSegments(body: string): string {
 }
 
 // Compile a simple user intent + structured options into a dense English
-// MiniMax prompt following the 12-part formula.
+// MiniMax prompt. The user's own concept leads; options add lower-authority
+// style guidance so selected chips do not drown out the prompt or lyrics.
 export function buildMusicPrompt(input: BuildMusicPromptInput): CompiledPrompt {
   const raw = input.userDescription?.trim() ?? "";
   const vocalMode = resolveVocalMode(input);
@@ -52,25 +58,35 @@ export function buildMusicPrompt(input: BuildMusicPromptInput): CompiledPrompt {
 
   const parts: string[] = [];
 
-  // 2. Genre preset (skipped for custom/unset — sanitized intent carries style).
+  // 1. User intent summary. Keep this first so option presets guide rather
+  // than replace the user's own prompt.
+  if (sanitizedIntent) parts.push(`prioritize this musical idea: ${sanitizedIntent}`);
+
+  // 2. Genre guidance (skipped for custom/unset — sanitized intent carries style).
   if (input.genre && input.genre !== "custom") {
-    parts.push(GENRE_PRESETS[input.genre]);
+    const genrePreset = GENRE_PRESETS[input.genre];
+    if (genrePreset) parts.push(`secondary style details: ${genrePreset}`);
   }
 
-  // 1. User intent summary.
-  if (sanitizedIntent) parts.push(sanitizedIntent);
+  // 3. Mood guidance. Apply only the first few moods to avoid adjective soup.
+  const moods = (input.moods ?? [])
+    .slice(0, MAX_MOOD_GUIDANCE)
+    .map((m) => MOOD_PRESETS[m])
+    .filter(Boolean);
+  if (moods.length) parts.push(`mood shading: ${moods.join(", ")}`);
 
-  // 3. Mood preset(s).
-  const moods = (input.moods ?? []).map((m) => MOOD_PRESETS[m]).filter(Boolean);
-  if (moods.length) parts.push(moods.join(", "));
-
-  // 4. Use-case preset.
+  // 4. Use-case guidance.
   if (input.useCase && input.useCase !== "custom") {
-    parts.push(USE_CASE_PRESETS[input.useCase]);
+    const useCasePreset = USE_CASE_PRESETS[input.useCase];
+    if (useCasePreset) parts.push(`arrangement goal: ${useCasePreset}`);
   }
 
   // 9. Vocal/instrumental direction.
   parts.push(VOCAL_PRESETS[vocalMode]);
+
+  if (!instrumental && !input.lyrics?.trim()) {
+    parts.push(LYRICLESS_VOCAL_GUIDANCE);
+  }
 
   // 9b. Language cue (vocal modes only — instrumental songs have no vocals).
   if (!instrumental && input.language && input.language.trim()) {

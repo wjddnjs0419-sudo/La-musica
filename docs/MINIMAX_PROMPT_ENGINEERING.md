@@ -6,11 +6,11 @@ the MiniMax music model on Replicate.
 
 Source of truth (read these alongside this doc):
 
-- `lib/music-prompt/types.ts` — types + `PROMPT_COMPILER_VERSION` (`"v1"`)
+- `lib/music-prompt/types.ts` — types + `PROMPT_COMPILER_VERSION` (`"v2"`)
 - `lib/music-prompt/presets.ts` — genre/mood/use-case/vocal presets, `REFERENCE_MAP`, `resolveVocalMode`, validity sets
 - `lib/music-prompt/sanitizeReferences.ts` — reference + risky-phrase sanitizer
 - `lib/music-prompt/buildLyricsPayload.ts` — lyrics field normalizer
-- `lib/music-prompt/buildMusicPrompt.ts` — the 12-part formula compiler
+- `lib/music-prompt/buildMusicPrompt.ts` — the user-first prompt compiler
 - `lib/music-prompt/index.ts` — `compileMusicPrompt` entry point
 - `app/api/music/generate/route.ts` — where the compiler is wired in
 - `lib/music.ts` — `buildMinimaxInput`, model id, char limits
@@ -26,8 +26,8 @@ drum…"). Most users can't and shouldn't write that. The product principle is:
 - **Users describe intent simply** — a short free-text line ("헬스장에서 들을
   하드한 EDM") plus a few optional dropdowns (Genre / Mood / Use case / Vocal).
 - **The compiler produces the dense English prompt** — `compileMusicPrompt`
-  assembles preset style strings, the sanitized user text, and quality boosters
-  into the final prompt.
+  keeps the sanitized user text first, then adds lower-authority Genre / Mood /
+  Use-case guidance and quality boosters.
 - **The compiled prompt is server-side only.** `compileMusicPrompt` runs inside
   `app/api/music/generate/route.ts`. The browser never sends a final prompt and
   is never shown one by default. The `musics` row keeps the raw user text in its
@@ -44,39 +44,43 @@ high-quality, copyright-safe prompt.
 
 Implemented in `lib/music-prompt/buildMusicPrompt.ts`. The compiler builds an
 ordered list of segments, joins them with `, `, de-duplicates, clamps, and then
-appends the copyright line. The conceptual 12-part formula and how each part
-maps to code:
+appends the copyright line. The guiding rule is:
+
+> The user's prompt and lyrics are the source of truth. Options steer the model;
+> they should not overpower the user's idea or contradict the selected vocal mode.
+
+The conceptual formula and how each part maps to code:
 
 | Part | Content | Source |
 |------|---------|--------|
-| 1 | User intent + reference text, sanitized | `sanitizeReferences([referenceText, userDescription])` |
-| 2 | Genre preset (skipped for `custom`/unset) | `GENRE_PRESETS[genre]` |
-| 3 | Mood preset(s), joined | `MOOD_PRESETS[mood]` |
-| 4 | Use-case preset (skipped for `custom`/unset) | `USE_CASE_PRESETS[useCase]` |
+| 1 | User intent + reference text, sanitized and prefixed as the priority idea | `sanitizeReferences([referenceText, userDescription])` |
+| 2 | Secondary genre guidance (skipped for `custom`/unset) | `GENRE_PRESETS[genre]` |
+| 3 | Mood shading, max 2 selected moods | `MOOD_PRESETS[mood]` |
+| 4 | Arrangement goal (skipped for `custom`/unset) | `USE_CASE_PRESETS[useCase]` |
 | 9 | Vocal/instrumental direction | `VOCAL_PRESETS[resolvedVocalMode]` |
 | 10 | Production/mix quality booster | `INSTRUMENTAL_BOOSTER` or `VOCAL_BOOSTER` |
 | 11 | BPM and/or key, if provided | `` `${bpm} BPM` ``, `` `key of ${key}` `` |
 | 12 | Safety/copyright instruction (always) | `COPYRIGHT_LINE` |
 
-> The "12-part" name is conceptual; parts 5-8 (instrumentation, tempo,
-> arrangement, etc.) are carried inside the genre/mood/use-case preset strings
-> rather than as separate code branches. The numbered comments in
-> `buildMusicPrompt.ts` reflect this.
+Instrumentation, tempo feel, arrangement, and production details are carried
+inside the genre/mood/use-case preset strings rather than as separate code
+branches.
 
 Final shape (all segments comma-joined):
 
 ```
-<genre preset>, <sanitized user intent>, <moods>, <use case>, <vocal direction>, <booster>, <NN BPM>, key of <key>, <COPYRIGHT_LINE>
+prioritize this musical idea: <sanitized user intent>, secondary style details: <genre guidance>, mood shading: <up to 2 moods>, arrangement goal: <use case>, <vocal direction>, <booster>, <NN BPM>, key of <key>, <COPYRIGHT_LINE>
 ```
 
-Note the actual code order: the genre preset is pushed **before** the sanitized
-intent (genre first, then the user's words), so the genre style leads the prompt.
+The actual code order intentionally puts the sanitized intent **before** the
+structured options. This avoids the earlier failure mode where selecting several
+chips made generic presets dominate a better free-text prompt or lyric payload.
 
 ### De-duplication
 
-Genre presets and the sanitized reference text frequently repeat the same phrase
-(e.g. both the reggaeton preset and the Bad Bunny replacement emit "deep 808
-bass"). `dedupeSegments` splits the body on `, `, lowercases each segment as a
+Genre presets and the sanitized reference text can repeat the same phrase
+(e.g. both a Latin style preset and an artist-reference replacement might emit
+"808 bass"). `dedupeSegments` splits the body on `, `, lowercases each segment as a
 key, and drops case-insensitive repeats while preserving first-occurrence order.
 
 ### Copyright line is always appended after clamping (never truncated)
@@ -112,10 +116,12 @@ The Replicate input is assembled by `buildMinimaxInput` in `lib/music.ts`:
 - **`prompt`** — the musical description. It should cover style, mood, genre,
   scenario/use-case, instrumentation, tempo, vocal type, arrangement, and
   production quality. The compiler's output is exactly this kind of string.
-  `style` (a legacy free-text hint) is folded in as `Style: …` and the whole
-  thing is clamped to `MAX_PROMPT_CHARS = 2000`.
-- **`lyrics`** — words that are actually **sung**. Sent only for vocal tracks.
-  Clamped to `MAX_LYRICS_CHARS = 3500`.
+  The whole thing is clamped to `MAX_PROMPT_CHARS = 2000`.
+- **`lyrics`** — optional words that are actually **sung**. Sent only for vocal
+  tracks when the user provides lyrics. Clamped to `MAX_LYRICS_CHARS = 3500`.
+  If a vocal mode is selected without lyrics, the compiler keeps `lyrics`
+  omitted and adds prompt guidance telling the model it may generate original
+  simple singable lyrics matching the user's idea.
 - **`is_instrumental`** — when `true`, lyrics are **dropped**: `buildMinimaxInput`
   omits the `lyrics` field entirely (`instrumental || !trimmedLyrics ? {} :
   { lyrics }`). A vocal-free track is produced.
@@ -167,18 +173,29 @@ concrete `ResolvedVocalMode`, in this order:
 
 ## 5. Genre / mood / use-case presets
 
-All presets live in `lib/music-prompt/presets.ts` and are **verbatim style
-strings** — the compiler inserts them unmodified:
+All presets live in `lib/music-prompt/presets.ts`. They are concrete guidance
+strings inserted with lower-authority prefixes such as `secondary style details`,
+`mood shading`, and `arrangement goal`:
 
 - `GENRE_PRESETS` — keyed by every concrete `MusicGenre` (all except `custom`).
 - `MOOD_PRESETS` — keyed by every `MusicMood`.
 - `USE_CASE_PRESETS` — keyed by every concrete `MusicUseCase` (all except `custom`).
 - `VOCAL_PRESETS` — keyed by every `ResolvedVocalMode`.
 
+Genre presets should not just repeat a label like "reggaeton beat" or "EDM".
+They should describe sound-producing details the model can translate into audio:
+rhythm pattern, kick/snare placement, percussion texture, bass motion,
+instrument motifs, energy curve, and mix density. They must not force
+`instrumental`, `male vocal`, `female vocal`, or `crowd vocals`; vocal mode is
+owned by `VOCAL_PRESETS` and the resolved `vocalMode`.
+
 `"custom"` (or an unset genre/use-case) means **no preset is injected** for that
 slot; the sanitized user description carries the style instead. See the
 `if (input.genre && input.genre !== "custom")` / `!== "custom"` guards in
 `buildMusicPrompt.ts`.
+
+Mood guidance is intentionally capped at two selected moods (`MAX_MOOD_GUIDANCE`)
+so a user can click several chips without turning the prompt into adjective soup.
 
 The compiler also validates union values before persisting metadata using
 `VALID_GENRES`, `VALID_MOODS`, `VALID_USE_CASES`: bogus genre/use-case become
@@ -195,15 +212,15 @@ user's intent copyright-safe in two passes, then collapses whitespace:
 **Pass 1 — known artist/song replacement** via `REFERENCE_MAP` (in `presets.ts`).
 Each entry maps a regex to a generic descriptor string:
 
-- `bad bunny` → "fast Latin reggaeton and Latin trap club sound, dark synths,
-  deep 808 bass, confident low male vocal"
-- `cris mj` / `una noche en medellin` → "instrumental Latin reggaeton club beat,
-  dreamy nighttime urban atmosphere, smooth romantic synth melody, deep 808 bass,
-  fast dembow rhythm"
-- `soolking` / `suavemente` → "Maghreb-inspired French hip-hop dance anthem,
-  North African melodic influence, club percussion, catchy French chorus"
-- `임창정` → "emotional 2000s Korean male karaoke ballad, dramatic breakup mood,
-  powerful high-note chorus, piano and string arrangement"
+- `bad bunny` → "fast Latin urban club sound, syncopated dembow-inspired drums,
+  dark synths, deep 808 bass, confident late-night groove"
+- `cris mj` / `una noche en medellin` → "dreamy nighttime Latin urban groove,
+  smooth romantic synth melody, deep 808 bass, fast dembow-inspired rhythm,
+  glossy club atmosphere"
+- `soolking` / `suavemente` → "Maghreb-inspired French hip-hop dance energy,
+  North African melodic influence, club percussion, catchy chorus lift"
+- `임창정` → "emotional 2000s Korean karaoke ballad feeling, dramatic breakup
+  mood, powerful high-note chorus shape, piano and string arrangement"
 
 **Pass 2 — risky-phrase stripping.** Phrases that ask the model to *copy* an
 existing work are replaced with a space. The actual `RISKY_PATTERNS`:
@@ -241,8 +258,10 @@ To add a genre end-to-end:
 
 1. **`lib/music-prompt/types.ts`** — add the new key to the `MusicGenre` union.
 2. **`lib/music-prompt/presets.ts`**:
-   - Add the verbatim style string to `GENRE_PRESETS` (keyed by the new value;
-     the `Record<Exclude<MusicGenre, "custom">, string>` type will force this).
+   - Add the concrete rhythm/drum/bass/instrumentation guidance to
+     `GENRE_PRESETS` (keyed by the new value; the
+     `Record<Exclude<MusicGenre, "custom">, string>` type will force this).
+   - Do not include vocal/instrumental decisions in the genre preset.
    - Add the new value to `VALID_GENRES` (so it survives the metadata validity
      check in `buildMusicPrompt.ts`).
 3. **`components/prompt-box.tsx`** — add a `{ value, label }` entry to
@@ -283,9 +302,10 @@ Input:
 ```
 Result: `instrumental === true`, `lyrics === undefined`,
 `metadata.vocal_mode === "instrumental"`,
-`metadata.prompt_version === "v1"`, `prompt.length <= 2000`.
-Prompt contains: `EDM`, `pounding kick drum`, `gym energy`,
-`no vocals, no lyrics`, `polished mainstage EDM production`, `128 BPM`, copyright.
+`metadata.prompt_version === "v2"`, `prompt.length <= 2000`.
+Prompt starts with the user's idea and contains: `sidechained kick`,
+`steady motivational drive`, `no vocals, no lyrics`,
+`clean electronic festival mix`, `128 BPM`, copyright.
 
 ### Example 2 — Travel reggaeton, instrumental
 
@@ -299,8 +319,9 @@ Input:
   vocalMode: "instrumental",
 }
 ```
-Prompt contains: `Latin reggaeton`, `dembow rhythm`, `sunny movement`,
-`no vocals, no lyrics`, copyright.
+Prompt contains: `dembow groove`, `syncopated shaker`,
+`rolling sub and 808 bass`, `forward motion`, `no vocals, no lyrics`,
+copyright.
 
 ### Example 3 — Emotional Korean ballad, male vocal
 
@@ -316,7 +337,7 @@ Input:
 }
 ```
 Result: `instrumental === false`, `metadata.language === "Korean"`.
-Prompt contains: `Korean male ballad`, `string orchestra`,
+Prompt contains: `Korean ballad arrangement`, `string orchestra`,
 `rich full instrumental backing`, `no acapella sections`, copyright.
 `lyrics` contains `[Verse]` (the lowercase `[verse]` tag is normalized).
 
@@ -333,6 +354,4 @@ Input:
 }
 ```
 Prompt does **not** contain `bad bunny` (case-insensitive). Prompt contains:
-`Latin trap` (from the `REFERENCE_MAP` replacement), `808 bass`, copyright.
-The shared `deep 808 bass` phrase emitted by both the reggaeton preset and the
-Bad Bunny replacement appears exactly **once** thanks to `dedupeSegments`.
+`Latin urban` (from the `REFERENCE_MAP` replacement), `808 bass`, copyright.

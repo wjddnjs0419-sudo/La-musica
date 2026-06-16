@@ -26,7 +26,7 @@ export default function PrivacyPage() {
             log in with a Google account.
           </li>
           <li>
-            <strong>Generated content</strong>: the prompts, lyrics, style, and
+            <strong>Generated content</strong>: the prompts, lyrics, settings, and
             duration settings you submit to generate music, and the audio files
             produced.
           </li>

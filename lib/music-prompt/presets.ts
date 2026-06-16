@@ -6,45 +6,46 @@ import type {
   ResolvedVocalMode,
 } from "./types";
 
-// Strong default style prompts per genre (verbatim from product spec).
+// Concrete style prompts per genre. These describe rhythm, drums, bass,
+// arrangement, and production grammar without forcing vocal/instrumental mode.
 export const GENRE_PRESETS: Record<Exclude<MusicGenre, "custom">, string> = {
-  edm: "Hard energetic EDM festival instrumental, massive big room drop, aggressive saw synth lead, pounding kick drum, distorted electro bass, explosive build-up, intense risers, crowd festival energy, polished mainstage EDM production",
-  reggaeton: "Instrumental Latin reggaeton club beat, strong dembow rhythm, punchy kick, tight snare, deep 808 bass, syncopated Latin percussion, catchy plucked synth lead, warm tropical accents, polished modern Latin urban production",
-  hiphop_trap: "Dark hip-hop trap instrumental, heavy 808 bass, crisp hi-hat rolls, punchy snare, eerie piano loop, atmospheric pads, deep sub bass, bouncy groove, freestyle-ready modern rap beat, clean polished mix",
-  techno: "Hard driving techno instrumental, powerful four-on-the-floor kick, rolling bassline, hypnotic synth sequence, industrial percussion, dark warehouse atmosphere, evolving filter sweeps, intense club mix",
-  korean_ballad: "Emotional 2000s Korean male ballad, dramatic breakup song, heartfelt male vocal, powerful high-note chorus, warm piano, emotional string orchestra, acoustic guitar, gradual drum build-up, explosive final chorus, polished Korean karaoke ballad production",
-  brazilian_funk: "Brazilian funk carioca inspired party anthem, aggressive tamborzao rhythm, heavy 808 bass, fast percussion, whistle hits, clap rhythm, viral dance energy, playful chant hook, polished club mix",
-  afropop_festival: "French Afro-pop festival anthem, joyful African vocal performance, powerful Afrobeat drums, energetic djembe percussion, bright guitar riffs, warm brass section, heavy bassline, crowd chanting, sunny outdoor festival atmosphere",
-  french_maghreb_hiphop: "Maghreb-inspired French hip-hop and dance anthem, North African melodic influence, French rap vocal, catchy club chorus, bouncy drums, warm oriental synth melodies, darbuka-style percussion, deep 808 bass, triumphant global nightlife mood",
-  football_chant: "High-energy football stadium anthem, powerful crowd vocals, loud drums, heavy bass, brass hits, clap rhythm, whistle sounds, easy sing-along hook, explosive chorus, sports celebration atmosphere",
+  edm: "four-on-the-floor dance rhythm around 126-132 BPM, punchy sidechained kick, offbeat open hats, layered supersaw chord stabs, wide sub bass, snare-roll build-ups, rising noise sweeps, bright high-energy drop dynamics, clean electronic festival mix",
+  reggaeton: "dembow groove with kick on the downbeats and snare-clap accents between beats, syncopated shaker and rim percussion, rolling sub and 808 bass following the groove, short plucked synth or nylon-guitar motif, warm tropical chord stabs, tight modern Latin urban mix",
+  hiphop_trap: "half-time trap drum pattern, booming 808 slides, crisp 16th-note hi-hat rolls with triplet fills, punchy snare on beat three, sparse minor-key piano or bell motif, atmospheric pads, open pocket for rhythmic lead phrasing, clean low-end heavy mix",
+  techno: "relentless four-on-the-floor kick, rolling 16th-note bassline, closed-hat pulse, metallic percussion loops, hypnotic minor synth sequence, filtered risers, breakdown tension, dark warehouse reverb, tight club master",
+  korean_ballad: "slow-to-mid tempo Korean ballad arrangement, warm piano arpeggios, acoustic guitar support, lyrical string orchestra swells, restrained verse dynamics, wide emotional chorus lift, drum build into the final chorus, polished karaoke-ready mix",
+  brazilian_funk: "tamborzao-inspired rhythmic pattern, fast syncopated kick and clap hits, heavy distorted 808 pulses, baile percussion fills, whistle accents, short call-and-response hook spaces, raw party energy, polished club loudness",
+  afropop_festival: "Afrobeats-inspired drum pocket, syncopated kick pattern, shuffling hats, layered djembe and hand percussion, bright clean guitar riffs, warm brass stabs, buoyant bassline, sunny outdoor stage dynamics, spacious dance mix",
+  french_maghreb_hiphop: "North African melodic minor phrases, darbuka-style percussion, bouncy hip-hop drum groove, deep 808 bass, warm oriental synth lead, handclap accents, club-ready chorus lift, triumphant global nightlife energy",
+  football_chant: "stadium anthem rhythm, stomp-clap pulse, big floor toms and snare hits, brass stabs, whistle accents, simple call-and-response hook shape, wide crowd-sized reverb, explosive chorus lift, sports celebration energy",
 };
 
 export const MOOD_PRESETS: Record<MusicMood, string> = {
-  hard: "aggressive, intense, powerful, high-impact",
-  energetic: "fast-moving, exciting, danceable, high-energy",
-  dark: "minor key, moody, nocturnal, cinematic",
-  happy: "bright, joyful, uplifting, sunny",
-  emotional: "heartfelt, dramatic, melancholic, expressive",
-  sexy: "seductive, smooth, late-night, confident",
-  epic: "large-scale, cinematic, victorious, anthemic",
-  funny: "playful, comedic, meme-like, witty",
-  nostalgic: "warm, bittersweet, reflective, old memories",
-  romantic: "soft, dreamy, intimate, warm",
-  aggressive: "bold, punchy, hard-hitting, rebellious",
-  festival: "crowd energy, outdoor stage, celebration, chantable",
+  hard: "harder transients, compressed impact, aggressive edge",
+  energetic: "driving pulse, lively motion, danceable lift",
+  dark: "minor-key color, nocturnal tension, shadowy atmosphere",
+  happy: "bright harmony, joyful lift, sunny tone",
+  emotional: "heartfelt dynamics, dramatic lift, expressive phrasing",
+  sexy: "smooth late-night groove, confident warmth, restrained tension",
+  epic: "large-scale dynamics, cinematic rise, victorious payoff",
+  funny: "playful timing, quirky accents, witty bounce",
+  nostalgic: "warm texture, bittersweet harmony, reflective feel",
+  romantic: "soft dynamics, dreamy space, intimate warmth",
+  aggressive: "bold drums, hard-hitting accents, rebellious pressure",
+  festival: "outdoor-stage energy, big chorus lift, celebratory motion",
 };
 
 export const USE_CASE_PRESETS: Record<Exclude<MusicUseCase, "custom">, string> = {
-  workout: "gym energy, driving rhythm, motivational intensity",
-  club: "nightclub-ready groove, heavy low-end, dancefloor energy",
-  party: "fun group energy, catchy hook, playful rhythm",
-  short_form: "immediate hook, strong first 5 seconds, viral loop potential",
-  gaming: "high-adrenaline action, highlight montage energy",
-  travel_vlog: "sunny movement, scenic atmosphere, upbeat lifestyle mood",
-  sports_chant: "stadium crowd, chantable hook, claps and brass",
-  comedy_roast: "playful diss energy, funny storytelling, bouncy beat",
-  background: "usable as BGM, clean arrangement, not too distracting",
-  personal_song: "personal story, memorable hook, emotional clarity",
+  workout: "steady motivational drive, strong beat continuity, physical momentum",
+  club: "dancefloor low-end, clean groove repetition, late-night mix density",
+  party: "catchy hook space, playful rhythm, group-friendly energy",
+  short_form: "immediate opening hook, strong first five seconds, loopable payoff",
+  gaming: "high-adrenaline pacing, sharp accents, highlight-montage momentum",
+  travel_vlog: "forward motion, scenic brightness, upbeat lifestyle atmosphere",
+  sports_chant: "chantable hook shape, claps and brass emphasis, stadium lift",
+  comedy_roast: "bouncy timing, playful tension, room for funny storytelling",
+  background: "clean arrangement, moderate density, supportive BGM balance",
+  personal_song: "clear emotional arc, memorable hook, intimate storytelling space",
 };
 
 // Direction injected per resolved vocal mode.
@@ -62,10 +63,10 @@ export const VOCAL_PRESETS: Record<ResolvedVocalMode, string> = {
 // String.replace/replaceAll. Never call `.test()` on a shared instance — clone
 // via `new RegExp(re.source, re.flags)` first if you need a boolean match.
 export const REFERENCE_MAP: Array<[RegExp, string]> = [
-  [/bad\s*bunny/gi, "fast Latin reggaeton and Latin trap club sound, dark synths, deep 808 bass, confident low male vocal"],
-  [/cris\s*mj|una\s*noche\s*en\s*medellin/gi, "instrumental Latin reggaeton club beat, dreamy nighttime urban atmosphere, smooth romantic synth melody, deep 808 bass, fast dembow rhythm"],
-  [/soolking|suavemente/gi, "Maghreb-inspired French hip-hop dance anthem, North African melodic influence, club percussion, catchy French chorus"],
-  [/임창정/g, "emotional 2000s Korean male karaoke ballad, dramatic breakup mood, powerful high-note chorus, piano and string arrangement"],
+  [/bad\s*bunny/gi, "fast Latin urban club sound, syncopated dembow-inspired drums, dark synths, deep 808 bass, confident late-night groove"],
+  [/cris\s*mj|una\s*noche\s*en\s*medellin/gi, "dreamy nighttime Latin urban groove, smooth romantic synth melody, deep 808 bass, fast dembow-inspired rhythm, glossy club atmosphere"],
+  [/soolking|suavemente/gi, "Maghreb-inspired French hip-hop dance energy, North African melodic influence, club percussion, catchy chorus lift"],
+  [/임창정/g, "emotional 2000s Korean karaoke ballad feeling, dramatic breakup mood, powerful high-note chorus shape, piano and string arrangement"],
 ];
 
 // Valid concrete (post-`auto`) vocal modes. Typed as Set<string> so callers

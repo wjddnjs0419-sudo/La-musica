@@ -111,24 +111,6 @@ const LyricsIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-const StyleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M6 20V11" />
-    <path d="M12 20V4" />
-    <path d="M18 20v-6" />
-  </svg>
-);
-
 const InstrumentalIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     width="24"
@@ -192,9 +174,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
     const internalTextareaRef = React.useRef<HTMLTextAreaElement>(null);
     const [value, setValue] = React.useState("");
     const [lyrics, setLyrics] = React.useState("");
-    const [style, setStyle] = React.useState("");
     const [lyricsOpen, setLyricsOpen] = React.useState(false);
-    const [styleOpen, setStyleOpen] = React.useState(false);
     const [genre, setGenre] = React.useState<MusicGenre | "">("");
     const [moods, setMoods] = React.useState<MusicMood[]>([]);
     const [useCase, setUseCase] = React.useState<MusicUseCase | "">("");
@@ -225,7 +205,6 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
       onSend?.({
         prompt: text,
         lyrics: lyrics.trim() || undefined,
-        style: style.trim() || undefined,
         instrumental: vocalMode === "instrumental",
         genre: genre || undefined,
         moods: moods.length ? moods : undefined,
@@ -235,14 +214,12 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
       });
       setValue("");
       setLyrics("");
-      setStyle("");
       setGenre("");
       setMoods([]);
       setUseCase("");
       setVocalMode("auto");
       setLanguage("");
       setLyricsOpen(false);
-      setStyleOpen(false);
       setOptionsOpen(false);
     };
 
@@ -280,15 +257,6 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
             placeholder="Lyrics (optional)"
             rows={3}
             className="custom-scrollbar mx-1 mb-1 w-[calc(100%-0.5rem)] resize-none rounded-2xl border-0 bg-black/5 p-3 text-sm text-foreground dark:bg-white/5 dark:text-white placeholder:text-muted-foreground dark:placeholder:text-gray-400 focus:ring-0 focus-visible:outline-none"
-          />
-        )}
-
-        {styleOpen && (
-          <input
-            value={style}
-            onChange={(e) => setStyle(e.target.value)}
-            placeholder="Style (e.g. lo-fi, orchestral, synthwave)"
-            className="mx-1 mb-1 w-[calc(100%-0.5rem)] rounded-2xl border-0 bg-black/5 p-3 text-sm text-foreground dark:bg-white/5 dark:text-white placeholder:text-muted-foreground dark:placeholder:text-gray-400 focus:ring-0 focus-visible:outline-none"
           />
         )}
 
@@ -395,20 +363,6 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
           >
             <LyricsIcon className="h-4 w-4" />
             Lyrics
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStyleOpen((v) => !v)}
-            className={cn(
-              "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-sm transition-colors focus-visible:outline-none",
-              styleOpen
-                ? "dark:text-[#99ceff] text-[#2294ff] dark:bg-[#3b4045] bg-accent"
-                : "text-foreground dark:text-white hover:bg-accent dark:hover:bg-[#515151]",
-            )}
-          >
-            <StyleIcon className="h-4 w-4" />
-            Style
           </button>
 
           <button

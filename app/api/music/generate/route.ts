@@ -34,7 +34,6 @@ export async function POST(request: NextRequest) {
   let body: {
     prompt?: unknown;
     lyrics?: unknown;
-    style?: unknown;
     instrumental?: unknown;
     genre?: unknown;
     moods?: unknown;
@@ -54,7 +53,6 @@ export async function POST(request: NextRequest) {
   }
 
   const lyrics = typeof body.lyrics === "string" ? body.lyrics.trim() : "";
-  const style = typeof body.style === "string" ? body.style.trim() : "";
   const instrumental = body.instrumental === true;
 
   const genre =
@@ -77,7 +75,7 @@ export async function POST(request: NextRequest) {
   // non-English users still get the engineered English prompt quality. The
   // structured option presets are already English; this covers the free text.
   // Falls back to the original text on any failure (never blocks generation).
-  const userDescriptionRaw = [prompt, style].filter(Boolean).join(". ");
+  const userDescriptionRaw = prompt;
   const userDescription = await translateToEnglish(userDescriptionRaw);
 
   // An explicit client `vocalMode` supersedes the legacy `instrumental` boolean;
@@ -106,7 +104,6 @@ export async function POST(request: NextRequest) {
   const initialMetadata = {
     instrumental: compiled.instrumental,
     ...(lyrics ? { lyrics } : {}),
-    ...(style ? { style } : {}),
     ...(userDescription !== userDescriptionRaw
       ? { user_description_original: userDescriptionRaw }
       : {}),

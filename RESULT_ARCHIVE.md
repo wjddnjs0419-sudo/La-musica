@@ -4,6 +4,67 @@
 
 ---
 
+# RESULT: Insufficient credit UX upgrade - 2026-06-16
+
+## Background
+- Request: when a user with no credits tries to generate music, replace the raw `insufficient_credit` error with a friendly message and immediately open the existing Upgrade modal in the center of the screen.
+- Existing behavior: the workspace sent the request, received `402 { error: "insufficient_credit" }`, and rendered the raw string as `Error: insufficient_credit` below the track list.
+- Constraint: reuse the current credit purchase modal instead of introducing a second billing UI.
+
+## Implementation
+- **`components/workspace-shell.tsx`**: added a small client-side shell that owns shared `creditModalOpen` state and renders `WorkspaceNavbar`, `MusicWorkspace`, and the existing `CreditModal` together.
+- **`app/workspace/page.tsx`**: kept data fetching in the Server Component, but now passes serializable user/track/credit props into `WorkspaceShell` in line with the Next App Router client boundary guidance.
+- **`components/workspace-navbar.tsx`**: removed modal-local state and switched the existing Upgrade menu item to call the shared `onOpenCreditModal` callback.
+- **`components/music-workspace.tsx`**: mapped generation failures with `error === "insufficient_credit"` to `Not enough credits. Please upgrade.` and opened the shared centered Upgrade modal from the failed send flow.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Full codebase | `npm run build` | Passed |
+| Full codebase | `npm run lint` | Passed |
+| Shared modal wiring | Code inspection of `WorkspaceShell` + `WorkspaceNavbar` + `MusicWorkspace` | Passed; navbar and insufficient-credit flow both target the same `CreditModal` state |
+| Friendly error mapping | Code inspection of generation failure branch | Passed; `insufficient_credit` becomes `Not enough credits. Please upgrade.` |
+| GUI verification | `Computer Use` app-state calls for browser validation | Could not complete; tool timed out in this session |
+
+## Lessons
+- A tiny client shell is a clean way to share interactive modal state while keeping the page-level data fetch in a Server Component.
+- Returning machine-friendly API error codes is still useful, as long as the client maps them to clear user-facing language before rendering.
+
+---
+
+# RESULT: Manual starter credit grant - 2026-06-16
+
+## Background
+- Request: treat `kkw0628001@gmail.com` / `84adcde6-126e-4a36-b3a9-ad0fc9a30896` as a paid user and grant 5 credits.
+- Existing billing flow records purchase history in `public.payments` and keeps the spendable balance in `public.user_credits`.
+- Goal: apply the credit in the live InsForge project without changing application code or schema.
+
+## Implementation
+- **Account verification**: confirmed `auth.users.id = 84adcde6-126e-4a36-b3a9-ad0fc9a30896` matches `kkw0628001@gmail.com`.
+- **Payment ledger**: inserted one `public.payments` row with:
+  - `provider='manual'`
+  - `status='paid'`
+  - `credit=5`
+  - `amount_cents=299`
+  - `currency='usd'`
+  - `provider_payment_id='manual-starter-20260616-84adcde6'`
+- **Credit balance**: upserted `public.user_credits` for the same user, resulting in a current balance of `5`.
+- **Docs**: rotated the previous `RESULT.md` entry into `RESULT_ARCHIVE.md` and recorded this operational change as the latest result.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Project link | `npx @insforge/cli current --json` | Passed; linked to `La Musica` (`e99zrxhb.ap-southeast.insforge.app`) |
+| User mapping | `auth.users` query by id/email | Passed; email and UUID match |
+| Payment ledger insert | `public.payments` query by `provider_payment_id` | Passed; 1 paid manual row with 5 credits / `299 usd` |
+| Credit balance | `public.user_credits` query by user id | Passed; balance is `5` |
+
+## Lessons
+- For manual customer-service grants, writing both the payment ledger and the balance table keeps billing history and spendable credits aligned.
+- A deterministic `provider_payment_id` is useful for auditability and for preventing accidental duplicate grants if the same operation is retried.
+
+---
+
 # RESULT: Music Prompt Compiler - 2026-06-16
 
 ## Background

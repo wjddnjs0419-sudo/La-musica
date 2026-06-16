@@ -337,7 +337,7 @@ async function generateAndPersistThumbnail(
 function buildPromptForMusic(music: Music) {
   return buildThumbnailPrompt({
     title: music.title,
-    genre: metadataString(music.metadata, "style"),
+    genre: metadataString(music.metadata, "genre"),
     mood: music.prompt,
     lyrics: metadataString(music.metadata, "lyrics"),
     musicPrompt: music.prompt,

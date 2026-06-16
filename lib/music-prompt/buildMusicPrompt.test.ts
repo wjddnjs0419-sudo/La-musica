@@ -15,11 +15,11 @@ describe("compileMusicPrompt", () => {
       bpm: 128,
     });
     expect(r.instrumental).toBe(true);
-    expect(r.prompt).toContain("EDM");
-    expect(r.prompt).toContain("pounding kick drum");
-    expect(r.prompt).toContain("gym energy");
+    expect(r.prompt).toMatch(/^prioritize this musical idea: 헬스장에서 들을 하드한 EDM/);
+    expect(r.prompt).toContain("sidechained kick");
+    expect(r.prompt).toContain("steady motivational drive");
     expect(r.prompt).toContain("no vocals, no lyrics");
-    expect(r.prompt).toContain("polished mainstage EDM production");
+    expect(r.prompt).toContain("clean electronic festival mix");
     expect(r.prompt).toContain("128 BPM");
     expect(r.prompt).toContain(COPYRIGHT);
     expect(r.prompt.length).toBeLessThanOrEqual(2000);
@@ -36,9 +36,10 @@ describe("compileMusicPrompt", () => {
       useCase: "travel_vlog",
       vocalMode: "instrumental",
     });
-    expect(r.prompt).toContain("Latin reggaeton");
-    expect(r.prompt).toContain("dembow rhythm");
-    expect(r.prompt).toContain("sunny movement");
+    expect(r.prompt).toContain("dembow groove");
+    expect(r.prompt).toContain("syncopated shaker");
+    expect(r.prompt).toContain("rolling sub and 808 bass");
+    expect(r.prompt).toContain("forward motion");
     expect(r.prompt).toContain("no vocals, no lyrics");
     expect(r.prompt).toContain(COPYRIGHT);
   });
@@ -53,7 +54,7 @@ describe("compileMusicPrompt", () => {
       lyrics: "[verse]\n비가 내린다",
     });
     expect(r.instrumental).toBe(false);
-    expect(r.prompt).toContain("Korean male ballad");
+    expect(r.prompt).toContain("Korean ballad arrangement");
     expect(r.prompt).toContain("string orchestra");
     expect(r.prompt).toContain("rich full instrumental backing");
     expect(r.prompt).toContain("no acapella sections");
@@ -61,6 +62,45 @@ describe("compileMusicPrompt", () => {
     expect(r.prompt).toContain(COPYRIGHT);
     expect(r.lyrics).toContain("[Verse]");
     expect(r.metadata.language).toBe("Korean");
+  });
+
+  it("keeps genre guidance from forcing instrumental mode on vocal songs", () => {
+    const r = compileMusicPrompt({
+      userDescription: "romantic reggaeton hook",
+      genre: "reggaeton",
+      vocalMode: "female_vocal",
+      lyrics: "[Verse]\nslow night",
+    });
+    expect(r.instrumental).toBe(false);
+    expect(r.prompt).toContain("dembow groove");
+    expect(r.prompt).toContain("expressive female vocal");
+    expect(r.prompt).not.toContain("Instrumental Latin");
+    expect(r.prompt).not.toContain("fully instrumental");
+    expect(r.lyrics).toContain("[Verse]");
+  });
+
+  it("keeps lyrics optional but guides lyricless vocal songs", () => {
+    const r = compileMusicPrompt({
+      userDescription: "upbeat birthday song for Mina",
+      vocalMode: "female_vocal",
+    });
+    expect(r.instrumental).toBe(false);
+    expect(r.lyrics).toBeUndefined();
+    expect(r.prompt).toContain("expressive female vocal");
+    expect(r.prompt).toContain("generate original simple singable lyrics");
+  });
+
+  it("limits mood guidance so selected chips do not overwhelm the prompt", () => {
+    const r = compileMusicPrompt({
+      userDescription: "fast club track",
+      genre: "techno",
+      moods: ["hard", "energetic", "dark", "epic"],
+      vocalMode: "instrumental",
+    });
+    expect(r.prompt).toContain("harder transients");
+    expect(r.prompt).toContain("driving pulse");
+    expect(r.prompt).not.toContain("minor-key color");
+    expect(r.prompt).not.toContain("cinematic rise");
   });
 
   it("does not inject a language cue for instrumental songs", () => {
@@ -84,7 +124,7 @@ describe("compileMusicPrompt", () => {
       vocalMode: "instrumental",
     });
     expect(r.prompt.toLowerCase()).not.toContain("bad bunny");
-    expect(r.prompt).toContain("Latin trap");
+    expect(r.prompt).toContain("Latin urban");
     expect(r.prompt).toContain("808 bass");
     expect(r.prompt).toContain(COPYRIGHT);
   });
@@ -110,6 +150,7 @@ describe("compileMusicPrompt", () => {
     expect(r.metadata.genre).toBeUndefined();
     expect(r.metadata.use_case).toBeUndefined();
     expect(r.metadata.moods).toEqual(["hard"]);
+    expect(r.prompt).not.toContain("undefined");
   });
 
   it("does not repeat a shared descriptor segment (deep 808 bass)", () => {

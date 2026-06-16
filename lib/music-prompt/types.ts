@@ -1,6 +1,6 @@
 // Music Prompt Compiler — shared types and version.
 
-export const PROMPT_COMPILER_VERSION = "v1";
+export const PROMPT_COMPILER_VERSION = "v2";
 
 export type MusicGenre =
   | "edm"
