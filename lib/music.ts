@@ -1,5 +1,12 @@
 // Shared music-generation helpers and types.
 
+import type {
+  MusicGenre,
+  MusicMood,
+  MusicUseCase,
+  VocalMode,
+} from "@/lib/music-prompt/types";
+
 // MiniMax Music 2.6 on Replicate. Official model — referenced by name, no
 // pinned version hash. Sings lyrics (vocals + instrumentation); model decides
 // length (2-4 min typical, 6 min max), so there is no duration control.
@@ -43,6 +50,11 @@ export interface GenerateRequest {
   lyrics?: string;
   style?: string;
   instrumental?: boolean;
+  genre?: MusicGenre;
+  moods?: MusicMood[];
+  useCase?: MusicUseCase;
+  vocalMode?: VocalMode;
+  language?: string;
 }
 
 // Build the Replicate minimax/music-2.6 input payload. `prompt` carries the
