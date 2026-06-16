@@ -324,7 +324,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
 
             <div className="flex flex-col gap-1 text-xs text-muted-foreground dark:text-gray-400">
               Mood
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1" role="group" aria-label="Mood">
                 {MOOD_OPTIONS.map((o) => {
                   const active = moods.includes(o.value);
                   return (
@@ -338,6 +338,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
                             : [...prev, o.value],
                         )
                       }
+                      aria-pressed={active}
                       className={cn(
                         "rounded-full px-2 py-1 text-xs transition-colors",
                         active
