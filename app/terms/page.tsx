@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     "Terms for using La Musica, including credits, payments, and content rights.",
 };
 
-const CONTACT_EMAIL = "ncf-ncglobal@ncf.or.kr";
+const CONTACT_EMAIL = "wjddnjs0419@hufs.ac.kr";
 
 export default function TermsPage() {
   return (

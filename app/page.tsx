@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@insforge/sdk/ssr";
 import CtaSection from "@/components/cta-section";
+import FooterSection from "@/components/footer-section";
 import HeaderSection from "@/components/headersection";
 import HeroSection from "@/components/herosection";
 import PricingSection from "@/components/pricing-section";
@@ -15,7 +16,7 @@ export default async function Home() {
   const sampleTracks = await getLandingSampleTracks();
 
   return (
-    <main className="landing-surface relative isolate min-h-screen overflow-hidden text-white">
+    <main className="landing-surface relative isolate min-h-screen overflow-x-hidden text-white">
       <div
         aria-hidden
         className="landing-ambient pointer-events-none absolute inset-0 -z-10"
@@ -26,6 +27,7 @@ export default async function Home() {
       <SampleMusicSection tracks={sampleTracks} />
       <PricingSection />
       <CtaSection ctaHref={ctaHref} />
+      <FooterSection ctaHref={ctaHref} />
     </main>
   );
 }

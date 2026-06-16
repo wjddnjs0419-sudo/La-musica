@@ -1,29 +1,24 @@
-# RESULT: Landing mobile background consistency - 2026-06-16
+# RESULT: Landing footer section - 2026-06-16
 
 ## Background
-- Request: mobile homepage background color looked different from the desktop/web homepage.
-- The homepage was using a page-local `bg-slate-950` plus a warm top-right radial gradient.
-- On narrow screens that warm gradient sat close to the hero copy and made the surface read warmer/gray compared with desktop.
+- Request: add a footer section based on a provided reference component and include the existing policy/terms pages.
+- The landing page previously ended after the CTA section with no legal or product footer links.
+- Mobile optimization was required so footer links and legal copy remain readable without horizontal overflow.
 
 ## Implementation
-- **`app/page.tsx`**: replaced the inline Tailwind homepage background utilities with landing-specific classes.
-- **`app/globals.css`**: added `landing-surface` so the homepage uses the same `--background` base as the app shell.
-- **`app/globals.css`**: added `landing-ambient` with a desktop ambient gradient and a narrower mobile media-query variant that removes the warm top-right wash from the mobile hero area.
+- **`components/footer-section.tsx`**: added a server-rendered La Musica footer with brand mark, product links, Privacy Policy, Terms of Service, copyright, and a subtle large background wordmark.
+- **`app/page.tsx`**: mounted the footer below the landing CTA and passed through the existing auth-aware `ctaHref`.
+- **`app/page.tsx`**: changed the landing root from `overflow-hidden` to `overflow-x-hidden` so mobile vertical content remains naturally scrollable while wide decorative assets stay clipped.
 
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
 | Full codebase | `npm run lint` | Passed |
 | Full codebase | `npm run build` | Passed |
-| Production deploy | `npx vercel --prod --yes` | Passed; deployment ready |
-| Production alias | `npx vercel inspect https://la-musica.vercel.app` | Ready; alias attached |
-| Live homepage | `Invoke-WebRequest https://la-musica.vercel.app` | 200; content includes `landing-surface` |
+| Local landing HTML | `Invoke-WebRequest http://127.0.0.1:3000` | Footer text and legal links present |
+| Mobile render | Chrome CDP, 390x900 footer crop | No footer text overflow; links include `/privacy` and `/terms`; main overflow is x-hidden/y-auto |
+| Desktop render | Chrome CDP, 1440x900 footer crop | No footer text overflow; two-column link layout renders correctly |
 
 ## Lessons
-- Page-level background tokens are easier to keep consistent across breakpoints than repeating one-off Tailwind gradient strings.
-- Warm radial accents should be positioned more carefully on mobile because they cover a much larger share of the first viewport.
-
-## Deployment
-- Production URL: `https://la-musica.vercel.app`
-- Deployment ID: `dpl_FQMpzMTS5T1mhQBFkM2vwXLCotuy`
-- Inspector URL: `https://vercel.com/jeongwon-kim-s-projects/la-musica/FQMpzMTS5T1mhQBFkM2vwXLCotuy`
+- Static footer content should stay as a Server Component to avoid adding unnecessary client JavaScript.
+- For long landing pages, `overflow-x-hidden` is safer than blanket `overflow-hidden` because decorative clipping should not constrain vertical content.

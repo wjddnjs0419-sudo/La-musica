@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     "How La Musica collects, uses, stores, and shares your information.",
 };
 
-const CONTACT_EMAIL = "ncf-ncglobal@ncf.or.kr";
+const CONTACT_EMAIL = "wjddnjs0419@hufs.ac.kr";
 
 export default function PrivacyPage() {
   return (
