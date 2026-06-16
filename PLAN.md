@@ -9,7 +9,8 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 (none)
 
 ## Done
-- [Done] Landing footer section (2026-06-16) - Added a mobile-optimized La Musica footer with product links, Privacy Policy and Terms of Service links, subtle wordmark styling, and x-only landing overflow clipping. build/lint passed. See RESULT.md.
+- [Done] Music Prompt Compiler (2026-06-16) - Added `lib/music-prompt/` pure module (presets/sanitizer/lyrics/compiler, vitest) that compiles simple user intent + Genre/Mood/Use-case/Vocal options into a high-quality English MiniMax prompt server-side; wired into the generate route with compiled metadata stored in `musics.metadata`; added structured option chips to the prompt box (Instrumental folded into Vocal select); docs in `docs/MINIMAX_PROMPT_ENGINEERING.md`. 26 vitest pass, build/lint/tsc clean. See RESULT.md.
+- [Done] Landing footer section (2026-06-16) - Added a mobile-optimized La Musica footer with product links, Privacy Policy and Terms of Service links, subtle wordmark styling, and x-only landing overflow clipping. build/lint passed. See RESULT_ARCHIVE.md.
 - [Done] Legal page contact email update (2026-06-16) - Updated Privacy Policy and Terms of Service contact emails to `wjddnjs0419@hufs.ac.kr`; build/lint passed. See RESULT_ARCHIVE.md.
 - [Done] Landing mobile background consistency (2026-06-16) - Normalized the homepage base background, moved ambient gradients into landing CSS with a mobile-specific variant, deployed to Vercel, and verified the live response. build/lint passed. See RESULT.md.
 - [Done] Google OAuth production redirect fix (2026-06-16) - Added the Vercel callback URL to InsForge allowed redirects, applied backend config, and verified OAuth start redirects to Google. build/lint passed. See RESULT_ARCHIVE.md.
@@ -18,7 +19,6 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 - [Done] Landing fixed generated sample tracks (2026-06-16) - Pinned the current four generated song IDs, fetches title/audio/thumbnail/prompt from InsForge for the landing sample section, and verified build/lint plus local response content. See RESULT_ARCHIVE.md.
 - [Done] AI music thumbnail generation (2026-06-16) - Added post-success Replicate Flux Schnell album-cover thumbnails for new songs only, stored thumbnail fields in `musics`, preserved fallback artwork for old/failed thumbnails, and verified migration/build/lint. See RESULT_ARCHIVE.md.
 - [Done] Landing pricing anchor and sample music gallery (2026-06-16) - Connected Header Pricing to `#pricing`, added a Tailwind-only sample music section above pricing with local WAV previews and centered SVG play controls, and verified build/lint plus asset responses. See RESULT_ARCHIVE.md.
-- [Done] Pricing section credit checkout wiring (2026-06-14) - Connected main-page pricing Get credits buttons to `/api/credits/checkout`, using the same Polar credit plan IDs and redirect/error handling pattern as workspace Upgrade. build/lint passed. See RESULT_ARCHIVE.md.
 
 ## Future / Later
 (none)
