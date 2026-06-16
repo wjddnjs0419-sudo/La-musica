@@ -15,6 +15,7 @@ import {
   type Music,
 } from "@/lib/music";
 import { compileMusicPrompt } from "@/lib/music-prompt";
+import { translateToEnglish } from "@/lib/translatePrompt";
 import type {
   MusicGenre,
   MusicMood,
@@ -72,11 +73,18 @@ export async function POST(request: NextRequest) {
   const language =
     typeof body.language === "string" ? body.language : undefined;
 
+  // Translate the user's free-text description to English before compiling so
+  // non-English users still get the engineered English prompt quality. The
+  // structured option presets are already English; this covers the free text.
+  // Falls back to the original text on any failure (never blocks generation).
+  const userDescriptionRaw = [prompt, style].filter(Boolean).join(". ");
+  const userDescription = await translateToEnglish(userDescriptionRaw);
+
   // An explicit client `vocalMode` supersedes the legacy `instrumental` boolean;
   // the persisted `instrumental` flag is then derived from the compiler result
   // (compiled.instrumental), not from this raw input.
   const compiled = compileMusicPrompt({
-    userDescription: [prompt, style].filter(Boolean).join(". "),
+    userDescription,
     genre,
     moods,
     useCase,
@@ -99,6 +107,9 @@ export async function POST(request: NextRequest) {
     instrumental: compiled.instrumental,
     ...(lyrics ? { lyrics } : {}),
     ...(style ? { style } : {}),
+    ...(userDescription !== userDescriptionRaw
+      ? { user_description_original: userDescriptionRaw }
+      : {}),
     ...compiled.metadata,
     ...(compiled.lyrics ? { lyrics_payload: compiled.lyrics } : {}),
   };

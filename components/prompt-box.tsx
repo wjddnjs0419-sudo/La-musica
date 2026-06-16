@@ -55,6 +55,17 @@ const USE_CASE_OPTIONS: { value: MusicUseCase; label: string }[] = [
   { value: "personal_song", label: "Personal Song" },
 ];
 
+// `value` is the English language name sent to the compiler (`sung in {value}`);
+// "" = Auto (let the model pick). Labels show the native name for recognizability.
+const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
+  { value: "English", label: "English" },
+  { value: "Korean", label: "한국어" },
+  { value: "Spanish", label: "Español" },
+  { value: "French", label: "Français" },
+  { value: "Portuguese", label: "Português" },
+  { value: "Arabic", label: "العربية" },
+];
+
 const VOCAL_OPTIONS: { value: VocalMode; label: string }[] = [
   { value: "auto", label: "Auto" },
   { value: "instrumental", label: "Instrumental" },
@@ -188,6 +199,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
     const [moods, setMoods] = React.useState<MusicMood[]>([]);
     const [useCase, setUseCase] = React.useState<MusicUseCase | "">("");
     const [vocalMode, setVocalMode] = React.useState<VocalMode>("auto");
+    const [language, setLanguage] = React.useState("");
     const [optionsOpen, setOptionsOpen] = React.useState(false);
 
     React.useImperativeHandle(ref, () => internalTextareaRef.current!, []);
@@ -219,7 +231,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
         moods: moods.length ? moods : undefined,
         useCase: useCase || undefined,
         vocalMode,
-        language: undefined,
+        language: language || undefined,
       });
       setValue("");
       setLyrics("");
@@ -228,6 +240,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
       setMoods([]);
       setUseCase("");
       setVocalMode("auto");
+      setLanguage("");
       setLyricsOpen(false);
       setStyleOpen(false);
       setOptionsOpen(false);
@@ -303,6 +316,20 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
                 className="rounded-lg border-0 bg-white/70 p-2 text-sm text-foreground dark:bg-[#3a3a3a] dark:text-white focus:ring-0 focus-visible:outline-none"
               >
                 {VOCAL_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground dark:text-gray-400">
+              Language
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="rounded-lg border-0 bg-white/70 p-2 text-sm text-foreground dark:bg-[#3a3a3a] dark:text-white focus:ring-0 focus-visible:outline-none"
+              >
+                <option value="">Auto</option>
+                {LANGUAGE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
