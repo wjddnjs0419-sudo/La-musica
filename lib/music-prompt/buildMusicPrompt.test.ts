@@ -57,9 +57,22 @@ describe("compileMusicPrompt", () => {
     expect(r.prompt).toContain("string orchestra");
     expect(r.prompt).toContain("rich full instrumental backing");
     expect(r.prompt).toContain("no acapella sections");
+    expect(r.prompt).toContain("sung in Korean");
     expect(r.prompt).toContain(COPYRIGHT);
     expect(r.lyrics).toContain("[Verse]");
     expect(r.metadata.language).toBe("Korean");
+  });
+
+  it("does not inject a language cue for instrumental songs", () => {
+    const r = compileMusicPrompt({
+      userDescription: "비 오는 밤 한국 발라드 연주곡",
+      genre: "korean_ballad",
+      moods: ["emotional"],
+      vocalMode: "instrumental",
+      language: "Korean",
+    });
+    expect(r.instrumental).toBe(true);
+    expect(r.prompt).not.toContain("sung in");
   });
 
   it("example 4: Bad Bunny reference is sanitized away", () => {

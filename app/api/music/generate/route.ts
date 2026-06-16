@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   const genre =
     typeof body.genre === "string" ? (body.genre as MusicGenre) : undefined;
   const moods = Array.isArray(body.moods)
-    ? (body.moods.filter((m): m is MusicMood => typeof m === "string"))
+    ? (body.moods.filter((m): m is MusicMood => typeof m === "string").slice(0, 12))
     : undefined;
   const useCase =
     typeof body.useCase === "string"

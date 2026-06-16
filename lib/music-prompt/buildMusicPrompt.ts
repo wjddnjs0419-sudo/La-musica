@@ -72,6 +72,11 @@ export function buildMusicPrompt(input: BuildMusicPromptInput): CompiledPrompt {
   // 9. Vocal/instrumental direction.
   parts.push(VOCAL_PRESETS[vocalMode]);
 
+  // 9b. Language cue (vocal modes only — instrumental songs have no vocals).
+  if (!instrumental && input.language && input.language.trim()) {
+    parts.push(`sung in ${input.language.trim()}`);
+  }
+
   // 10. Production/mix quality booster.
   parts.push(instrumental ? INSTRUMENTAL_BOOSTER : VOCAL_BOOSTER);
 

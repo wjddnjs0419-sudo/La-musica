@@ -62,7 +62,6 @@ export interface BuildMusicPromptInput {
   lyrics?: string;
   bpm?: number;
   key?: string;
-  durationHint?: string;
   referenceText?: string;
 }
 
