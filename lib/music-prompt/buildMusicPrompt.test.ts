@@ -1,0 +1,78 @@
+import { describe, it, expect } from "vitest";
+import { compileMusicPrompt } from "./index";
+import { PROMPT_COMPILER_VERSION } from "./types";
+
+const COPYRIGHT = "original composition only, do not imitate any specific artist";
+
+describe("compileMusicPrompt", () => {
+  it("example 1: hard EDM workout instrumental @128", () => {
+    const r = compileMusicPrompt({
+      userDescription: "헬스장에서 들을 하드한 EDM",
+      genre: "edm",
+      moods: ["hard", "energetic"],
+      useCase: "workout",
+      vocalMode: "instrumental",
+      bpm: 128,
+    });
+    expect(r.instrumental).toBe(true);
+    expect(r.prompt).toContain("EDM");
+    expect(r.prompt).toContain("pounding kick drum");
+    expect(r.prompt).toContain("gym energy");
+    expect(r.prompt).toContain("no vocals, no lyrics");
+    expect(r.prompt).toContain("polished mainstage EDM production");
+    expect(r.prompt).toContain("128 BPM");
+    expect(r.prompt).toContain(COPYRIGHT);
+    expect(r.prompt.length).toBeLessThanOrEqual(2000);
+    expect(r.lyrics).toBeUndefined();
+    expect(r.metadata.prompt_version).toBe(PROMPT_COMPILER_VERSION);
+    expect(r.metadata.vocal_mode).toBe("instrumental");
+  });
+
+  it("example 2: travel reggaeton instrumental", () => {
+    const r = compileMusicPrompt({
+      userDescription: "친구들이랑 여행 영상에 쓸 레게톤",
+      genre: "reggaeton",
+      moods: ["happy", "energetic"],
+      useCase: "travel_vlog",
+      vocalMode: "instrumental",
+    });
+    expect(r.prompt).toContain("Latin reggaeton");
+    expect(r.prompt).toContain("dembow rhythm");
+    expect(r.prompt).toContain("sunny movement");
+    expect(r.prompt).toContain("no vocals, no lyrics");
+    expect(r.prompt).toContain(COPYRIGHT);
+  });
+
+  it("example 3: emotional korean ballad male vocal", () => {
+    const r = compileMusicPrompt({
+      userDescription: "비 오는 밤 소주 마시면서 생각나는 한국 발라드",
+      genre: "korean_ballad",
+      moods: ["emotional", "nostalgic"],
+      vocalMode: "male_vocal",
+      language: "Korean",
+      lyrics: "[verse]\n비가 내린다",
+    });
+    expect(r.instrumental).toBe(false);
+    expect(r.prompt).toContain("Korean male ballad");
+    expect(r.prompt).toContain("string orchestra");
+    expect(r.prompt).toContain("rich full instrumental backing");
+    expect(r.prompt).toContain("no acapella sections");
+    expect(r.prompt).toContain(COPYRIGHT);
+    expect(r.lyrics).toContain("[Verse]");
+    expect(r.metadata.language).toBe("Korean");
+  });
+
+  it("example 4: Bad Bunny reference is sanitized away", () => {
+    const r = compileMusicPrompt({
+      userDescription: "Bad Bunny 스타일 빠른 레게톤",
+      referenceText: "Bad Bunny",
+      genre: "reggaeton",
+      moods: ["sexy", "energetic"],
+      vocalMode: "instrumental",
+    });
+    expect(r.prompt.toLowerCase()).not.toContain("bad bunny");
+    expect(r.prompt).toContain("Latin trap");
+    expect(r.prompt).toContain("808 bass");
+    expect(r.prompt).toContain(COPYRIGHT);
+  });
+});
