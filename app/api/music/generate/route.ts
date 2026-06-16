@@ -72,6 +72,9 @@ export async function POST(request: NextRequest) {
   const language =
     typeof body.language === "string" ? body.language : undefined;
 
+  // An explicit client `vocalMode` supersedes the legacy `instrumental` boolean;
+  // the persisted `instrumental` flag is then derived from the compiler result
+  // (compiled.instrumental), not from this raw input.
   const compiled = compileMusicPrompt({
     userDescription: [prompt, style].filter(Boolean).join(". "),
     genre,

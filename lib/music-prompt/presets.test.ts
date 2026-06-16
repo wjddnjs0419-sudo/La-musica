@@ -54,4 +54,14 @@ describe("presets", () => {
   it("resolveVocalMode: auto football -> crowd_chant", () => {
     expect(resolveVocalMode({ userDescription: "x", genre: "football_chant" })).toBe("crowd_chant");
   });
+
+  it("resolveVocalMode: bogus mode falls through to auto -> instrumental", () => {
+    expect(
+      resolveVocalMode({ userDescription: "x", vocalMode: "shouting" as never, genre: "edm" }),
+    ).toBe("instrumental");
+  });
+
+  it("resolveVocalMode: known concrete mode still wins", () => {
+    expect(resolveVocalMode({ userDescription: "x", vocalMode: "female_vocal" })).toBe("female_vocal");
+  });
 });

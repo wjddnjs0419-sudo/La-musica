@@ -87,6 +87,18 @@ describe("compileMusicPrompt", () => {
     expect(r.prompt).toContain(COPYRIGHT);
   });
 
+  it("strips bogus union values out of persisted metadata", () => {
+    const r = compileMusicPrompt({
+      userDescription: "x",
+      genre: "notgenre" as never,
+      moods: ["hard", "bogus" as never],
+      useCase: "nope" as never,
+    });
+    expect(r.metadata.genre).toBeUndefined();
+    expect(r.metadata.use_case).toBeUndefined();
+    expect(r.metadata.moods).toEqual(["hard"]);
+  });
+
   it("does not repeat a shared descriptor segment (deep 808 bass)", () => {
     const r = compileMusicPrompt({
       userDescription: "빠른 레게톤",

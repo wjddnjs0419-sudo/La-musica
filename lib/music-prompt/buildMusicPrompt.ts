@@ -5,6 +5,9 @@ import {
   MOOD_PRESETS,
   USE_CASE_PRESETS,
   VOCAL_PRESETS,
+  VALID_GENRES,
+  VALID_MOODS,
+  VALID_USE_CASES,
   resolveVocalMode,
 } from "./presets";
 import { sanitizeReferences } from "./sanitizeReferences";
@@ -96,9 +99,9 @@ export function buildMusicPrompt(input: BuildMusicPromptInput): CompiledPrompt {
       raw_user_description: raw,
       final_music_prompt: prompt,
       prompt_version: PROMPT_COMPILER_VERSION,
-      genre: input.genre,
-      moods: input.moods,
-      use_case: input.useCase,
+      genre: input.genre && VALID_GENRES.has(input.genre) ? input.genre : undefined,
+      moods: input.moods?.filter((m) => VALID_MOODS.has(m)),
+      use_case: input.useCase && VALID_USE_CASES.has(input.useCase) ? input.useCase : undefined,
       vocal_mode: vocalMode,
       language: input.language,
     },

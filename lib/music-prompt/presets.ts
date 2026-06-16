@@ -68,14 +68,71 @@ export const REFERENCE_MAP: Array<[RegExp, string]> = [
   [/임창정/g, "emotional 2000s Korean male karaoke ballad, dramatic breakup mood, powerful high-note chorus, piano and string arrangement"],
 ];
 
+// Valid concrete (post-`auto`) vocal modes. Typed as Set<string> so callers
+// can membership-test raw/unvalidated strings without TS narrowing friction.
+export const RESOLVED_VOCAL_MODES = new Set<string>([
+  "instrumental",
+  "male_vocal",
+  "female_vocal",
+  "rap_vocal",
+  "crowd_chant",
+]);
+
+// Validity sets for the other unions, used by the compiler to keep persisted
+// metadata free of bogus values. Typed as Set<string> on purpose.
+export const VALID_GENRES = new Set<string>([
+  "edm",
+  "reggaeton",
+  "hiphop_trap",
+  "techno",
+  "korean_ballad",
+  "brazilian_funk",
+  "afropop_festival",
+  "french_maghreb_hiphop",
+  "football_chant",
+  "custom",
+]);
+
+export const VALID_MOODS = new Set<string>([
+  "hard",
+  "energetic",
+  "dark",
+  "happy",
+  "emotional",
+  "sexy",
+  "epic",
+  "funny",
+  "nostalgic",
+  "romantic",
+  "aggressive",
+  "festival",
+]);
+
+export const VALID_USE_CASES = new Set<string>([
+  "workout",
+  "club",
+  "party",
+  "short_form",
+  "gaming",
+  "travel_vlog",
+  "sports_chant",
+  "comedy_roast",
+  "background",
+  "personal_song",
+  "custom",
+]);
+
 // Genres that imply vocals when the user leaves vocal mode on auto.
 const RAP_GENRES = new Set<MusicGenre>(["hiphop_trap", "french_maghreb_hiphop"]);
 const CHANT_GENRES = new Set<MusicGenre>(["football_chant"]);
 const SUNG_GENRES = new Set<MusicGenre>(["korean_ballad", "afropop_festival", "brazilian_funk"]);
 
-// Resolve `auto`/undefined vocal mode into a concrete one.
+// Resolve `auto`/undefined vocal mode into a concrete one. Only a KNOWN
+// concrete mode short-circuits; an unknown/bogus string falls through to the
+// auto-resolution heuristics below.
 export function resolveVocalMode(input: BuildMusicPromptInput): ResolvedVocalMode {
-  if (input.vocalMode && input.vocalMode !== "auto") return input.vocalMode;
+  if (input.vocalMode && input.vocalMode !== "auto" && RESOLVED_VOCAL_MODES.has(input.vocalMode))
+    return input.vocalMode;
   if (input.lyrics && input.lyrics.trim()) return "male_vocal";
   if (input.genre && RAP_GENRES.has(input.genre)) return "rap_vocal";
   if (input.genre && CHANT_GENRES.has(input.genre)) return "crowd_chant";
