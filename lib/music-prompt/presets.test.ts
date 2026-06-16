@@ -27,7 +27,11 @@ describe("presets", () => {
   });
 
   it("reference map covers Bad Bunny", () => {
-    const hit = REFERENCE_MAP.find(([re]) => re.test("bad bunny style"));
+    // REFERENCE_MAP regexes are global/stateful; never call .test() on the
+    // shared object (its lastIndex advances). Test via a fresh regex.
+    const hit = REFERENCE_MAP.find(([re]) =>
+      new RegExp(re.source, re.flags).test("bad bunny style"),
+    );
     expect(hit?.[1]).toContain("Latin trap");
   });
 

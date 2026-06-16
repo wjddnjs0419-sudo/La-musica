@@ -21,6 +21,21 @@ const INSTRUMENTAL_BOOSTER =
 const VOCAL_BOOSTER =
   "vocal-centered but with rich full instrumental backing, strong chorus impact, polished professional mix, no acapella sections, no empty background";
 
+// De-duplicate comma-separated descriptor segments case-insensitively,
+// preserving first-occurrence order. Genre presets + sanitized references
+// often emit the same phrase (e.g. "deep 808 bass") twice.
+function dedupeSegments(body: string): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const seg of body.split(", ")) {
+    const key = seg.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(seg);
+  }
+  return out.join(", ");
+}
+
 // Compile a simple user intent + structured options into a dense English
 // MiniMax prompt following the 12-part formula.
 export function buildMusicPrompt(input: BuildMusicPromptInput): CompiledPrompt {
@@ -61,15 +76,15 @@ export function buildMusicPrompt(input: BuildMusicPromptInput): CompiledPrompt {
   if (typeof input.bpm === "number" && input.bpm > 0) parts.push(`${input.bpm} BPM`);
   if (input.key && input.key.trim()) parts.push(`key of ${input.key.trim()}`);
 
-  // 12. Safety/copyright instruction (always).
-  parts.push(COPYRIGHT_LINE);
+  // Build the body WITHOUT the copyright line, then clamp the body so the
+  // always-appended copyright clause is never truncated. The "- 2" reserves
+  // room for the ", " separator joining body + copyright line.
+  const body = dedupeSegments(
+    parts.filter(Boolean).join(", ").replace(/\s+/g, " ").trim(),
+  ).slice(0, MAX_PROMPT_CHARS - COPYRIGHT_LINE.length - 2);
 
-  const prompt = parts
-    .filter(Boolean)
-    .join(", ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, MAX_PROMPT_CHARS);
+  // 12. Safety/copyright instruction (always intact).
+  const prompt = `${body}, ${COPYRIGHT_LINE}`.replace(/\s+/g, " ").trim();
 
   const lyrics = buildLyricsPayload(input, vocalMode);
 

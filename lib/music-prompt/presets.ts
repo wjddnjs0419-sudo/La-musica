@@ -57,6 +57,10 @@ export const VOCAL_PRESETS: Record<ResolvedVocalMode, string> = {
 };
 
 // Known artist/song references -> generic descriptors (copyright-safe).
+// WARNING: these regexes carry the `g` flag and are therefore global/stateful
+// (each `.test()`/`.exec()` advances `lastIndex`). Use them ONLY with
+// String.replace/replaceAll. Never call `.test()` on a shared instance — clone
+// via `new RegExp(re.source, re.flags)` first if you need a boolean match.
 export const REFERENCE_MAP: Array<[RegExp, string]> = [
   [/bad\s*bunny/gi, "fast Latin reggaeton and Latin trap club sound, dark synths, deep 808 bass, confident low male vocal"],
   [/cris\s*mj|una\s*noche\s*en\s*medellin/gi, "instrumental Latin reggaeton club beat, dreamy nighttime urban atmosphere, smooth romantic synth melody, deep 808 bass, fast dembow rhythm"],

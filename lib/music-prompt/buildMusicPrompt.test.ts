@@ -75,4 +75,26 @@ describe("compileMusicPrompt", () => {
     expect(r.prompt).toContain("808 bass");
     expect(r.prompt).toContain(COPYRIGHT);
   });
+
+  it("keeps the copyright line intact even when the body exceeds the limit", () => {
+    const r = compileMusicPrompt({
+      userDescription: "x".repeat(2500),
+      genre: "edm",
+      moods: ["hard"],
+      vocalMode: "instrumental",
+    });
+    expect(r.prompt.length).toBeLessThanOrEqual(2000);
+    expect(r.prompt).toContain(COPYRIGHT);
+  });
+
+  it("does not repeat a shared descriptor segment (deep 808 bass)", () => {
+    const r = compileMusicPrompt({
+      userDescription: "빠른 레게톤",
+      referenceText: "Bad Bunny",
+      genre: "reggaeton",
+      vocalMode: "instrumental",
+    });
+    const count = (r.prompt.toLowerCase().match(/deep 808 bass/g) ?? []).length;
+    expect(count).toBe(1);
+  });
 });
