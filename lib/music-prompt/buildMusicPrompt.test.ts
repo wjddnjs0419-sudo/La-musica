@@ -17,9 +17,10 @@ describe("compileMusicPrompt", () => {
     expect(r.instrumental).toBe(true);
     expect(r.prompt).toMatch(/^prioritize this musical idea: 헬스장에서 들을 하드한 EDM/);
     expect(r.prompt).toContain("sidechained kick");
+    expect(r.prompt).toContain("festival main-stage");
     expect(r.prompt).toContain("steady motivational drive");
     expect(r.prompt).toContain("no vocals, no lyrics");
-    expect(r.prompt).toContain("clean electronic festival mix");
+    expect(r.prompt).toContain("loud radio-ready electronic mix");
     expect(r.prompt).toContain("128 BPM");
     expect(r.prompt).toContain(COPYRIGHT);
     expect(r.prompt.length).toBeLessThanOrEqual(2000);
@@ -36,7 +37,8 @@ describe("compileMusicPrompt", () => {
       useCase: "travel_vlog",
       vocalMode: "instrumental",
     });
-    expect(r.prompt).toContain("dembow groove");
+    expect(r.prompt).toContain("modern Medellin-style commercial reggaeton");
+    expect(r.prompt).toContain("groove-first dembow pocket");
     expect(r.prompt).toContain("syncopated shaker");
     expect(r.prompt).toContain("rolling sub and 808 bass");
     expect(r.prompt).toContain("forward motion");
@@ -54,7 +56,7 @@ describe("compileMusicPrompt", () => {
       lyrics: "[verse]\n비가 내린다",
     });
     expect(r.instrumental).toBe(false);
-    expect(r.prompt).toContain("Korean ballad arrangement");
+    expect(r.prompt).toContain("Korean drama OST ballad");
     expect(r.prompt).toContain("string orchestra");
     expect(r.prompt).toContain("rich full instrumental backing");
     expect(r.prompt).toContain("no acapella sections");
@@ -72,7 +74,7 @@ describe("compileMusicPrompt", () => {
       lyrics: "[Verse]\nslow night",
     });
     expect(r.instrumental).toBe(false);
-    expect(r.prompt).toContain("dembow groove");
+    expect(r.prompt).toContain("groove-first dembow pocket");
     expect(r.prompt).toContain("expressive female vocal");
     expect(r.prompt).not.toContain("Instrumental Latin");
     expect(r.prompt).not.toContain("fully instrumental");

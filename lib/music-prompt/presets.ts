@@ -9,15 +9,15 @@ import type {
 // Concrete style prompts per genre. These describe rhythm, drums, bass,
 // arrangement, and production grammar without forcing vocal/instrumental mode.
 export const GENRE_PRESETS: Record<Exclude<MusicGenre, "custom">, string> = {
-  edm: "four-on-the-floor dance rhythm around 126-132 BPM, punchy sidechained kick, offbeat open hats, layered supersaw chord stabs, wide sub bass, snare-roll build-ups, rising noise sweeps, bright high-energy drop dynamics, clean electronic festival mix",
-  reggaeton: "dembow groove with kick on the downbeats and snare-clap accents between beats, syncopated shaker and rim percussion, rolling sub and 808 bass following the groove, short plucked synth or nylon-guitar motif, warm tropical chord stabs, tight modern Latin urban mix",
-  hiphop_trap: "half-time trap drum pattern, booming 808 slides, crisp 16th-note hi-hat rolls with triplet fills, punchy snare on beat three, sparse minor-key piano or bell motif, atmospheric pads, open pocket for rhythmic lead phrasing, clean low-end heavy mix",
-  techno: "relentless four-on-the-floor kick, rolling 16th-note bassline, closed-hat pulse, metallic percussion loops, hypnotic minor synth sequence, filtered risers, breakdown tension, dark warehouse reverb, tight club master",
-  korean_ballad: "slow-to-mid tempo Korean ballad arrangement, warm piano arpeggios, acoustic guitar support, lyrical string orchestra swells, restrained verse dynamics, wide emotional chorus lift, drum build into the final chorus, polished karaoke-ready mix",
-  brazilian_funk: "tamborzao-inspired rhythmic pattern, fast syncopated kick and clap hits, heavy distorted 808 pulses, baile percussion fills, whistle accents, short call-and-response hook spaces, raw party energy, polished club loudness",
-  afropop_festival: "Afrobeats-inspired drum pocket, syncopated kick pattern, shuffling hats, layered djembe and hand percussion, bright clean guitar riffs, warm brass stabs, buoyant bassline, sunny outdoor stage dynamics, spacious dance mix",
-  french_maghreb_hiphop: "North African melodic minor phrases, darbuka-style percussion, bouncy hip-hop drum groove, deep 808 bass, warm oriental synth lead, handclap accents, club-ready chorus lift, triumphant global nightlife energy",
-  football_chant: "stadium anthem rhythm, stomp-clap pulse, big floor toms and snare hits, brass stabs, whistle accents, simple call-and-response hook shape, wide crowd-sized reverb, explosive chorus lift, sports celebration energy",
+  edm: "festival main-stage big-room EDM, chart-ready commercial hook, four-on-the-floor dance pulse around 126-130 BPM, hard sidechained kick, offbeat open hats, towering layered supersaw leads, screaming chopped vocal-chop hook texture, wide sub bass, explosive snare-roll build-ups, white-noise riser sweeps, euphoric main-stage drop dynamics, loud radio-ready electronic mix",
+  reggaeton: "modern Medellin-style commercial reggaeton, glossy radio-pop sheen, groove-first dembow pocket with kick on the downbeats and snare-clap accents between beats, syncopated shaker and rim percussion, rolling sub and 808 bass following the groove, catchy plucked synth or nylon-guitar hook, warm tropical chord stabs, confident late-night perreo energy, tight chart-ready Latin urban mix",
+  hiphop_trap: "modern commercial trap, hard-hitting half-time trap drums, booming distorted 808 slides, crisp 16th-note hi-hat rolls with triplet fills, punchy snare on beat three, dark cinematic minor-key piano or bell motif, atmospheric pads, sparse menacing negative space, open pocket for rhythmic lead phrasing, loud streaming-ready low-end heavy mix",
+  techno: "peak-time warehouse techno, relentless pounding four-on-the-floor kick, rolling 16th-note bassline, driving closed-hat pulse, metallic percussion loops, hypnotic dark minor synth sequence, long gradual filter automation, filtered risers, intense breakdown tension, cavernous warehouse reverb, loud club master",
+  korean_ballad: "modern Korean drama OST ballad, slow-to-mid tempo arrangement, intimate piano or acoustic guitar intro, warm piano arpeggios, lush string orchestra swells, restrained verse dynamics, surging emotional pre-chorus lift, huge belted final-chorus payoff, dramatic drum build into the last chorus, polished radio-ready mix",
+  brazilian_funk: "modern baile funk, raw favela party energy, tamborzao-driven rhythmic pattern, immediate rhythmic hook, fast syncopated kick and clap hits, heavy distorted 808 pulses, baile percussion fills, whistle accents, short call-and-response hook spaces, gritty loud club loudness",
+  afropop_festival: "modern commercial Afrobeats festival sound, sunny stadium-pop polish, Afrobeats drum pocket, syncopated kick pattern, shuffling hats, layered djembe and hand percussion, bright clean guitar riffs, warm brass stabs, buoyant melodic bassline, communal final-hook lift, spacious radio-ready festival dance mix",
+  french_maghreb_hiphop: "modern French-Maghreb club rap, North African melodic minor phrases, darbuka-style percussion layers, bouncy French hip-hop drum groove, deep 808 bass, warm oriental synth lead, handclap accents, open pocket for rhythmic lead phrasing, anthemic club-ready chorus lift, triumphant global nightlife energy",
+  football_chant: "massive stadium anthem, chantable terrace energy, stomp-clap pulse, big floor toms and snare hits, brass stabs, whistle accents, simple call-and-response hook shape, short repeatable hook phrasing, wide crowd-sized reverb, explosive sports-celebration chorus",
 };
 
 export const MOOD_PRESETS: Record<MusicMood, string> = {
@@ -67,6 +67,10 @@ export const REFERENCE_MAP: Array<[RegExp, string]> = [
   [/cris\s*mj|una\s*noche\s*en\s*medellin/gi, "dreamy nighttime Latin urban groove, smooth romantic synth melody, deep 808 bass, fast dembow-inspired rhythm, glossy club atmosphere"],
   [/soolking|suavemente/gi, "Maghreb-inspired French hip-hop dance energy, North African melodic influence, club percussion, catchy chorus lift"],
   [/임창정/g, "emotional 2000s Korean karaoke ballad feeling, dramatic breakup mood, powerful high-note chorus shape, piano and string arrangement"],
+  [/karol\s*g/gi, "glossy modern Latin pop-reggaeton, bright commercial radio sheen, smooth confident groove, dembow-inspired drums, deep 808 bass, late-night perreo energy"],
+  [/peso\s*pluma|corrido/gi, "modern regional Mexican corrido sound, acoustic guitar and brass-driven arrangement, laid-back confident groove, contemporary urban polish"],
+  [/drake|travis\s*scott/gi, "modern commercial trap, dark atmospheric synths, booming distorted 808 bass, half-time hi-hat rolls, moody late-night mood"],
+  [/burna\s*boy|wizkid|afrobeats?/gi, "modern Afrobeats groove, syncopated drum pocket, warm melodic bassline, bright guitar riffs, sunny commercial polish"],
 ];
 
 // Valid concrete (post-`auto`) vocal modes. Typed as Set<string> so callers

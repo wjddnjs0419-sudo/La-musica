@@ -4,6 +4,91 @@
 
 ---
 
+# RESULT: Genre reference analysis and preset tuning - 2026-06-16
+
+## Background
+- Request: proceed with public YouTube/Spotify-style reference analysis, but align it exactly to the current La Musica Genre dropdown.
+- Constraint: do not copy specific songs, melodies, hooks, lyrics, or artist styles. Use public metadata and genre-level patterns only.
+- Goal: improve La Musica outputs by extracting prompt-safe genre DNA and applying conservative preset upgrades.
+
+## Implementation
+- **`docs/reference-analysis/`**: added a reference-analysis folder with a README and one file per current Genre option: EDM, Reggaeton, Hip-hop / Trap, Techno, Korean Ballad, Brazilian Funk, Afropop Festival, French Maghreb Hip-hop, and Football Chant.
+- **Reference analysis docs**: each genre file records public source links, reference-pool notes, common arrangement flow, rhythm/drums, bass, instruments/texture, energy curve, prompt-safe descriptor, and a preset-delta note.
+- **`lib/music-prompt/presets.ts`**: conservatively updated all current genre presets with safer, more specific arrangement details from the analysis, such as groove-first reggaeton pocket, dark trap negative space, techno filter automation, Korean ballad pre-chorus lift, and football chant repeatable hook phrasing.
+- **`docs/chatgpt-project/01_GENRE_PRESETS.md`**: synced the ChatGPT Project genre preset document with the updated runtime preset language.
+- **`lib/music-prompt/buildMusicPrompt.test.ts`**: updated assertions to match the new EDM/reggaeton descriptor wording.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Prompt compiler pure logic | `npm test` | Passed; 35 tests / 5 files |
+| Full codebase | `npm run lint` | Passed |
+| Full codebase | `npm run build` | Passed; Next build completed with the existing workspace-root lockfile warning |
+| Reference docs | Code/file inspection | Passed; docs cover the current nine Genre dropdown options and avoid song-copy instructions |
+| Runtime/doc sync | Code inspection of `presets.ts` + `01_GENRE_PRESETS.md` | Passed; ChatGPT Project genre doc mirrors the updated runtime preset concepts |
+
+## Lessons
+- Public playlist/chart references are useful as discovery scaffolding, but runtime prompts should only receive generic genre grammar.
+- Small preset changes should preserve the compiler's separation of concerns: genre describes sound grammar, while Vocal mode controls vocal/instrumental behavior.
+
+# RESULT: ChatGPT Project knowledge files - 2026-06-16
+
+## Background
+- Request: prepare four ChatGPT Project upload files so ChatGPT can help with La Musica lyrics/style/prompt work using project-specific context.
+- Clarification: do not invent generic "viral song" or "Korean ballad" structures from outside the app; base the files on the current project, supported genres, and existing prompt-engineering implementation.
+- Existing source material was spread across `lib/music-prompt/`, music generation routes, pricing/credit code, and engineering notes.
+
+## Implementation
+- **`docs/chatgpt-project/01_GENRE_PRESETS.md`**: documented current supported genres, concrete sound grammar, mood presets, use-case presets, and auto vocal behavior from `lib/music-prompt/presets.ts`.
+- **`docs/chatgpt-project/02_LYRIC_STRUCTURES.md`**: documented the actual lyrics payload system: optional lyrics, instrumental/vocal behavior, supported section tags, tag normalization, and MiniMax-compatible lyric formatting. It explicitly notes that hardcoded genre lyric templates are not currently part of the app.
+- **`docs/chatgpt-project/03_PROMPT_COMPILER_RULES.md`**: documented compiler version `v2`, user-first prompt order, option authority, vocal/instrumental branching, lyricless vocal guidance, reference sanitization, and MiniMax input fields.
+- **`docs/chatgpt-project/04_PRODUCT_DECISIONS.md`**: documented current product decisions around hidden prompt engineering, prompt box inputs, credit packs, generation/refund flow, thumbnail generation, storage/metadata policy, and UX/safety principles.
+- **`PLAN.md` / `RESULT.md` / `RESULT_ARCHIVE.md`**: tracked the work and archived the previous result.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| ChatGPT Project files | `ls -la docs/chatgpt-project && wc -l docs/chatgpt-project/*.md` | Passed; 4 markdown files created, 746 total lines |
+| Project-specific grounding | `rg` inspection for source-of-truth markers and excluded generic structures | Passed; files reference current code sources and explicitly avoid non-app hardcoded lyric templates |
+| Full codebase | `npm run lint` | Passed |
+| Full codebase | `npm run build` | Passed; Next build completed with the existing workspace-root lockfile warning |
+
+## Lessons
+- ChatGPT Project knowledge files are most useful when they mirror the app's actual source of truth instead of aspirational prompt examples.
+- The lyrics document should describe the current payload contract and tag system; genre-specific lyric templates can be added later only when the product actually adopts them.
+
+---
+
+# RESULT: Prompt box simplification and lyricless vocal handling - 2026-06-16
+
+## Background
+- Request: remove the separate Style input because style can already be written in the main prompt.
+- Follow-up: lyrics are optional, but vocal generation without user-provided lyrics needed explicit handling so quality does not become ambiguous.
+- Constraint: keep the simplified prompt box and existing MiniMax route structure.
+
+## Implementation
+- **`components/prompt-box.tsx`**: removed the Style button, Style input, Style icon, related state, reset logic, and `style` payload emission.
+- **`lib/music.ts`**: removed `GenerateRequest.style` and removed legacy `Style: ...` prompt composition from `buildMinimaxInput`; MiniMax now receives the compiled prompt directly.
+- **`app/api/music/generate/route.ts`**: stopped parsing/persisting `style` and stopped folding it into the translatable user description.
+- **`lib/music-prompt/buildMusicPrompt.ts`**: kept lyrics technically optional. When a non-instrumental vocal mode has no lyrics, the final prompt now adds: `if no lyrics are provided, generate original simple singable lyrics that match the user's idea`.
+- **`app/api/music/[id]/route.ts`**: thumbnail prompt generation now uses `metadata.genre` instead of removed `metadata.style`.
+- **Docs/copy/tests**: updated MiniMax docs, Privacy Policy copy, and compiler tests for lyricless vocal behavior.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Prompt compiler pure logic | `npm test` | Passed; 35 tests / 5 files |
+| Full codebase | `npm run lint` | Passed |
+| Full codebase | `npm run build` | Passed; Next build completed with the existing workspace-root lockfile warning |
+| Style removal | `rg` inspection | Passed; no product request/body/UI `style` field remains |
+| Lyricless vocal guidance | Unit test | Passed; vocal mode without lyrics keeps `lyrics` undefined and adds original lyric-generation guidance to the prompt |
+
+## Lessons
+- A separate Style field duplicates the main prompt and can split the model's strongest signal.
+- Lyrics can remain optional, but vocal-without-lyrics needs explicit prompt guidance so the model knows to generate original simple lyrics instead of drifting.
+
+---
+
 # RESULT: Music prompt compiler quality tuning - 2026-06-16
 
 ## Background

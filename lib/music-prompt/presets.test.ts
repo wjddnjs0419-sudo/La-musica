@@ -20,6 +20,22 @@ describe("presets", () => {
     expect(GENRE_PRESETS.edm).toContain("kick");
   });
 
+  it("genre presets use scene/era commercial framing", () => {
+    expect(GENRE_PRESETS.edm).toContain("festival main-stage");
+    expect(GENRE_PRESETS.reggaeton).toContain("Medellin");
+    expect(GENRE_PRESETS.korean_ballad).toContain("OST");
+    expect(GENRE_PRESETS.techno).toContain("warehouse");
+    expect(GENRE_PRESETS.brazilian_funk).toContain("baile funk");
+    expect(GENRE_PRESETS.afropop_festival).toContain("Afrobeats");
+  });
+
+  it("genre presets never name a specific artist or song", () => {
+    const banned = /bad\s*bunny|karol\s*g|drake|travis|burna|wizkid|peso\s*pluma|\bbts\b|\biu\b/i;
+    for (const preset of Object.values(GENRE_PRESETS)) {
+      expect(banned.test(preset)).toBe(false);
+    }
+  });
+
   it("has mood/use-case/vocal presets", () => {
     expect(MOOD_PRESETS.hard).toContain("aggressive");
     expect(USE_CASE_PRESETS.workout).toContain("physical momentum");
@@ -33,6 +49,15 @@ describe("presets", () => {
       new RegExp(re.source, re.flags).test("bad bunny style"),
     );
     expect(hit?.[1]).toContain("Latin urban");
+  });
+
+  it("reference map converts more artist names into generic descriptors", () => {
+    const hit = REFERENCE_MAP.find(([re]) =>
+      new RegExp(re.source, re.flags).test("karol g vibe"),
+    );
+    expect(hit?.[1]).toContain("Latin");
+    // descriptor must not echo the artist name back into the prompt
+    expect(hit?.[1].toLowerCase()).not.toContain("karol");
   });
 
   it("resolveVocalMode: explicit wins", () => {
