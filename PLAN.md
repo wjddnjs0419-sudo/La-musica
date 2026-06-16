@@ -6,7 +6,7 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 (none)
 
 ## In Progress
-(none)
+- Insufficient credit UX upgrade - Show `Not enough credits. Please upgrade.` instead of raw `insufficient_credit`, and open the existing centered Upgrade modal from the workspace generation flow by sharing modal state across the workspace shell.
 
 ## Done
 - [Done] Manual starter credit grant (2026-06-16) - Verified `kkw0628001@gmail.com` maps to `84adcde6-126e-4a36-b3a9-ad0fc9a30896`, inserted one paid manual payment ledger row (`provider_payment_id=manual-starter-20260616-84adcde6`) for 5 credits / `$2.99`, upserted `public.user_credits` to 5, and recorded verification. build/lint passed. See RESULT.md.

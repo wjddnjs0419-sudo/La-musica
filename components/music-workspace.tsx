@@ -18,7 +18,10 @@ function cn(...inputs: ClassValue[]): string {
 type MusicWorkspaceProps = {
   initialTracks?: Music[];
   initialCredit?: number;
+  onOpenCreditModal?: () => void;
 };
+
+const INSUFFICIENT_CREDIT_MESSAGE = "Not enough credits. Please upgrade.";
 
 const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -98,6 +101,7 @@ const ChevronRightIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export default function MusicWorkspace({
   initialTracks = [],
   initialCredit = 0,
+  onOpenCreditModal,
 }: MusicWorkspaceProps) {
   const [tracks, setTracks] = React.useState<Music[]>(initialTracks);
   const [remainingCredit, setRemainingCredit] = React.useState(initialCredit);
@@ -328,6 +332,11 @@ export default function MusicWorkspace({
           if (typeof json.remaining_credit === "number") {
             setRemainingCredit(json.remaining_credit);
           }
+          if (reason === "insufficient_credit") {
+            setError(INSUFFICIENT_CREDIT_MESSAGE);
+            onOpenCreditModal?.();
+            return;
+          }
           setError(reason);
           return;
         }
@@ -342,7 +351,7 @@ export default function MusicWorkspace({
         setError("Request failed. Check your network and try again.");
       }
     },
-    [poll, upsertTrack],
+    [onOpenCreditModal, poll, upsertTrack],
   );
 
   const handleRename = React.useCallback(
