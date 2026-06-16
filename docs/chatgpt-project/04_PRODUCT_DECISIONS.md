@@ -1,6 +1,6 @@
 # 04_PRODUCT_DECISIONS
 
-Source of truth: current app code, `PLAN.md`, `RESULT.md`, `RESULT_ARCHIVE.md`, `lib/credits.ts`, `lib/plans.ts`, music generation routes.
+Source of truth: current app code, `PLAN.md`, `RESULT.md`, `RESULT_ARCHIVE.md`, `lib/credits.ts`, music generation routes.
 
 Purpose: Use this file as ChatGPT Project context when making product, UX, pricing, or implementation suggestions for La Musica.
 
@@ -47,6 +47,8 @@ Current purchasable credit plans:
 - Starter: `$2.99`, 5 songs
 - Creator: `$7.99`, 20 songs
 - Viral Pack: `$14.99`, 50 songs
+
+Payment provider: **Polar only.** Stripe is not used; any earlier Stripe checkout code/docs were removed.
 
 Current checkout provider path:
 
