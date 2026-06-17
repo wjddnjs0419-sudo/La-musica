@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import type {
   LyricsChatMessage,
   LyricsContext,
@@ -60,6 +61,17 @@ export function LyricsAssistantModal({
     }
   }, [turns, loading]);
 
+  React.useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   // Close on Escape.
   React.useEffect(() => {
     if (!open) return;
@@ -70,7 +82,7 @@ export function LyricsAssistantModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   async function send(feedback: string) {
     const trimmed = feedback.trim();
@@ -125,23 +137,23 @@ export function LyricsAssistantModal({
     }
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex h-[100dvh] items-end justify-center overflow-hidden overscroll-contain bg-black/50 p-0 sm:items-center sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="AI Lyrics Assistant"
     >
       <div
-        className="dark flex h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-xl dark:bg-[#262626] sm:h-[80vh] sm:rounded-3xl"
+        className="dark flex h-[calc(100dvh-0.75rem)] min-h-0 w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-xl dark:bg-[#262626] sm:h-[80vh] sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <ModalHeader onClose={onClose} />
 
         <div
           ref={scrollRef}
-          className="custom-scrollbar flex-1 space-y-3 overflow-y-auto p-4"
+          className="custom-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4"
         >
           {!hasStarted && <EmptyState />}
 
@@ -173,7 +185,8 @@ export function LyricsAssistantModal({
           hasStarted={hasStarted}
         />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -181,7 +194,7 @@ export function LyricsAssistantModal({
 
 function ModalHeader({ onClose }: { onClose: () => void }) {
   return (
-    <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
+    <div className="flex shrink-0 items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
       <div className="flex items-center gap-2">
         <SparkleIcon className="h-5 w-5 text-[#2294ff] dark:text-[#99ceff]" />
         <h2 className="text-sm font-semibold text-foreground dark:text-white">
@@ -295,7 +308,7 @@ function ModalFooter({
   hasStarted: boolean;
 }) {
   return (
-    <div className="border-t border-black/10 p-3 dark:border-white/10">
+    <div className="shrink-0 border-t border-black/10 p-3 dark:border-white/10">
       {onApply && (
         <button
           type="button"
@@ -312,7 +325,7 @@ function ModalFooter({
           e.preventDefault();
           onSend();
         }}
-        className="flex items-end gap-2"
+        className="flex min-w-0 items-end gap-2"
       >
         <textarea
           value={input}
@@ -329,7 +342,7 @@ function ModalFooter({
               ? "e.g. catchier chorus, make it for TikTok, translate to Portuguese…"
               : "Direction (optional) — leave empty to generate from settings"
           }
-          className="custom-scrollbar max-h-28 min-h-10 flex-1 resize-none rounded-2xl border-0 bg-black/5 p-3 text-sm text-foreground placeholder:text-muted-foreground focus:ring-0 focus-visible:outline-none dark:bg-white/5 dark:text-white dark:placeholder:text-gray-400"
+          className="custom-scrollbar max-h-28 min-h-10 min-w-0 flex-1 resize-none rounded-2xl border-0 bg-black/5 p-3 text-sm text-foreground placeholder:text-muted-foreground focus:ring-0 focus-visible:outline-none dark:bg-white/5 dark:text-white dark:placeholder:text-gray-400"
         />
         <button
           type="submit"

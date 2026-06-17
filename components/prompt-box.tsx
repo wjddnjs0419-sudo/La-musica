@@ -265,12 +265,12 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
             onChange={(e) => setLyrics(e.target.value)}
             placeholder="Lyrics (optional)"
             rows={3}
-            className="custom-scrollbar mx-1 mb-1 w-[calc(100%-0.5rem)] resize-none rounded-2xl border-0 bg-black/5 p-3 text-sm text-foreground dark:bg-white/5 dark:text-white placeholder:text-muted-foreground dark:placeholder:text-gray-400 focus:ring-0 focus-visible:outline-none"
+            className="custom-scrollbar mx-1 mb-1 max-h-32 w-[calc(100%-0.5rem)] resize-none overflow-y-auto rounded-2xl border-0 bg-black/5 p-3 text-sm text-foreground placeholder:text-muted-foreground focus:ring-0 focus-visible:outline-none dark:bg-white/5 dark:text-white dark:placeholder:text-gray-400"
           />
         )}
 
         {optionsOpen && (
-          <div className="mx-1 mb-1 grid grid-cols-1 gap-2 rounded-2xl bg-black/5 p-3 dark:bg-white/5 sm:grid-cols-2">
+          <div className="custom-scrollbar mx-1 mb-1 grid max-h-[38dvh] grid-cols-1 gap-2 overflow-y-auto overscroll-contain rounded-2xl bg-black/5 p-3 dark:bg-white/5 sm:max-h-none sm:grid-cols-2 sm:overflow-visible">
             <label className="flex flex-col gap-1 text-xs text-muted-foreground dark:text-gray-400">
               Genre
               <select

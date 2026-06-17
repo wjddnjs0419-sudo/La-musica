@@ -105,6 +105,9 @@ export default function CreditModal({
   useEffect(() => {
     if (!open) return;
 
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         handleClose();
@@ -112,7 +115,10 @@ export default function CreditModal({
     };
 
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [handleClose, open]);
 
   const handleCheckout = async (planId: CreditPlanId) => {
@@ -203,7 +209,7 @@ export default function CreditModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex h-[100dvh] items-center justify-center overflow-hidden overscroll-contain bg-black/70 px-4 py-4 backdrop-blur-sm sm:py-8"
       role="presentation"
       onClick={handleClose}
     >
@@ -211,7 +217,7 @@ export default function CreditModal({
         aria-labelledby="credit-modal-title"
         aria-modal="true"
         role="dialog"
-        className="relative w-full max-w-3xl overflow-hidden rounded-xl border border-white/15 bg-zinc-950 p-5 shadow-2xl shadow-black/50 sm:p-6"
+        className="custom-scrollbar relative max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-zinc-950 p-5 shadow-2xl shadow-black/50 sm:max-h-[calc(100dvh-4rem)] sm:p-6"
         onClick={(event) => event.stopPropagation()}
       >
         <div

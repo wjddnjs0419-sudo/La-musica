@@ -475,8 +475,11 @@ export default function MusicWorkspace({
   );
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      <div ref={scrollRef} className="custom-scrollbar flex-1 overflow-y-auto">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        ref={scrollRef}
+        className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-3 py-4 sm:px-4 md:py-8">
           {tracks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center text-white/40">
@@ -546,7 +549,7 @@ export default function MusicWorkspace({
         </div>
       </div>
 
-      <div className="w-full px-3 pb-4 sm:px-4 sm:pb-6">
+      <div className="w-full shrink-0 px-3 pb-4 sm:px-4 sm:pb-6">
         <div className="mx-auto w-full max-w-3xl">
           {error && (
             <p className="mb-2 px-2 text-xs text-red-400/80">Error: {error}</p>

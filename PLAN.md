@@ -9,6 +9,7 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 - Contact page and navigation link - Add a `/contact` page using existing La Musica styling/components, wire the main menu Contact link to it, and validate with build/lint.
 
 ## Done
+- [Done] Workspace mobile scroll stability (2026-06-18) - Stabilized mobile workspace scrolling by moving AI Lyrics Assistant to a portal with body scroll lock, using `100dvh`/`min-h-0`/`overscroll-contain`, making Upgrade modal internally scrollable, and capping prompt composer expansion. build/lint passed. See RESULT.md.
 - [Done] HelloTalk beta coupon credits (2026-06-18) - Added authenticated `HELLOTALK-BETA` coupon redemption for 1 song credit with 20 max redemptions, server-side atomic RPC, Upgrade modal UI, coupon ledger tracking, and default signup free-credit disabled. migration/build/lint passed. See RESULT.md.
 - [Done] Lyrics-based title generation and title-centered covers (2026-06-18) - New songs no longer derive titles from prompt text; lyric-backed songs use Gemini after auth/credit checks, instrumental/lyricless songs use genre/mood fallbacks, and thumbnail prompts now center the saved title. test/build/lint passed. See RESULT.md.
 - [Done] Auth-aware landing CTA label (2026-06-18) - Returning signed-in users now see `Open Workspace` on landing CTAs that already route to `/workspace`, while anonymous users keep `Get Started` to `/auth`. build/lint passed. See RESULT_ARCHIVE.md.
@@ -18,7 +19,6 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 - [Done] ChatGPT Project knowledge files (2026-06-16) - Created four upload-ready docs under `docs/chatgpt-project/` from current La Musica source-of-truth: genre presets, actual lyrics payload/tag rules, prompt compiler rules, and product decisions. build/lint passed. See RESULT_ARCHIVE.md.
 - [Done] Prompt box simplification and lyricless vocal handling (2026-06-16) - Removed the redundant Style input/request path, kept lyrics optional, added explicit original-lyrics guidance for vocal modes without user lyrics, and switched thumbnail genre hints from removed `metadata.style` to `metadata.genre`. test/build/lint passed. See RESULT_ARCHIVE.md.
 - [Done] Music prompt compiler quality tuning (2026-06-16) - Made user prompt/lyrics primary, demoted Genre/Mood/Use-case into lower-authority guidance, rewrote genre/reference presets with concrete rhythm/drum/bass/instrumentation details without forcing vocal/instrumental mode, bumped compiler version to v2, and updated tests/docs. test/build/lint passed. See RESULT_ARCHIVE.md.
-- [Done] Insufficient credit UX upgrade (2026-06-16) - Replaced raw `insufficient_credit` with `Not enough credits. Please upgrade.`, opened the existing centered Upgrade modal directly from failed generation attempts, and moved workspace credit-modal state into a shared client shell. build/lint passed. See RESULT_ARCHIVE.md.
 
 ## Future / Later
 - 언어 선택 UI 드롭다운 추가 — prompt-box에 Language 선택 컨트롤 추가해 `GenerateRequest.language` 를 실제로 전송. 컴파일러는 이미 vocal 모드에서 `sung in {language}` 주입을 지원함(현재 UI는 `language: undefined` 하드코딩 상태). 한국어/스페인어/프랑스어/영어 등 옵션 + Auto.
