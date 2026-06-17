@@ -17,7 +17,7 @@ export const CREDIT_PLANS = [
     id: "viral-pack",
     name: "Viral Pack",
     price: "$14.99",
-    credits: 50,
+    credits: 35,
     productEnvKey: "POLAR_VIRAL_PACK_PRODUCT_ID",
   },
 ] as const;
