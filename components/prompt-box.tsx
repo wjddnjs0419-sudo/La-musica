@@ -8,6 +8,7 @@ import type {
   MusicUseCase,
   VocalMode,
 } from "@/lib/music-prompt/types";
+import { LyricsAssistantModal } from "@/components/lyrics/LyricsAssistantModal";
 
 // --- Utility ---
 type ClassValue = string | number | boolean | null | undefined;
@@ -111,6 +112,12 @@ const LyricsIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+const AiSparkleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2zm6 12l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z" />
+  </svg>
+);
+
 const InstrumentalIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     width="24"
@@ -181,6 +188,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
     const [vocalMode, setVocalMode] = React.useState<VocalMode>("auto");
     const [language, setLanguage] = React.useState("");
     const [optionsOpen, setOptionsOpen] = React.useState(false);
+    const [aiLyricsOpen, setAiLyricsOpen] = React.useState(false);
 
     React.useImperativeHandle(ref, () => internalTextareaRef.current!, []);
     React.useLayoutEffect(() => {
@@ -232,6 +240,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
     };
 
     return (
+      <>
       <form
         onSubmit={handleSubmit}
         className={cn(
@@ -367,6 +376,15 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
 
           <button
             type="button"
+            onClick={() => setAiLyricsOpen(true)}
+            className="flex h-8 items-center gap-1.5 rounded-full px-2.5 text-sm text-foreground transition-colors hover:bg-accent dark:text-white dark:hover:bg-[#515151]"
+          >
+            <AiSparkleIcon className="h-4 w-4" />
+            Write with AI
+          </button>
+
+          <button
+            type="button"
             onClick={() => setOptionsOpen((v) => !v)}
             aria-pressed={optionsOpen}
             className={cn(
@@ -400,6 +418,25 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
           </div>
         </div>
       </form>
+
+      <LyricsAssistantModal
+        open={aiLyricsOpen}
+        onClose={() => setAiLyricsOpen(false)}
+        context={{
+          prompt: value.trim() || undefined,
+          genre: genre || undefined,
+          moods: moods.length ? moods : undefined,
+          vocalMode,
+          language: language || undefined,
+          useCase: useCase || undefined,
+        }}
+        currentLyrics={lyrics}
+        onApply={(next) => {
+          setLyrics(next);
+          setLyricsOpen(true);
+        }}
+      />
+      </>
     );
   },
 );
