@@ -5,23 +5,22 @@ export function buildThumbnailPrompt({
   genre,
   mood,
   lyrics,
-  musicPrompt,
 }: {
   title: string;
   genre?: string | null;
   mood?: string | null;
   lyrics?: string | null;
-  musicPrompt?: string | null;
 }) {
   const lyricsTheme = summarizeText(lyrics);
-  const promptConcept = summarizeText(musicPrompt);
+  const titleConcept = cleanSegment(title) || "Untitled Track";
 
   return [
-    "Album cover art for an AI-generated song.",
-    `Song title concept: ${cleanSegment(title) || "Untitled"}`,
-    `Genre: ${cleanSegment(genre) || "AI music"}`,
-    `Mood: ${cleanSegment(mood) || promptConcept || "expressive and cinematic"}`,
-    `Lyrics theme: ${lyricsTheme || promptConcept || "abstract musical emotion"}`,
+    "Square album cover art for an AI-generated song.",
+    `Primary concept from song title: ${titleConcept}`,
+    `Genre influence: ${cleanSegment(genre) || "modern music"}`,
+    `Mood palette: ${cleanSegment(mood) || "expressive and cinematic"}`,
+    `Lyric imagery: ${lyricsTheme || "abstract visual metaphor inspired by the title"}`,
+    "Interpret the title as the main subject; use genre and mood only for palette, energy, and styling.",
     "Visual style: bold, eye-catching, modern music cover art, square album cover.",
     "No text, no logo, no watermark.",
   ].join("\n");

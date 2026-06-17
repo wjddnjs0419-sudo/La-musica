@@ -87,11 +87,3 @@ export function resolveRenameTitle(draft: string, current: string): string | nul
   if (!next || next === current) return null;
   return next;
 }
-
-// Derive a short, human-friendly title from the prompt.
-export function deriveTitle(prompt: string): string {
-  const cleaned = prompt.trim().replace(/\s+/g, " ");
-  if (!cleaned) return "Untitled";
-  const firstLine = cleaned.split(/[.!?\n]/)[0].trim() || cleaned;
-  return firstLine.length > 60 ? `${firstLine.slice(0, 57)}...` : firstLine;
-}

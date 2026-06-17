@@ -11,12 +11,15 @@ import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import {
   MINIMAX_MODEL,
   buildMinimaxInput,
-  deriveTitle,
   type Music,
 } from "@/lib/music";
 import { compileMusicPrompt } from "@/lib/music-prompt";
 import { translateToEnglish } from "@/lib/translatePrompt";
 import { refineStylePrompt } from "@/lib/refineStylePrompt";
+import {
+  buildFallbackMusicTitle,
+  generateMusicTitle,
+} from "@/lib/musicTitle";
 import type {
   MusicGenre,
   MusicMood,
@@ -72,6 +75,26 @@ export async function POST(request: NextRequest) {
   const language =
     typeof body.language === "string" ? body.language : undefined;
 
+  const auth = await getAuthenticatedClient(request);
+  const { client, user, refreshedTokens } = auth;
+  if (!user) {
+    return jsonWithAuthCookies(
+      { error: "unauthorized" },
+      { status: 401 },
+      refreshedTokens,
+    );
+  }
+
+  const admin = createInsforgeAdminClient();
+  const availableCredit = await readRemainingCredit(admin, user.id);
+  if (availableCredit <= 0) {
+    return jsonWithAuthCookies(
+      { error: "insufficient_credit", remaining_credit: availableCredit },
+      { status: 402 },
+      refreshedTokens,
+    );
+  }
+
   // Translate the user's free-text description to English before compiling so
   // non-English users still get the engineered English prompt quality. The
   // structured option presets are already English; this covers the free text.
@@ -100,16 +123,6 @@ export async function POST(request: NextRequest) {
     compiled.instrumental,
   );
 
-  const auth = await getAuthenticatedClient(request);
-  const { client, user, refreshedTokens } = auth;
-  if (!user) {
-    return jsonWithAuthCookies(
-      { error: "unauthorized" },
-      { status: 401 },
-      refreshedTokens,
-    );
-  }
-
   const initialMetadata = {
     instrumental: compiled.instrumental,
     ...(lyrics ? { lyrics } : {}),
@@ -123,14 +136,19 @@ export async function POST(request: NextRequest) {
     final_music_prompt: refinedPrompt,
     ...(compiled.lyrics ? { lyrics_payload: compiled.lyrics } : {}),
   };
+  const fallbackTitle = buildFallbackMusicTitle({
+    lyrics,
+    instrumental: compiled.instrumental,
+    genre,
+    moods,
+  });
 
-  const admin = createInsforgeAdminClient();
   const { data: reserved, error: reserveError } = await admin.database.rpc(
     "create_music_with_credit",
     {
       p_user_id: user.id,
       p_prompt: prompt,
-      p_title: deriveTitle(prompt),
+      p_title: fallbackTitle,
       p_model: MINIMAX_MODEL,
       p_metadata: initialMetadata,
     },
@@ -155,6 +173,14 @@ export async function POST(request: NextRequest) {
   }
 
   const music = reserved as Music;
+  const generatedTitle = await generateMusicTitle({
+    lyrics,
+    instrumental: compiled.instrumental,
+    genre,
+    moods,
+    language,
+    fallbackTitle,
+  });
   const replicate = new Replicate(); // reads REPLICATE_API_TOKEN
 
   let predictionId: string;
@@ -185,6 +211,7 @@ export async function POST(request: NextRequest) {
   const { data: rows, error } = await client.database
     .from("musics")
     .update({
+      title: generatedTitle,
       status: "processing",
       metadata: {
         ...music.metadata,

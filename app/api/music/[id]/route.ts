@@ -5,6 +5,7 @@ import Replicate from "replicate";
 import { generateThumbnail } from "@/lib/image/generateThumbnail";
 import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import { MUSICS_BUCKET, type Music } from "@/lib/music";
+import { formatGenreLabel, formatMoodLabel } from "@/lib/musicTitle";
 import { buildThumbnailPrompt } from "@/lib/prompts/buildThumbnailPrompt";
 
 // Poll endpoint: resolves a `processing` row by checking the Replicate
@@ -335,16 +336,28 @@ async function generateAndPersistThumbnail(
 }
 
 function buildPromptForMusic(music: Music) {
+  const genre = formatGenreLabel(metadataString(music.metadata, "genre"));
+  const mood = metadataStringArray(music.metadata, "moods")
+    .map(formatMoodLabel)
+    .filter(Boolean)
+    .join(", ");
+
   return buildThumbnailPrompt({
     title: music.title,
-    genre: metadataString(music.metadata, "genre"),
-    mood: music.prompt,
+    genre,
+    mood,
     lyrics: metadataString(music.metadata, "lyrics"),
-    musicPrompt: music.prompt,
   });
 }
 
 function metadataString(metadata: Record<string, unknown>, key: string) {
   const value = metadata[key];
   return typeof value === "string" ? value : null;
+}
+
+function metadataStringArray(metadata: Record<string, unknown>, key: string) {
+  const value = metadata[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
