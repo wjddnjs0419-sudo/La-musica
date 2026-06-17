@@ -17,7 +17,8 @@ function cn(...inputs: ClassValue[]): string {
 
 type MusicWorkspaceProps = {
   initialTracks?: Music[];
-  initialCredit?: number;
+  remainingCredit?: number;
+  onRemainingCreditChange?: (credit: number) => void;
   onOpenCreditModal?: () => void;
 };
 
@@ -100,11 +101,11 @@ const ChevronRightIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export default function MusicWorkspace({
   initialTracks = [],
-  initialCredit = 0,
+  remainingCredit = 0,
+  onRemainingCreditChange,
   onOpenCreditModal,
 }: MusicWorkspaceProps) {
   const [tracks, setTracks] = React.useState<Music[]>(initialTracks);
-  const [remainingCredit, setRemainingCredit] = React.useState(initialCredit);
   const [query, setQuery] = React.useState("");
   const [page, setPage] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
@@ -333,7 +334,7 @@ export default function MusicWorkspace({
           const reason = json.error || `HTTP ${res.status}` || "unknown";
           console.error("generate failed:", res.status, raw);
           if (typeof json.remaining_credit === "number") {
-            setRemainingCredit(json.remaining_credit);
+            onRemainingCreditChange?.(json.remaining_credit);
           }
           if (reason === "insufficient_credit") {
             setError(INSUFFICIENT_CREDIT_MESSAGE);
@@ -344,7 +345,7 @@ export default function MusicWorkspace({
           return;
         }
         if (typeof json.remaining_credit === "number") {
-          setRemainingCredit(json.remaining_credit);
+          onRemainingCreditChange?.(json.remaining_credit);
         }
         setError(null);
         upsertTrack(json.music);
@@ -354,7 +355,7 @@ export default function MusicWorkspace({
         setError("Request failed. Check your network and try again.");
       }
     },
-    [onOpenCreditModal, poll, upsertTrack],
+    [onOpenCreditModal, onRemainingCreditChange, poll, upsertTrack],
   );
 
   // Open the inline title editor (window.prompt is unsupported in this runtime).

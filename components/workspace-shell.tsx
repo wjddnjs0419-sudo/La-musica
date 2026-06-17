@@ -25,6 +25,7 @@ export default function WorkspaceShell({
   initialCredit = 0,
 }: WorkspaceShellProps) {
   const [creditModalOpen, setCreditModalOpen] = React.useState(false);
+  const [remainingCredit, setRemainingCredit] = React.useState(initialCredit);
 
   return (
     <>
@@ -34,12 +35,14 @@ export default function WorkspaceShell({
       />
       <MusicWorkspace
         initialTracks={initialTracks}
-        initialCredit={initialCredit}
+        remainingCredit={remainingCredit}
+        onRemainingCreditChange={setRemainingCredit}
         onOpenCreditModal={() => setCreditModalOpen(true)}
       />
       <CreditModal
         open={creditModalOpen}
         onClose={() => setCreditModalOpen(false)}
+        onCreditRedeemed={setRemainingCredit}
       />
     </>
   );

@@ -33,19 +33,22 @@ export async function GET(request: NextRequest) {
     return redirectToAuth(request, "exchange_failed");
   }
 
-  // Grant the one-time free credit (1 song). Idempotent at the DB layer
-  // (ON CONFLICT DO NOTHING), so running it on every login is safe and only
-  // new users without a credit row are ever topped up. Never blocks login.
-  try {
-    const sessionClient = createServerClient({ accessToken: data.accessToken });
-    const { data: userData } = await sessionClient.auth.getCurrentUser();
-    const userId = userData?.user?.id;
-    if (userId) {
-      const admin = createInsforgeAdminClient();
-      await admin.database.rpc("grant_free_credit", { p_user_id: userId });
+  // Default behavior: new users do not receive automatic free credits.
+  // Beta credits are granted only through authenticated coupon redemption.
+  if (process.env.ENABLE_SIGNUP_FREE_CREDIT === "true") {
+    try {
+      const sessionClient = createServerClient({
+        accessToken: data.accessToken,
+      });
+      const { data: userData } = await sessionClient.auth.getCurrentUser();
+      const userId = userData?.user?.id;
+      if (userId) {
+        const admin = createInsforgeAdminClient();
+        await admin.database.rpc("grant_free_credit", { p_user_id: userId });
+      }
+    } catch (grantError) {
+      console.error("free credit grant failed", grantError);
     }
-  } catch (grantError) {
-    console.error("free credit grant failed", grantError);
   }
 
   const response = NextResponse.redirect(new URL("/workspace", request.url));

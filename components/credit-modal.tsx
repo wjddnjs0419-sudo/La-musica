@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 
 import { CREDIT_PLANS, type CreditPlanId } from "@/lib/credits";
@@ -8,6 +8,26 @@ import { CREDIT_PLANS, type CreditPlanId } from "@/lib/credits";
 type CreditModalProps = {
   open: boolean;
   onClose: () => void;
+  onCreditRedeemed?: (creditBalance: number) => void;
+};
+
+type CouponResponse = {
+  ok?: boolean;
+  creditsGranted?: unknown;
+  creditBalance?: unknown;
+  message?: unknown;
+  error?: unknown;
+};
+
+const COUPON_ERROR_MESSAGES: Record<string, string> = {
+  unauthenticated: "Please sign in to redeem a code.",
+  invalid_coupon: "Invalid code. Please check and try again.",
+  coupon_inactive: "This code is no longer active.",
+  coupon_not_started: "This code is not active yet.",
+  coupon_expired: "This code has expired.",
+  coupon_sold_out: "This code has reached its usage limit.",
+  already_redeemed: "You already used this code.",
+  server_error: "The code could not be redeemed. Please try again.",
 };
 
 function CreditPlanCard({
@@ -60,13 +80,25 @@ function CloseIcon() {
   );
 }
 
-export default function CreditModal({ open, onClose }: CreditModalProps) {
+export default function CreditModal({
+  open,
+  onClose,
+  onCreditRedeemed,
+}: CreditModalProps) {
   const [loadingPlanId, setLoadingPlanId] = useState<CreditPlanId | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
 
   const handleClose = useCallback(() => {
     setLoadingPlanId(null);
     setErrorMessage(null);
+    setCouponCode("");
+    setCouponLoading(false);
+    setCouponError(null);
+    setCouponSuccess(null);
     onClose();
   }, [onClose]);
 
@@ -106,6 +138,62 @@ export default function CreditModal({ open, onClose }: CreditModalProps) {
       console.error("credit checkout failed", err);
       setLoadingPlanId(null);
       setErrorMessage("Checkout could not be opened. Please try again.");
+    }
+  };
+
+  const handleCouponSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const code = couponCode.trim();
+    if (!code) {
+      setCouponSuccess(null);
+      setCouponError(COUPON_ERROR_MESSAGES.invalid_coupon);
+      return;
+    }
+
+    setCouponLoading(true);
+    setCouponSuccess(null);
+    setCouponError(null);
+
+    try {
+      const response = await fetch("/api/credits/redeem-coupon", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      const data = (await response.json().catch(() => ({}))) as CouponResponse;
+      if (!response.ok || data.ok !== true) {
+        const errorCode = typeof data.error === "string" ? data.error : "";
+        const message =
+          (typeof data.message === "string" && data.message) ||
+          COUPON_ERROR_MESSAGES[errorCode] ||
+          COUPON_ERROR_MESSAGES.server_error;
+        throw new Error(message);
+      }
+
+      const creditsGranted =
+        typeof data.creditsGranted === "number" ? data.creditsGranted : 1;
+      if (typeof data.creditBalance === "number") {
+        onCreditRedeemed?.(data.creditBalance);
+      }
+      setCouponCode("");
+      setCouponSuccess(
+        creditsGranted === 1
+          ? "Success! 1 song credit has been added."
+          : `Success! ${creditsGranted} song credits have been added.`,
+      );
+    } catch (err) {
+      console.error("coupon redemption failed", err);
+      setCouponError(
+        err instanceof Error
+          ? err.message
+          : COUPON_ERROR_MESSAGES.server_error,
+      );
+    } finally {
+      setCouponLoading(false);
     }
   };
 
@@ -160,6 +248,46 @@ export default function CreditModal({ open, onClose }: CreditModalProps) {
             />
           ))}
         </div>
+
+        <form
+          onSubmit={handleCouponSubmit}
+          className="mt-5 border-t border-white/10 pt-5"
+        >
+          <label
+            htmlFor="beta-code"
+            className="text-sm font-medium text-white/70"
+          >
+            Have a beta code?
+          </label>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <input
+              id="beta-code"
+              type="text"
+              value={couponCode}
+              onChange={(event) => {
+                setCouponCode(event.target.value);
+                setCouponError(null);
+                setCouponSuccess(null);
+              }}
+              placeholder="Enter beta code"
+              autoComplete="off"
+              className="h-11 min-w-0 flex-1 rounded-lg border border-white/12 bg-white/[0.05] px-3 text-sm text-white placeholder:text-white/35 transition-colors focus:border-white/25 focus:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-white/10"
+            />
+            <button
+              type="submit"
+              disabled={couponLoading || !couponCode.trim()}
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-white/18 bg-white/[0.08] px-5 text-sm font-semibold text-white transition-colors hover:bg-white/[0.13] focus:outline-none focus:ring-2 focus:ring-white/20 disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              {couponLoading ? "Redeeming..." : "Redeem code"}
+            </button>
+          </div>
+          {couponSuccess ? (
+            <p className="mt-3 text-sm text-emerald-200">{couponSuccess}</p>
+          ) : null}
+          {couponError ? (
+            <p className="mt-3 text-sm text-red-200">{couponError}</p>
+          ) : null}
+        </form>
 
         {errorMessage ? (
           <p className="mt-4 text-sm text-red-200">{errorMessage}</p>

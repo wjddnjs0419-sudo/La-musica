@@ -4,6 +4,54 @@
 
 ---
 
+# RESULT: Lyrics-based title generation and title-centered covers - 2026-06-18
+
+## Background
+- Request: New workspace songs were using the prompt text as the track title, and cover art appeared to follow the prompt more than the title.
+- Decision: Stop deriving titles from the prompt. Use Gemini only when lyrics exist, and use genre/mood fallbacks for instrumental or lyricless generations to reduce Gemini quota usage.
+
+## Implementation
+- **`lib/musicTitle.ts`**: added title helpers. Lyrics-based songs can ask Gemini for a concise title; instrumental and lyricless paths use deterministic genre/mood titles such as `Dark Techno Instrumental` or `Romantic Korean Ballad Track`.
+- **`app/api/music/generate/route.ts`**: replaced `deriveTitle(prompt)` with the new title flow. The fallback title is stored during credit reservation, then updated after a successful reservation so insufficient-credit requests do not spend a title-generation Gemini call.
+- **Quota guard**: moved auth and a zero-credit precheck ahead of translation/style-refinement/title Gemini calls, so unauthorized or obviously insufficient-credit requests do not spend Gemini quota.
+- **`lib/prompts/buildThumbnailPrompt.ts`** and **`app/api/music/[id]/route.ts`**: rebuilt thumbnail prompts around the saved song title, with genre/mood/lyrics as supporting context and no direct use of the raw prompt.
+- **`lib/music.ts`**: removed the old prompt-first `deriveTitle` helper.
+- **`lib/musicTitle.test.ts`**: added regression coverage for hook-line fallback titles, instrumental genre/mood titles, lyricless titles, and Gemini output sanitization.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Title helper behavior | `npm run test` | Passed; 50 tests / 9 files |
+| Next build + typecheck | `npm run build` | Passed |
+| Full codebase lint | `npm run lint` | Passed |
+
+## Lessons
+- Title generation is now quota-aware: Gemini is used only for lyric-backed titles and only after auth/credit checks pass.
+- Cover quality can be redirected without adding another AI call by changing the Replicate image prompt source from raw prompt context to the persisted title.
+
+---
+
+# RESULT: Auth-aware landing CTA label - 2026-06-18
+
+## Background
+- Request: The landing page already sends signed-in users from `Get Started` to `/workspace`, but the wording feels unintuitive for returning users.
+- Decision: Keep the anonymous/new-user CTA as `Get Started`, and show returning signed-in users `Open Workspace`.
+
+## Implementation
+- **`components/get-started-badge.tsx`**: added an optional `label` prop and changed the default label logic so `href="/workspace"` renders `Open Workspace`; all other/default CTAs keep `Get Started`.
+- **Existing home flow reused**: `app/page.tsx` was already resolving `ctaHref` from the InsForge SSR session (`/workspace` for signed-in users, `/auth` otherwise), so no auth flow or route behavior changed.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Auth-aware CTA label | `npm run build` | Passed |
+| Full codebase | `npm run lint` | Passed |
+
+## Lessons
+- The routing was already auth-aware; the UX mismatch was purely copy. Making the shared badge infer the workspace label keeps Header, Hero, CTA section, and Footer consistent without threading extra props through every landing component.
+
+---
+
 # RESULT: Pricing update ??Viral 35怨?+ Free 媛??1怨?吏湲?- 2026-06-17
 
 ## Background
