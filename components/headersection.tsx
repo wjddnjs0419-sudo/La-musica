@@ -8,7 +8,7 @@ import Logo from "@/components/logo";
 const navItems = [
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Contact", href: "#contact" },
+  { label: "Contact", href: "/contact" },
 ];
 
 type HeaderSectionProps = {

@@ -16,6 +16,7 @@ export default function FooterSection({ ctaHref = "/auth" }: FooterSectionProps)
     { label: "Home", href: "/" },
     { label: "Create", href: ctaHref },
     { label: "Pricing", href: "/#pricing" },
+    { label: "Contact", href: "/contact" },
   ];
 
   return (
