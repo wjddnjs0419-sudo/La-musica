@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient, refreshAuth } from "@insforge/sdk/ssr";
+import { createServerClient, refreshAuth, setAuthCookies } from "@insforge/sdk/ssr";
 
 import {
   generateLyrics,
@@ -14,26 +14,49 @@ import {
 // - Requires an authenticated user (to avoid anonymous abuse of the Gemini
 //   key) but NEVER deducts credits and never touches music generation.
 
+type AuthTokens = { accessToken: string; refreshToken?: string | null };
+
 // Lightweight auth: reuse the cookie session, falling back to a token refresh,
-// mirroring the music generate route. Returns the user id or null.
-async function getUserId(request: NextRequest): Promise<string | null> {
+// mirroring the music generate route. Returns the user id plus any refreshed
+// tokens — the caller MUST persist them on the response so the session does not
+// silently die (the previous version refreshed in-memory only and let the
+// session expire, surfacing as "Please sign in to use AI lyrics").
+async function getUserId(
+  request: NextRequest,
+): Promise<{ userId: string | null; refreshedTokens: AuthTokens | null }> {
   try {
     const cookieStore = await cookies();
     let client = createServerClient({ cookies: cookieStore });
     let { data } = await client.auth.getCurrentUser();
-    if (data?.user) return data.user.id;
+    if (data?.user) return { userId: data.user.id, refreshedTokens: null };
 
     const refreshResult = await refreshAuth({ request, cookies: cookieStore });
     if (refreshResult.accessToken) {
       client = createServerClient({ accessToken: refreshResult.accessToken });
       ({ data } = await client.auth.getCurrentUser());
-      if (data?.user) return data.user.id;
+      const refreshedTokens: AuthTokens = {
+        accessToken: refreshResult.accessToken,
+        refreshToken: refreshResult.refreshToken,
+      };
+      if (data?.user) return { userId: data.user.id, refreshedTokens };
     }
-    return null;
+    return { userId: null, refreshedTokens: null };
   } catch (err) {
     console.error("lyrics auth check threw", err);
-    return null;
+    return { userId: null, refreshedTokens: null };
   }
+}
+
+// Attach refreshed auth cookies (if any) to a JSON response so a token refresh
+// during this request keeps the browser session alive for the next one.
+function jsonWithAuthCookies(
+  body: unknown,
+  init: ResponseInit | undefined,
+  tokens: AuthTokens | null,
+) {
+  const response = NextResponse.json(body, init);
+  if (tokens) setAuthCookies(response.cookies, tokens);
+  return response;
 }
 
 function sanitizeMessages(input: unknown): LyricsChatMessage[] {
@@ -68,16 +91,16 @@ function sanitizeContext(input: unknown): LyricsContext | undefined {
 }
 
 export async function POST(request: NextRequest) {
-  const userId = await getUserId(request);
+  const { userId, refreshedTokens } = await getUserId(request);
   if (!userId) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return jsonWithAuthCookies({ error: "unauthorized" }, { status: 401 }, refreshedTokens);
   }
 
   let body: { messages?: unknown; context?: unknown; currentLyrics?: unknown };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+    return jsonWithAuthCookies({ error: "invalid_json" }, { status: 400 }, refreshedTokens);
   }
 
   const messages = sanitizeMessages(body.messages);
@@ -93,21 +116,21 @@ export async function POST(request: NextRequest) {
     Boolean(context?.moods?.length) ||
     Boolean(currentLyrics?.trim());
   if (!hasUserTurn && !hasContext) {
-    return NextResponse.json({ error: "nothing_to_write" }, { status: 400 });
+    return jsonWithAuthCookies({ error: "nothing_to_write" }, { status: 400 }, refreshedTokens);
   }
 
   try {
     const result = await generateLyrics(messages, context, currentLyrics);
-    return NextResponse.json(result);
+    return jsonWithAuthCookies(result, undefined, refreshedTokens);
   } catch (err) {
     const code = err instanceof Error ? err.message : "gemini_failed";
     if (code === "gemini_unconfigured") {
-      return NextResponse.json({ error: "gemini_unconfigured" }, { status: 503 });
+      return jsonWithAuthCookies({ error: "gemini_unconfigured" }, { status: 503 }, refreshedTokens);
     }
     if (code === "gemini_bad_output") {
-      return NextResponse.json({ error: "gemini_bad_output" }, { status: 502 });
+      return jsonWithAuthCookies({ error: "gemini_bad_output" }, { status: 502 }, refreshedTokens);
     }
     console.error("lyrics chat failed", err);
-    return NextResponse.json({ error: "gemini_failed" }, { status: 502 });
+    return jsonWithAuthCookies({ error: "gemini_failed" }, { status: 502 }, refreshedTokens);
   }
 }

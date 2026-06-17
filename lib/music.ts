@@ -80,6 +80,14 @@ export function buildMinimaxInput({
   };
 }
 
+// Validate an edited track title. Returns the trimmed title when it is a real
+// change, or null when it is empty or unchanged (caller should skip the update).
+export function resolveRenameTitle(draft: string, current: string): string | null {
+  const next = draft.trim();
+  if (!next || next === current) return null;
+  return next;
+}
+
 // Derive a short, human-friendly title from the prompt.
 export function deriveTitle(prompt: string): string {
   const cleaned = prompt.trim().replace(/\s+/g, " ");

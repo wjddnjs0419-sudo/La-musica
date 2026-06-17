@@ -15,7 +15,7 @@ import { buildLyricsPayload } from "./buildLyricsPayload";
 
 const MAX_PROMPT_CHARS = 2000;
 
-const COPYRIGHT_LINE =
+export const COPYRIGHT_LINE =
   "original composition only, do not imitate any specific artist, song, melody, or copyrighted track.";
 
 const INSTRUMENTAL_BOOSTER =

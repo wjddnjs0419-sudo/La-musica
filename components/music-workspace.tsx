@@ -4,7 +4,7 @@ import * as React from "react";
 import MusicThumbnail from "@/components/music-thumbnail";
 import { PromptBox } from "@/components/prompt-box";
 import WorkspaceMusicPlayer from "@/components/workspace-music-player";
-import type { GenerateRequest, Music } from "@/lib/music";
+import { resolveRenameTitle, type GenerateRequest, type Music } from "@/lib/music";
 
 const POLL_INTERVAL = 3000;
 const PAGE_SIZE = 7;
@@ -110,6 +110,9 @@ export default function MusicWorkspace({
   const [error, setError] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [renamingId, setRenamingId] = React.useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = React.useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null);
   const [activeTrackId, setActiveTrackId] = React.useState<string | null>(null);
   const [playing, setPlaying] = React.useState(false);
   const [currentTime, setCurrentTime] = React.useState(0);
@@ -354,11 +357,24 @@ export default function MusicWorkspace({
     [onOpenCreditModal, poll, upsertTrack],
   );
 
-  const handleRename = React.useCallback(
+  // Open the inline title editor (window.prompt is unsupported in this runtime).
+  const handleStartRename = React.useCallback((track: Music) => {
+    setOpenMenuId(null);
+    setRenamingId(track.id);
+    setRenameDraft(track.title);
+  }, []);
+
+  const handleCancelRename = React.useCallback(() => {
+    setRenamingId(null);
+    setRenameDraft("");
+  }, []);
+
+  const handleCommitRename = React.useCallback(
     async (track: Music) => {
-      setOpenMenuId(null);
-      const nextTitle = window.prompt("Rename track", track.title)?.trim();
-      if (!nextTitle || nextTitle === track.title) return;
+      const nextTitle = resolveRenameTitle(renameDraft, track.title);
+      setRenamingId(null);
+      setRenameDraft("");
+      if (!nextTitle) return;
 
       setBusyId(track.id);
       try {
@@ -381,13 +397,13 @@ export default function MusicWorkspace({
         setBusyId(null);
       }
     },
-    [upsertTrack],
+    [renameDraft, upsertTrack],
   );
 
   const handleDelete = React.useCallback(
     async (track: Music) => {
       setOpenMenuId(null);
-      if (!window.confirm(`Delete "${track.title}"?`)) return;
+      setConfirmDeleteId(null);
 
       setBusyId(track.id);
       try {
@@ -480,11 +496,20 @@ export default function MusicWorkspace({
                   active={activeTrackId === track.id}
                   playing={activeTrackId === track.id && playing}
                   onTogglePlayback={() => handleToggleTrackPlayback(track)}
-                  onToggleMenu={() =>
-                    setOpenMenuId((id) => (id === track.id ? null : track.id))
-                  }
-                  onRename={() => handleRename(track)}
-                  onDelete={() => handleDelete(track)}
+                  onToggleMenu={() => {
+                    setConfirmDeleteId(null);
+                    setOpenMenuId((id) => (id === track.id ? null : track.id));
+                  }}
+                  renaming={renamingId === track.id}
+                  renameDraft={renameDraft}
+                  onRenameDraftChange={setRenameDraft}
+                  onStartRename={() => handleStartRename(track)}
+                  onCommitRename={() => handleCommitRename(track)}
+                  onCancelRename={handleCancelRename}
+                  confirmingDelete={confirmDeleteId === track.id}
+                  onRequestDelete={() => setConfirmDeleteId(track.id)}
+                  onConfirmDelete={() => handleDelete(track)}
+                  onCancelDelete={() => setConfirmDeleteId(null)}
                 />
               ))}
 
@@ -583,8 +608,16 @@ function TrackRow({
   playing,
   onTogglePlayback,
   onToggleMenu,
-  onRename,
-  onDelete,
+  renaming,
+  renameDraft,
+  onRenameDraftChange,
+  onStartRename,
+  onCommitRename,
+  onCancelRename,
+  confirmingDelete,
+  onRequestDelete,
+  onConfirmDelete,
+  onCancelDelete,
 }: {
   track: Music;
   busy: boolean;
@@ -593,8 +626,16 @@ function TrackRow({
   playing: boolean;
   onTogglePlayback: () => void;
   onToggleMenu: () => void;
-  onRename: () => void;
-  onDelete: () => void;
+  renaming: boolean;
+  renameDraft: string;
+  onRenameDraftChange: (value: string) => void;
+  onStartRename: () => void;
+  onCommitRename: () => void;
+  onCancelRename: () => void;
+  confirmingDelete: boolean;
+  onRequestDelete: () => void;
+  onConfirmDelete: () => void;
+  onCancelDelete: () => void;
 }) {
   const pending = track.status === "pending" || track.status === "processing";
   const playable = track.status === "completed" && Boolean(track.audio_url);
@@ -635,9 +676,23 @@ function TrackRow({
 
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-sm font-semibold text-white/88">
-            {track.title}
-          </p>
+          {renaming ? (
+            <input
+              autoFocus
+              value={renameDraft}
+              onChange={(e) => onRenameDraftChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onCommitRename();
+                if (e.key === "Escape") onCancelRename();
+              }}
+              onBlur={onCommitRename}
+              className="min-w-0 flex-1 rounded-md border border-emerald-300/40 bg-black/30 px-2 py-1 text-sm font-semibold text-white outline-none"
+            />
+          ) : (
+            <p className="truncate text-sm font-semibold text-white/88">
+              {track.title}
+            </p>
+          )}
           <StatusBadge status={track.status} />
         </div>
         {showMetadata && (
@@ -665,7 +720,7 @@ function TrackRow({
         <div className="absolute right-3 top-14 z-20 w-40 overflow-hidden rounded-lg border border-white/10 bg-[#22252c] p-1 shadow-2xl sm:right-4">
           <button
             type="button"
-            onClick={onRename}
+            onClick={onStartRename}
             className="block w-full rounded-md px-3 py-2 text-left text-sm text-white/80 hover:bg-white/[0.08] hover:text-white"
           >
             Rename
@@ -683,13 +738,32 @@ function TrackRow({
               Download
             </span>
           )}
-          <button
-            type="button"
-            onClick={onDelete}
-            className="block w-full rounded-md px-3 py-2 text-left text-sm text-red-300 hover:bg-red-500/10 hover:text-red-200"
-          >
-            Delete
-          </button>
+          {confirmingDelete ? (
+            <div className="flex items-center gap-1 px-1 py-1">
+              <button
+                type="button"
+                onClick={onConfirmDelete}
+                className="flex-1 rounded-md bg-red-500/15 px-2 py-2 text-xs font-semibold text-red-200 hover:bg-red-500/25"
+              >
+                Delete
+              </button>
+              <button
+                type="button"
+                onClick={onCancelDelete}
+                className="flex-1 rounded-md px-2 py-2 text-xs text-white/60 hover:bg-white/[0.08]"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onRequestDelete}
+              className="block w-full rounded-md px-3 py-2 text-left text-sm text-red-300 hover:bg-red-500/10 hover:text-red-200"
+            >
+              Delete
+            </button>
+          )}
         </div>
       )}
     </div>

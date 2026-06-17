@@ -17,6 +17,11 @@ const CANON_TAGS: Record<string, string> = {
   outro: "[Outro]",
 };
 
+// Distinct canonical section-tag spellings MiniMax receives. The lyrics
+// assistant should only advertise tags from this list so its output normalizes
+// cleanly instead of passing through unrecognized.
+export const CANONICAL_SECTION_TAGS = Array.from(new Set(Object.values(CANON_TAGS)));
+
 function normalizeTags(lyrics: string): string {
   return lyrics.replace(/\[([^\]]+)\]/g, (match, inner: string) => {
     const key = inner.trim().toLowerCase();

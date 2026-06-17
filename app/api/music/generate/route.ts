@@ -16,6 +16,7 @@ import {
 } from "@/lib/music";
 import { compileMusicPrompt } from "@/lib/music-prompt";
 import { translateToEnglish } from "@/lib/translatePrompt";
+import { refineStylePrompt } from "@/lib/refineStylePrompt";
 import type {
   MusicGenre,
   MusicMood,
@@ -91,6 +92,14 @@ export async function POST(request: NextRequest) {
     lyrics: lyrics || undefined,
   });
 
+  // Refine the compiled "comma soup" into a coherent MiniMax style prompt via a
+  // separate Gemini pass (presets stay as guardrails). Falls back to the
+  // compiled prompt on any failure, so this never blocks generation.
+  const refinedPrompt = await refineStylePrompt(
+    compiled.prompt,
+    compiled.instrumental,
+  );
+
   const auth = await getAuthenticatedClient(request);
   const { client, user, refreshedTokens } = auth;
   if (!user) {
@@ -108,6 +117,10 @@ export async function POST(request: NextRequest) {
       ? { user_description_original: userDescriptionRaw }
       : {}),
     ...compiled.metadata,
+    // Persist both prompts: the pre-refine template output and the prompt that
+    // was actually sent to MiniMax (overrides compiled.metadata.final_music_prompt).
+    compiled_music_prompt: compiled.prompt,
+    final_music_prompt: refinedPrompt,
     ...(compiled.lyrics ? { lyrics_payload: compiled.lyrics } : {}),
   };
 
@@ -149,7 +162,7 @@ export async function POST(request: NextRequest) {
     const prediction = await replicate.predictions.create({
       model: MINIMAX_MODEL,
       input: buildMinimaxInput({
-        prompt: compiled.prompt,
+        prompt: refinedPrompt,
         lyrics: compiled.lyrics,
         instrumental: compiled.instrumental,
       }),
