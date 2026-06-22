@@ -1,8 +1,9 @@
 # Credit Coupons
 
-La Musica grants free beta credits only through authenticated coupon redemption.
-New signups receive 0 automatic credits unless `ENABLE_SIGNUP_FREE_CREDIT=true`
-is explicitly set for a temporary legacy flow.
+La Musica grants one free credit on signup through the idempotent
+`grant_free_credit` RPC. Coupon redemption remains available for temporary beta
+campaigns, but active coupons can be shelved without deleting the coupon tables,
+RPC, or redemption history.
 
 ## HelloTalk Beta
 
