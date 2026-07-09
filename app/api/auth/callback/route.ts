@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     return redirectToAuth(request, "exchange_failed");
   }
 
-  // Grant the one-time free credit (1 song). Idempotent at the DB layer
+  // Grant the one-time free credit (5 songs). Idempotent at the DB layer
   // (ON CONFLICT DO NOTHING), so running it on every login is safe and only
   // users without a credit row are ever topped up. Never blocks login.
   try {

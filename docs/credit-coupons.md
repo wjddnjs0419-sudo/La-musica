@@ -1,6 +1,6 @@
 # Credit Coupons
 
-La Musica grants one free credit on signup through the idempotent
+La Musica grants five free credits on signup through the idempotent
 `grant_free_credit` RPC. Coupon redemption remains available for temporary beta
 campaigns, but active coupons can be shelved without deleting the coupon tables,
 RPC, or redemption history.
