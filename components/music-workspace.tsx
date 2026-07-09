@@ -23,6 +23,8 @@ type MusicWorkspaceProps = {
 };
 
 const INSUFFICIENT_CREDIT_MESSAGE = "Not enough credits. Please upgrade.";
+const LYRICS_REQUIRED_MESSAGE =
+  "Add lyrics for vocal tracks, or switch to Instrumental.";
 
 const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -339,6 +341,10 @@ export default function MusicWorkspace({
           if (reason === "insufficient_credit") {
             setError(INSUFFICIENT_CREDIT_MESSAGE);
             onOpenCreditModal?.();
+            return;
+          }
+          if (reason === "lyrics_required") {
+            setError(LYRICS_REQUIRED_MESSAGE);
             return;
           }
           setError(reason);
