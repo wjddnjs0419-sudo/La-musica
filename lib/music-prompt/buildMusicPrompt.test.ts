@@ -81,7 +81,7 @@ describe("compileMusicPrompt", () => {
     expect(r.lyrics).toContain("[Verse]");
   });
 
-  it("keeps lyrics optional but guides lyricless vocal songs", () => {
+  it("no longer injects lyricless-vocal guidance (ACE-Step requires lyrics upstream)", () => {
     const r = compileMusicPrompt({
       userDescription: "upbeat birthday song for Mina",
       vocalMode: "female_vocal",
@@ -89,7 +89,7 @@ describe("compileMusicPrompt", () => {
     expect(r.instrumental).toBe(false);
     expect(r.lyrics).toBeUndefined();
     expect(r.prompt).toContain("expressive female vocal");
-    expect(r.prompt).toContain("generate original simple singable lyrics");
+    expect(r.prompt).not.toContain("generate original simple singable lyrics");
   });
 
   it("limits mood guidance so selected chips do not overwhelm the prompt", () => {

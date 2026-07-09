@@ -24,9 +24,6 @@ const INSTRUMENTAL_BOOSTER =
 const VOCAL_BOOSTER =
   "vocal-centered but with rich full instrumental backing, strong chorus impact, polished professional mix, no acapella sections, no empty background";
 
-const LYRICLESS_VOCAL_GUIDANCE =
-  "if no lyrics are provided, generate original simple singable lyrics that match the user's idea";
-
 const MAX_MOOD_GUIDANCE = 2;
 
 // De-duplicate comma-separated descriptor segments case-insensitively,
@@ -45,7 +42,7 @@ function dedupeSegments(body: string): string {
 }
 
 // Compile a simple user intent + structured options into a dense English
-// MiniMax prompt. The user's own concept leads; options add lower-authority
+// ACE-Step prompt. The user's own concept leads; options add lower-authority
 // style guidance so selected chips do not drown out the prompt or lyrics.
 export function buildMusicPrompt(input: BuildMusicPromptInput): CompiledPrompt {
   const raw = input.userDescription?.trim() ?? "";
@@ -83,10 +80,6 @@ export function buildMusicPrompt(input: BuildMusicPromptInput): CompiledPrompt {
 
   // 9. Vocal/instrumental direction.
   parts.push(VOCAL_PRESETS[vocalMode]);
-
-  if (!instrumental && !input.lyrics?.trim()) {
-    parts.push(LYRICLESS_VOCAL_GUIDANCE);
-  }
 
   // 9b. Language cue (vocal modes only — instrumental songs have no vocals).
   if (!instrumental && input.language && input.language.trim()) {
