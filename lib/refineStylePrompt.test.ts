@@ -30,10 +30,10 @@ describe("finalizeRefined", () => {
     expect(out.split(COPYRIGHT_LINE).length - 1).toBe(1);
   });
 
-  it("clamps to 2000 chars with the copyright clause intact", () => {
+  it("clamps to 500 chars with the copyright clause intact", () => {
     const refined = "a".repeat(3000);
     const out = finalizeRefined(refined, FALLBACK);
-    expect(out.length).toBeLessThanOrEqual(2000);
+    expect(out.length).toBeLessThanOrEqual(500);
     expect(out.endsWith(COPYRIGHT_LINE)).toBe(true);
   });
 
