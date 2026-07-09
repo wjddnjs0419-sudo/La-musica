@@ -5,7 +5,7 @@
 ## Stack
 - Next.js 16 (App Router, Turbopack) + React 19 + Tailwind v4
 - Backend: **InsForge** (Postgres BaaS) — auth / DB / storage / payments
-- Music: **Replicate `minimax/music-2.6`**; Thumbnail: **Replicate `flux-schnell`**
+- Music: **Replicate `fishaudio/ace-step-1.5`**; Thumbnail: **Replicate `flux-schnell`**
 - Translation: Gemini REST (`gemini-2.5-flash-lite`)
 
 ## Core pipeline (music generation)

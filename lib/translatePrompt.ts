@@ -1,6 +1,6 @@
 // Translate a user's free-text music description into English before it is fed
 // to the prompt compiler, so non-English users still get the same engineered
-// English MiniMax prompt quality. Uses Google's free-tier Gemini API directly
+// English style-prompt quality. Uses Google's free-tier Gemini API directly
 // over REST (no SDK dependency). Translation never blocks generation: any
 // failure falls back to the original text.
 

@@ -4,32 +4,34 @@ Source of truth: `lib/music-prompt/buildLyricsPayload.ts`, `lib/music-prompt/pre
 
 Purpose: Use this file as ChatGPT Project context when creating lyrics or deciding how lyrics should be formatted for La Musica.
 
-Important: La Musica does not currently maintain separate hardcoded lyric templates such as "viral song structure" or "Korean ballad structure" in the app. The current project supports a lightweight lyrics payload system: optional lyrics, normalized section tags, vocal-mode branching, and MiniMax-compatible payload limits.
+Important: La Musica does not currently maintain separate hardcoded lyric templates such as "viral song structure" or "Korean ballad structure" in the app. The current project supports a lightweight lyrics payload system: required lyrics for vocal tracks, normalized section tags, vocal-mode branching, and ACE-Step-compatible payload limits.
 
-## Lyrics Are Optional
+## Lyrics Are Required For Vocal Tracks
 
-Lyrics are optional in the product.
+Lyrics are optional only for instrumental tracks. For any vocal mode, lyrics
+are required: `POST /api/music/generate` rejects the request with
+`lyrics_required` (400) before generating if lyrics are blank, instead of
+letting the model improvise its own words.
 
 When the user provides lyrics:
 
-- The app sends those words as the MiniMax `lyrics` field for vocal tracks.
+- The app sends those words as the ACE-Step `lyrics` field for vocal tracks.
 - The app normalizes known section tags.
 - Unstructured lyrics are wrapped in `[Verse]`.
 - Lyrics are clamped to 3500 characters.
 
-When the user does not provide lyrics:
+For instrumental tracks:
 
-- Instrumental tracks send no lyrics.
-- Vocal tracks also send no `lyrics` payload.
-- The compiled prompt adds this instruction: `if no lyrics are provided, generate original simple singable lyrics that match the user's idea`.
+- No lyrics are needed or sent from the user.
+- ACE-Step receives the literal string `"[Instrumental]"` as `lyrics`.
 
 ## Instrumental Behavior
 
 If resolved vocal mode is `instrumental`:
 
 - `buildLyricsPayload` returns `undefined`.
-- `buildMinimaxInput` omits `lyrics`.
-- MiniMax receives `is_instrumental: true`.
+- `buildAceStepInput` turns that into the literal `"[Instrumental]"` value.
+- ACE-Step receives `"[Instrumental]"` as `lyrics`.
 - The prompt includes `fully instrumental, no vocals, no lyrics`.
 - The instrumental booster adds: `full instrumental arrangement, strong instrumental presence, polished professional mix, clear structure, no vocals, no lyrics, no sparse arrangement`.
 
@@ -45,10 +47,12 @@ Supported vocal modes:
 
 For vocal tracks:
 
-- MiniMax receives `is_instrumental: false`.
+- ACE-Step receives the user's real lyrics as `lyrics` (never empty — the
+  route rejects vocal-mode requests with no lyrics before this point).
 - User-provided lyrics are preserved.
 - Section tags are normalized.
-- If no lyrics are provided, no lyrics field is sent, but the prompt asks MiniMax to generate original simple singable lyrics.
+- If no lyrics are provided for a vocal mode, `POST /api/music/generate`
+  rejects the request with `lyrics_required` (400) instead of generating.
 - The vocal booster adds: `vocal-centered but with rich full instrumental backing, strong chorus impact, polished professional mix, no acapella sections, no empty background`.
 
 ## Auto Vocal Resolution
@@ -87,7 +91,7 @@ Unknown tags are preserved as written.
 
 ## Recommended ChatGPT Output Format For Lyrics
 
-When ChatGPT creates lyrics for this project, prefer compact section-tagged lyrics that fit MiniMax's `lyrics` field.
+When ChatGPT creates lyrics for this project, prefer compact section-tagged lyrics that fit ACE-Step's `lyrics` field.
 
 Use supported tags only unless there is a strong reason not to.
 

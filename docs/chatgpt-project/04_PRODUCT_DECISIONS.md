@@ -8,7 +8,7 @@ Purpose: Use this file as ChatGPT Project context when making product, UX, prici
 
 La Musica hides prompt engineering inside the service.
 
-Users should describe music simply. They should not need to understand MiniMax prompt engineering, dense production jargon, or copyright-safe reference rewriting.
+Users should describe music simply. They should not need to understand ACE-Step prompt engineering, dense production jargon, or copyright-safe reference rewriting.
 
 The app owns:
 
@@ -17,7 +17,7 @@ The app owns:
 - genre/mood/use-case expansion
 - vocal/instrumental branching
 - reference sanitization
-- MiniMax input assembly
+- ACE-Step input assembly
 
 The user-facing prompt box stays simple.
 
@@ -80,13 +80,13 @@ Current app behavior is credit-based rather than subscription-based.
 
 Model:
 
-- `minimax/music-2.6` on Replicate
+- `fishaudio/ace-step-1.5` on Replicate
 
 Flow:
 
 1. User submits prompt/options.
 2. Server translates free-text prompt to English when needed.
-3. Server compiles a MiniMax prompt with `compileMusicPrompt`.
+3. Server compiles an ACE-Step prompt with `compileMusicPrompt`.
 4. Backend reserves one credit and creates a `musics` row.
 5. Replicate prediction starts.
 6. Client polls `GET /api/music/[id]`.

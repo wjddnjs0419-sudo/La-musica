@@ -17,7 +17,7 @@ const CANON_TAGS: Record<string, string> = {
   outro: "[Outro]",
 };
 
-// Distinct canonical section-tag spellings MiniMax receives. The lyrics
+// Distinct canonical section-tag spellings the music model receives. The lyrics
 // assistant should only advertise tags from this list so its output normalizes
 // cleanly instead of passing through unrecognized.
 export const CANONICAL_SECTION_TAGS = Array.from(new Set(Object.values(CANON_TAGS)));
@@ -29,10 +29,11 @@ function normalizeTags(lyrics: string): string {
   });
 }
 
-// Build the lyrics field sent to MiniMax. Instrumental songs carry no sung
-// words (the integration drops lyrics when is_instrumental is true). For vocal
-// songs, preserve the user's words and normalize section tags; wrap
-// unstructured input in a single [Verse] tag.
+// Build the lyrics field sent to the music model. Instrumental songs carry no
+// sung words (compileMusicPrompt returns `lyrics: undefined` for instrumental
+// mode; buildAceStepInput turns that into the literal "[Instrumental]" value
+// downstream). For vocal songs, preserve the user's words and normalize
+// section tags; wrap unstructured input in a single [Verse] tag.
 export function buildLyricsPayload(
   input: BuildMusicPromptInput,
   resolvedVocalMode: ResolvedVocalMode,

@@ -12,13 +12,13 @@ Current compiler version: `v2`
 
 Normal users should not have to write dense prompt-engineering text.
 
-Users write a simple idea and optional lyrics/options. The service internally compiles that into a high-density English MiniMax prompt.
+Users write a simple idea and optional lyrics/options. The service internally compiles that into a high-density English style prompt, then compresses it for ACE-Step.
 
 The compiled prompt is server-side only:
 
 - Browser sends raw prompt, lyrics, genre, moods, use case, vocal mode, and language.
 - Server translates the raw user prompt to English when needed.
-- Server compiles the final MiniMax prompt.
+- Server compiles the final ACE-Step prompt.
 - `musics.prompt` stores the raw user prompt.
 - `musics.metadata.final_music_prompt` stores the compiled prompt for debugging/auditing.
 
@@ -27,7 +27,7 @@ The compiled prompt is server-side only:
 `GenerateRequest` currently supports:
 
 - `prompt`: required user text
-- `lyrics`: optional user lyrics
+- `lyrics`: user lyrics — required for any vocal mode, optional only when `instrumental`
 - `instrumental`: legacy boolean, superseded by `vocalMode` when present
 - `genre`: optional `MusicGenre`
 - `moods`: optional list of `MusicMood`
@@ -157,7 +157,7 @@ Language cue:
 For instrumental:
 
 - `lyrics` is always omitted.
-- MiniMax receives `is_instrumental: true`.
+- ACE-Step receives the literal string `"[Instrumental]"` as `lyrics`.
 
 For vocal with user lyrics:
 
@@ -197,21 +197,23 @@ The copyright line is always appended:
 original composition only, do not imitate any specific artist, song, melody, or copyrighted track.
 ```
 
-## MiniMax Input
+## ACE-Step Input
 
 Model:
 
-- `minimax/music-2.6`
+- `fishaudio/ace-step-1.5`, pinned to a specific `version` hash
 
 Input sent to Replicate:
 
-- `prompt`: compiled prompt, max 2000 chars
-- `is_instrumental`: resolved instrumental boolean
+- `prompt`: refined prompt, max 500 chars
+- `lyrics`: user's lyrics for vocal tracks (required — the route rejects
+  vocal-mode requests with empty lyrics), or the literal `"[Instrumental]"`
+  for instrumental tracks
+- `duration`: fixed at 180 seconds
 - `audio_format`: `mp3`
-- `lyrics`: included only for non-instrumental tracks with user-provided lyrics
 
 Duration:
 
-- No app-level duration control.
+- Fixed at 180 seconds server-side; no user-facing duration control.
 - Model decides length, usually 2-4 minutes, up to roughly 6 minutes.
 

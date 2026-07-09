@@ -1,8 +1,8 @@
-# MiniMax Prompt Engineering — The Music Prompt Compiler
+# ACE-Step Prompt Engineering — The Music Prompt Compiler
 
 Developer reference for `lib/music-prompt/`, the server-side module that turns a
 simple user intent + a few structured options into a dense English prompt for
-the MiniMax music model on Replicate.
+the ACE-Step music model on Replicate.
 
 Source of truth (read these alongside this doc):
 
@@ -13,13 +13,13 @@ Source of truth (read these alongside this doc):
 - `lib/music-prompt/buildMusicPrompt.ts` — the user-first prompt compiler
 - `lib/music-prompt/index.ts` — `compileMusicPrompt` entry point
 - `app/api/music/generate/route.ts` — where the compiler is wired in
-- `lib/music.ts` — `buildMinimaxInput`, model id, char limits
+- `lib/music.ts` — `buildAceStepInput`, model id, char limits
 
 ---
 
 ## 1. Why normal users don't write the final prompt
 
-A good MiniMax prompt is a long, comma-separated wall of English production
+A good ACE-Step prompt is a comma-separated wall of English production
 jargon ("massive big room drop, aggressive saw synth lead, pounding kick
 drum…"). Most users can't and shouldn't write that. The product principle is:
 
@@ -101,34 +101,34 @@ original composition only, do not imitate any specific artist, song, melody, or 
 
 ---
 
-## 3. MiniMax prompt guidelines
+## 3. ACE-Step prompt guidelines
 
-The integration uses **`minimax/music-2.6`** on Replicate (`MINIMAX_MODEL` in
-`lib/music.ts`).
+The integration uses **`fishaudio/ace-step-1.5`** on Replicate
+(`ACE_STEP_MODEL` in `lib/music.ts`), pinned to a specific `version` hash
+(`ACE_STEP_VERSION`) — it's a community model, and Replicate rejects
+prediction creation by model name alone for it.
 
-> **Version note:** the product brief referred to MiniMax 2.5. The shipped
-> integration targets `minimax/music-2.6` (the current official Replicate model).
-> This doc documents the real model id; if you read "2.5" in older planning
-> notes, the code is the authority.
-
-The Replicate input is assembled by `buildMinimaxInput` in `lib/music.ts`:
+The Replicate input is assembled by `buildAceStepInput` in `lib/music.ts`:
 
 - **`prompt`** — the musical description. It should cover style, mood, genre,
   scenario/use-case, instrumentation, tempo, vocal type, arrangement, and
-  production quality. The compiler's output is exactly this kind of string.
-  The whole thing is clamped to `MAX_PROMPT_CHARS = 2000`.
-- **`lyrics`** — optional words that are actually **sung**. Sent only for vocal
-  tracks when the user provides lyrics. Clamped to `MAX_LYRICS_CHARS = 3500`.
-  If a vocal mode is selected without lyrics, the compiler keeps `lyrics`
-  omitted and adds prompt guidance telling the model it may generate original
-  simple singable lyrics matching the user's idea.
-- **`is_instrumental`** — when `true`, lyrics are **dropped**: `buildMinimaxInput`
-  omits the `lyrics` field entirely (`instrumental || !trimmedLyrics ? {} :
-  { lyrics }`). A vocal-free track is produced.
+  production quality. The compiler's raw output can run up to 2000 chars, but
+  `refineStylePrompt` compresses it down to ACE-Step's much shorter
+  `MAX_PROMPT_CHARS = 500` before it's sent — this model is tuned for short
+  descriptor prompts, unlike MiniMax's dense comma soup.
+- **`lyrics`** — words that are actually **sung**. Clamped to
+  `MAX_LYRICS_CHARS = 3500` (ACE-Step's own field limit is 4096). Unlike
+  MiniMax, ACE-Step cannot improvise its own lyrics: a vocal mode selected
+  without lyrics is rejected upstream with a `lyrics_required` 400 in
+  `app/api/music/generate/route.ts`, before the compiler or Replicate are ever
+  invoked.
+- **Instrumental tracks** — ACE-Step has no `is_instrumental` boolean.
+  Instrumental is signaled by sending the literal string `"[Instrumental]"` as
+  `lyrics` (this is also the field's own schema default).
+- **`duration`** — an explicit input, unlike MiniMax which decided length
+  itself. Fixed at `ACE_STEP_DURATION_SECONDS = 180` for parity with the old
+  no-duration-control UX.
 - **`audio_format`** — always `"mp3"`.
-
-The model decides length (2-4 min typical, ~6 min max); there is no duration
-control.
 
 ---
 
