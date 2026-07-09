@@ -9,8 +9,9 @@ import Replicate from "replicate";
 
 import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import {
-  MINIMAX_MODEL,
-  buildMinimaxInput,
+  ACE_STEP_MODEL,
+  ACE_STEP_VERSION,
+  buildAceStepInput,
   type Music,
 } from "@/lib/music";
 import { compileMusicPrompt } from "@/lib/music-prompt";
@@ -29,8 +30,8 @@ type AuthTokens = {
   refreshToken?: string | null;
 };
 
-// Kick off an async minimax/music-2.6 prediction and persist a `processing`
-// row. The client polls GET /api/music/[id] until it resolves.
+// Kick off an async fishaudio/ace-step-1.5 prediction and persist a
+// `processing` row. The client polls GET /api/music/[id] until it resolves.
 export async function POST(request: NextRequest) {
   let body: {
     prompt?: unknown;
@@ -112,6 +113,22 @@ export async function POST(request: NextRequest) {
     lyrics: lyrics || undefined,
   });
 
+  // ACE-Step has no server-side lyric improvisation (unlike MiniMax): a vocal
+  // mode with no lyrics would silently render as an instrumental track
+  // (empty `lyrics` defaults to "[Instrumental]" — see buildAceStepInput).
+  // Reject before spending a refine call, a DB round-trip, or a credit.
+  // `compiled.instrumental` is the fully-resolved flag (covers explicit
+  // `vocalMode`, the legacy `instrumental` boolean, and genre-based
+  // auto-resolution in `resolveVocalMode`), so this check can't miss a case
+  // the compiler itself would have treated as vocal.
+  if (!compiled.instrumental && !lyrics) {
+    return jsonWithAuthCookies(
+      { error: "lyrics_required" },
+      { status: 400 },
+      refreshedTokens,
+    );
+  }
+
   // Titles are never Gemini-generated — always derived locally (lyrics hook
   // line, else genre/mood) to keep song generation down to translate+refine
   // on the shared free-tier Gemini budget.
@@ -122,7 +139,7 @@ export async function POST(request: NextRequest) {
     moods,
   });
 
-  // Refine the compiled "comma soup" into a coherent MiniMax style prompt via
+  // Refine the compiled "comma soup" into a coherent ACE-Step style prompt via
   // a separate Gemini pass (presets stay as guardrails). Falls back to the
   // compiled prompt on any failure, so this never blocks generation.
   const refinedPrompt = await refineStylePrompt(compiled.prompt, compiled.instrumental);
@@ -135,7 +152,7 @@ export async function POST(request: NextRequest) {
       : {}),
     ...compiled.metadata,
     // Persist both prompts: the pre-refine template output and the prompt that
-    // was actually sent to MiniMax (overrides compiled.metadata.final_music_prompt).
+    // was actually sent to ACE-Step (overrides compiled.metadata.final_music_prompt).
     compiled_music_prompt: compiled.prompt,
     final_music_prompt: refinedPrompt,
     ...(compiled.lyrics ? { lyrics_payload: compiled.lyrics } : {}),
@@ -147,7 +164,7 @@ export async function POST(request: NextRequest) {
       p_user_id: user.id,
       p_prompt: prompt,
       p_title: generatedTitle,
-      p_model: MINIMAX_MODEL,
+      p_model: ACE_STEP_MODEL,
       p_metadata: initialMetadata,
     },
   );
@@ -176,8 +193,8 @@ export async function POST(request: NextRequest) {
   let predictionId: string;
   try {
     const prediction = await replicate.predictions.create({
-      model: MINIMAX_MODEL,
-      input: buildMinimaxInput({
+      version: ACE_STEP_VERSION,
+      input: buildAceStepInput({
         prompt: refinedPrompt,
         lyrics: compiled.lyrics,
         instrumental: compiled.instrumental,
