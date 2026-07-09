@@ -4,6 +4,72 @@
 
 ---
 
+# RESULT: Workspace mobile scroll stability - 2026-06-18
+
+## Background
+- Request: The AI Lyrics Assistant in the workspace felt poorly optimized on mobile, with strange dragging/scroll behavior.
+- Follow-up: Before fixing only that modal, inspect the rest of the workspace for the same mobile scroll risk.
+
+## Implementation
+- **`components/lyrics/LyricsAssistantModal.tsx`**: moved the assistant modal into a `document.body` portal, locked body scroll while open, switched the mobile sheet to `100dvh`, and constrained scrolling to the modal body with `min-h-0` and `overscroll-contain`.
+- **`app/workspace/page.tsx`** and **`components/music-workspace.tsx`**: changed the workspace shell to a fixed `100dvh` flex viewport and added `min-h-0` / `overscroll-contain` to the track-list scroll container.
+- **`components/credit-modal.tsx`**: added body scroll lock, `100dvh` overlay sizing, and an internal scrollable dialog so the pricing cards plus coupon form do not get clipped on short mobile screens.
+- **`components/prompt-box.tsx`**: capped the lyrics textarea and options panel height on mobile so expanding composer controls cannot take over the workspace.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Full codebase lint | `npm run lint` | Passed |
+| Build + typecheck | `npm run build` | Passed |
+
+## Lessons
+- Workspace mobile stability depends on the whole scroll chain: root viewport height, flex children, modal portals, and body scroll locking need to agree.
+- The in-app Browser was unavailable in this session, so visual mobile QA still needs a quick manual pass on `http://localhost:3000/workspace`.
+
+# RESULT: 정제 전/후 프롬프트 효과 실측 + 저작권 중복·타임아웃 수정 - 2026-06-17
+
+## Background
+- 직전 작업(Gemini style 정제) 후속: `musics.metadata` 의 `compiled_music_prompt`(정제 전) vs `final_music_prompt`(정제 후) 실데이터로 정제 효과 실측 요청.
+- 실측에서 결함 2건 발견 → 함께 수정.
+
+## 실측 결과 (InsForge SQL, n=6 = 메타에 정제 전/후 둘 다 있는 전체 행)
+| id | 모드 | 전(자) | 후(자) | 비율 | 폴백 |
+|---|---|---|---|---|---|
+| 8c05025b | vocal | 1463 | 798 | 55% | - |
+| dae6b5e5 | vocal | 1010 | 711 | 70% | - |
+| 040377ae | vocal | 975 | 715 | 73% | dup |
+| dfd4c3a3 | vocal | 912 | 780 | 86% | dup |
+| 1d68a057 | instrumental | 337 | 337 | 100% | fallback |
+| e4300386 | vocal | 896 | 896 | 100% | fallback |
+
+- **정제 양성**: 정제 4건 평균 ~30% 압축(산문 comma-soup → 밀도 descriptor 리스트). 컴파일엔 없던 **BPM/key 보강**("100 BPM, F minor", "128 BPM, C minor").
+- **결함① 폴백 33%(2/6)**: before==after. Gemini 에러/타임아웃/무료티어 RPM 경합. 타임아웃 가드 부재.
+- **결함② 저작권 중복(2/4 정제건)**: Gemini 가 저작권 문구를 의역하면 `finalizeRefined` 의 정확일치 검사를 통과 못해 캐논 재부착 → 이중 꼬리(토큰 낭비).
+
+## Implementation
+- **결함②(`lib/refineStylePrompt.ts`)**: `finalizeRefined` 재작성 — 캐논 `COPYRIGHT_LINE` 부분문자열 먼저 제거(내부 콤마 때문에 naive 콤마 split 시 "song"/"melody" 고아 파편 발생) → 잔여 절을 콤마 분리 후 `/imitate|copyright|original composition/i` 매칭 절 제거 → 캐논 1회만 부착. strip 후 음악적 내용 없으면 폴백. system prompt 도 "저작권 절 출력하지 말 것(자동 부착)"으로 변경해 소스에서 차단.
+- **결함①(동 파일)**: `refineStylePrompt` 에 `AbortController` + 8s 타임아웃(`REFINE_TIMEOUT_MS`), `signal` 전달, `finally` 에서 `clearTimeout`. 타임아웃 시 기존 catch 가 compiled prompt 폴백.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| finalizeRefined 저작권 중복/고아/폴백 | `vitest refineStylePrompt.test.ts` RED(3 fail)→GREEN | Passed |
+| Full suite | `npx vitest run` | 49 passed (8 files) |
+| Lint | `npm run lint` | Passed |
+| Build + typecheck | `npm run build` | Passed |
+| Prod deploy | 사용자가 직접 커밋/푸시/배포 | Pending(사용자) |
+
+## Lessons
+- 캐논 문구처럼 **내부 콤마를 가진 문자열**은 콤마 split 전에 부분문자열로 먼저 제거해야 고아 파편이 안 남음.
+- LLM 안전문구는 정확일치 검사 불가 — 의역까지 키워드 매칭으로 strip 후 결정적 1회 부착이 안전.
+- 실데이터 실측이 코드 리뷰로 안 보이던 폴백률(33%)·중복 버그를 드러냄. 메타에 전/후 둘 다 저장한 설계가 측정 가능하게 함.
+
+## Follow-ups (미적용)
+- 폴백률 모니터링: 타임아웃 추가 후에도 폴백 비율 재측정(무료티어 RPM 경합이 주원인이면 타임아웃만으론 미해결).
+- 언어 선택 UI 드롭다운(`GenerateRequest.language` 실제 전송).
+
+---
+
 # RESULT: HelloTalk beta coupon credits - 2026-06-18
 
 ## Background
@@ -18,6 +84,21 @@
 - **`components/credit-modal.tsx`** and **`components/workspace-shell.tsx`**: added a small "Have a beta code?" redemption UI in the Upgrade modal and refreshed the workspace credit count after success.
 - **`app/api/auth/callback/route.ts`** and **`.env.example`**: disabled automatic signup/login free credits by default; legacy behavior only runs with `ENABLE_SIGNUP_FREE_CREDIT=true`.
 - **`docs/credit-coupons.md`**: documented HelloTalk coupon SQL, usage checks, extension, and disable commands.
+
+# RESULT: Style prompt 정제(Gemini) + 가사 태그 동기화 + rename/delete UI 수정 + 가사 인증 쿠키 persist - 2026-06-17
+
+## Background
+- ChatGPT Project 로 수동 정제하던 "사용자 프롬프트 → 응집된 style 프롬프트" 흐름을 앱에 직접 이식해 MiniMax 음악 퀄 개선이 목표.
+- 기존 `compileMusicPrompt` 는 프리셋을 기계적으로 comma 연결만 함("comma soup"). MiniMax 가 그대로 받음.
+- 확정 결정(질문 통해): 정제기는 **컴파일된 템플릿 결과(프리셋 포함)를 통째로 재료로 받아 재작성**(옵션 A — 프리셋=가드레일). 번역과 정제는 **별도 Gemini 콜**로 분리. 기존 Gemini 무료티어 재사용(새 API 불필요).
+- 부수 발견·수정: 가사 어시스턴트 태그가 코드 정규화 테이블과 어긋남, `window.prompt/confirm` 이 런타임 미지원, 가사 라우트가 갱신 토큰을 쿠키에 persist 안 함.
+
+## Implementation
+- **가사 태그 동기화**: `lib/lyrics-assistant/prompt.ts` system prompt 태그 목록을 `CANON_TAGS`(`buildLyricsPayload.ts`)와 일치(`[Pre-Chorus]`/`[Drop]` 제거 → `[Verse 2]`,`[Pre Chorus]`,`[Hook]`,`[Post Chorus]`,`[Final Chorus]` 추가). `buildLyricsPayload.ts` 에 `CANONICAL_SECTION_TAGS` export(단일 출처). 재드리프트 가드 테스트 `lib/lyrics-assistant/prompt.test.ts`.
+- **Style 정제(신규 `lib/refineStylePrompt.ts`)**: `translatePrompt.ts` 패턴 복제(Gemini REST, 무료티어, `GEMINI_API_KEY`/`GEMINI_MODEL`). `refineStylePrompt(compiledPrompt, instrumental)` 가 Gemini 로 dense descriptor 재작성, 순수 `finalizeRefined()` 가 저작권 문구 강제 재부착·2000자 클램프·빈값 폴백 처리. 실패/미설정 시 원본 compiled prompt 반환(생성 안 막음). `COPYRIGHT_LINE` 을 `buildMusicPrompt.ts` 에서 export 해 재사용.
+- **generate 라우트 연결**: `app/api/music/generate/route.ts` 에서 `compile → refine → buildMinimaxInput`. 메타에 `compiled_music_prompt`(정제 전)·`final_music_prompt`(실제 전송) 둘 다 저장. 흐름: `프롬프트 → 번역 → compile → 정제 → MiniMax`.
+- **rename/delete UI 수정**: `components/music-workspace.tsx` — `window.prompt` → 인라인 제목 입력(Enter 저장/Esc 취소/blur 저장), `window.confirm` → 메뉴 내 2단계 삭제확인. 검증 로직 `resolveRenameTitle()` 을 `lib/music.ts` 로 추출 + TDD(`lib/music.test.ts`).
+- **가사 인증 쿠키 persist**: `app/api/lyrics/chat/route.ts` — `getUserId` 가 갱신 토큰 반환, 모든 응답에 `setAuthCookies` 로 갱신 쿠키 심음. 기존엔 in-memory refresh 만 해 세션이 조용히 죽고 "Please sign in to use AI lyrics" 가 떴음(생성 라우트는 이미 persist 함).
 
 ## Verification Matrix
 | Change | Checks | Result |
@@ -98,6 +179,41 @@
 - **`app/api/auth/callback/route.ts`**: OAuth 肄붾뱶 援먰솚 ?깃났 ??admin ?대씪?댁뼵?몃줈 `grant_free_credit` ?몄텧. Google OAuth 媛 ?좎씪 濡쒓렇??寃쎈줈???좉퇋 ?좎?媛 諛섎뱶???듦낵. try/catch 濡?媛먯떥 吏湲??ㅽ뙣?대룄 濡쒓렇?몄? ??留됱쓬.
 - **??젣**: `migrations/20260614000000_add-stripe-checkout.sql` ??誘몄쟻??+ ?깆? Polar 留??ъ슜(Stripe 寃쎈줈 肄붾뱶 誘몄궗??. ?먭꺽 head(`20260613`) ? ??留덉씠洹몃젅?댁뀡 ?ъ씠 ?쒖꽌瑜?留됯퀬 ?덉뼱 dead 留덉씠洹몃젅?댁뀡?쇰줈 ?먮떒???쒓굅.
 
+| 가사 태그 가드 | `vitest prompt.test.ts` RED→GREEN | Passed |
+| finalizeRefined | `vitest refineStylePrompt.test.ts` RED→GREEN | Passed |
+| resolveRenameTitle | `vitest music.test.ts` RED→GREEN | Passed |
+| Full suite | `npx vitest run` | 46 passed (8 files) |
+| Full codebase | `npm run lint` | Passed |
+| Build + typecheck | `npm run build` | Passed |
+| Prod deploy | 사용자가 직접 커밋/푸시/배포 | Pending(사용자) |
+
+## Lessons
+- doc(`02_LYRIC_STRUCTURES.md`) / 코드(`CANON_TAGS`) / 어시스턴트 system prompt 3곳이 따로 드리프트할 수 있음 → 단일 출처 export + 가드 테스트로 고정.
+- LLM 출력의 안전 문구(저작권)는 절대 신뢰 금지 — 코드가 결정적으로 재부착·클램프. 정제 실패는 항상 원본 폴백으로 생성 비차단.
+- 여러 Gemini 콜(번역+가사+정제)이 **같은 무료티어 키 RPM 한도 공유** → 경합 가능. 정제는 매 생성마다 호출되므로 타임아웃 가드는 후속 개선 여지(아직 미적용).
+- 인증 라우트는 토큰 갱신 시 반드시 `setAuthCookies` 로 응답에 persist 해야 세션이 안 죽음. in-memory refresh 만 하면 세션이 조용히 만료됨.
+
+## Follow-ups (미적용)
+- Gemini 콜(가사·정제)에 AbortController 타임아웃 추가해 무료티어 지연 시 무한 대기 방지.
+- 생성 후 `musics.metadata` 의 `compiled_music_prompt` vs `final_music_prompt` 비교로 정제 효과 실측.
+
+---
+
+# RESULT: Pricing update — Viral 35곡 + Free 가입 1곡 지급 - 2026-06-17
+
+## Background
+- Request: 결제 플랜 개편. 표 기준 — Free(가입 1곡), Starter $2.99/5곡(유지), Creator $7.99/20곡(유지), Viral $14.99/50곡 → **30~35곡**(마진 방어), Trial $1.99/2곡 검토.
+- 확정 결정(질문 통해): **Viral 35곡**, **Trial 생략**, **Free = 가입 시 1곡 자동 지급**(UI 노출 없이 로직만).
+- 가격 동일($14.99 유지) → Polar 신규 제품/env 불필요. 크레딧 수만 변경.
+
+## Implementation
+- **`lib/credits.ts`**: `viral-pack` credits `50 → 35`. 단일 출처라 가격 UI "{credits} songs" 표기·웹훅 충전량 자동 반영.
+- **`migrations/20260617000000_pricing-update-free-grant.sql`** (신규):
+  - `fulfill_polar_credit_order` RPC 의 하드코딩 플랜→크레딧 맵 `viral-pack 50 → 35` 동기화. (안 고치면 충전 시 `credit_plan_mismatch` 로 실패 — RPC 에 검증 가드 존재.)
+  - 신규 `grant_free_credit(p_user_id)` SECURITY DEFINER 함수: `INSERT user_credits(user_id, 1) ON CONFLICT (user_id) DO NOTHING`. 멱등 — 크레딧 행이 없는 신규 유저 최초 1회만 지급, 기존 행(구매·재로그인)은 무변경. `project_admin` 에 GRANT.
+- **`app/api/auth/callback/route.ts`**: OAuth 코드 교환 성공 후 admin 클라이언트로 `grant_free_credit` 호출. Google OAuth 가 유일 로그인 경로라 신규 유저가 반드시 통과. try/catch 로 감싸 지급 실패해도 로그인은 안 막음.
+- **삭제**: `migrations/20260614000000_add-stripe-checkout.sql` — 미적용 + 앱은 Polar 만 사용(Stripe 경로 코드 미사용). 원격 head(`20260613`) 와 내 마이그레이션 사이 순서를 막고 있어 dead 마이그레이션으로 판단해 제거.
+
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
@@ -113,6 +229,17 @@
 - Free 臾대즺 吏湲됱? "???놁쓣 ??1 ?쎌엯 + ON CONFLICT DO NOTHING" ?쇰줈 硫깅벑 蹂댁옣 ??留?濡쒓렇???몄텧?대룄 ?덉쟾, 蹂꾨룄 grant-flag 而щ읆 遺덊븘?? ????젣???좎? 沅뚰븳 諛뽰씠???ъ?湲??낆슜 遺덇?.
 - Vercel **Git ?먮룞諛고룷 爰쇱쭚** ???몄떆留뚯쑝濡?諛고룷 ???? 諛고룷??`npx vercel --prod --yes` ?섎룞 ?꾩슂.
 - 誘몄쟻??濡쒖뺄 留덉씠洹몃젅?댁뀡(Stripe)???먭꺽 head ? ?좉퇋 留덉씠洹몃젅?댁뀡 ?ъ씠瑜?留됱쓬 ???쒖감 ?곸슜 ??dead 留덉씠洹몃젅?댁뀡 ?뺤씤쨌?쒓굅 ?꾩슂.
+
+| Migration apply | `db migrations up 20260617000000` | Passed (504 1회 후 재시도 성공) |
+| RPC viral=35 | `db query` pg_get_functiondef LIKE 체크 | `viral_35 = true` |
+| grant_free_credit 존재 | `db query` pg_proc count | `grant_fn = 1` |
+| Production deploy | `vercel --prod` | `READY` (https://la-musica.vercel.app, dpl_F3duTnPvqynFWRTCbZyxeqZvZZRj) |
+
+## Lessons
+- 크레딧 수가 두 곳에 산다: `lib/credits.ts`(앱/UI) **와** `fulfill_polar_credit_order` RPC(DB 검증 가드). 한쪽만 바꾸면 `credit_plan_mismatch` 로 결제 충전이 조용히 실패하므로 항상 동반 수정.
+- Free 무료 지급은 "행 없을 때 1 삽입 + ON CONFLICT DO NOTHING" 으로 멱등 보장 → 매 로그인 호출해도 안전, 별도 grant-flag 컬럼 불필요. 행 삭제는 유저 권한 밖이라 재지급 악용 불가.
+- Vercel **Git 자동배포 꺼짐** — 푸시만으로 배포 안 됨. 배포는 `npx vercel --prod --yes` 수동 필요.
+- 미적용 로컬 마이그레이션(Stripe)이 원격 head 와 신규 마이그레이션 사이를 막음 → 순차 적용 전 dead 마이그레이션 확인·제거 필요.
 
 ---
 

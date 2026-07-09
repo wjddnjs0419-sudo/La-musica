@@ -1,8 +1,6 @@
 import type { MusicGenre, MusicMood } from "@/lib/music-prompt/types";
 
-const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
 const MAX_TITLE_CHARS = 60;
-const MAX_LYRICS_CHARS = 3200;
 
 const GENERIC_TITLES = new Set([
   "untitled",
@@ -71,87 +69,6 @@ export function buildFallbackMusicTitle({
   }
 
   return buildContextTitle({ instrumental, genre, moods });
-}
-
-export async function generateMusicTitle(
-  input: MusicTitleInput,
-): Promise<string> {
-  const fallback = input.fallbackTitle || buildFallbackMusicTitle(input);
-  const lyrics = input.lyrics?.trim();
-
-  if (input.instrumental || !lyrics) return fallback;
-
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return fallback;
-
-  const model = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-
-  const context = [
-    input.language ? `Language: ${input.language}` : null,
-    input.genre ? `Genre: ${formatGenreLabel(input.genre)}` : null,
-    input.moods?.length
-      ? `Moods: ${input.moods.map(formatMoodLabel).join(", ")}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [
-            {
-              text: [
-                "You create concise, original song titles from lyrics.",
-                "Use the lyric's strongest hook, image, or emotional center.",
-                "Keep the title in the lyric language unless the context clearly says otherwise.",
-                "Return ONLY the title: no quotes, labels, markdown, punctuation-only decoration, or commentary.",
-                "Avoid generic titles like Untitled, My Song, Song Title, or New Track.",
-                "Target 2-6 words when possible.",
-              ].join(" "),
-            },
-          ],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: [
-                  context ? `SONG CONTEXT:\n${context}` : null,
-                  `LYRICS:\n${lyrics.slice(0, MAX_LYRICS_CHARS)}`,
-                ]
-                  .filter(Boolean)
-                  .join("\n\n"),
-              },
-            ],
-          },
-        ],
-        generationConfig: { temperature: 0.55, maxOutputTokens: 32 },
-      }),
-    });
-
-    if (!res.ok) return fallback;
-
-    const data = (await res.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-    };
-    const out = data.candidates?.[0]?.content?.parts
-      ?.map((p) => p.text ?? "")
-      .join("")
-      .trim();
-
-    return sanitizeGeneratedTitle(out, fallback);
-  } catch {
-    return fallback;
-  }
 }
 
 export function deriveTitleFromLyrics(lyrics?: string | null): string | null {

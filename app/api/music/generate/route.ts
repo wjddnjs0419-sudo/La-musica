@@ -16,10 +16,7 @@ import {
 import { compileMusicPrompt } from "@/lib/music-prompt";
 import { translateToEnglish } from "@/lib/translatePrompt";
 import { refineStylePrompt } from "@/lib/refineStylePrompt";
-import {
-  buildFallbackMusicTitle,
-  generateMusicTitle,
-} from "@/lib/musicTitle";
+import { buildFallbackMusicTitle } from "@/lib/musicTitle";
 import type {
   MusicGenre,
   MusicMood,
@@ -115,13 +112,20 @@ export async function POST(request: NextRequest) {
     lyrics: lyrics || undefined,
   });
 
-  // Refine the compiled "comma soup" into a coherent MiniMax style prompt via a
-  // separate Gemini pass (presets stay as guardrails). Falls back to the
+  // Titles are never Gemini-generated — always derived locally (lyrics hook
+  // line, else genre/mood) to keep song generation down to translate+refine
+  // on the shared free-tier Gemini budget.
+  const generatedTitle = buildFallbackMusicTitle({
+    lyrics,
+    instrumental: compiled.instrumental,
+    genre,
+    moods,
+  });
+
+  // Refine the compiled "comma soup" into a coherent MiniMax style prompt via
+  // a separate Gemini pass (presets stay as guardrails). Falls back to the
   // compiled prompt on any failure, so this never blocks generation.
-  const refinedPrompt = await refineStylePrompt(
-    compiled.prompt,
-    compiled.instrumental,
-  );
+  const refinedPrompt = await refineStylePrompt(compiled.prompt, compiled.instrumental);
 
   const initialMetadata = {
     instrumental: compiled.instrumental,
@@ -136,19 +140,13 @@ export async function POST(request: NextRequest) {
     final_music_prompt: refinedPrompt,
     ...(compiled.lyrics ? { lyrics_payload: compiled.lyrics } : {}),
   };
-  const fallbackTitle = buildFallbackMusicTitle({
-    lyrics,
-    instrumental: compiled.instrumental,
-    genre,
-    moods,
-  });
 
   const { data: reserved, error: reserveError } = await admin.database.rpc(
     "create_music_with_credit",
     {
       p_user_id: user.id,
       p_prompt: prompt,
-      p_title: fallbackTitle,
+      p_title: generatedTitle,
       p_model: MINIMAX_MODEL,
       p_metadata: initialMetadata,
     },
@@ -173,14 +171,6 @@ export async function POST(request: NextRequest) {
   }
 
   const music = reserved as Music;
-  const generatedTitle = await generateMusicTitle({
-    lyrics,
-    instrumental: compiled.instrumental,
-    genre,
-    moods,
-    language,
-    fallbackTitle,
-  });
   const replicate = new Replicate(); // reads REPLICATE_API_TOKEN
 
   let predictionId: string;
@@ -211,7 +201,6 @@ export async function POST(request: NextRequest) {
   const { data: rows, error } = await client.database
     .from("musics")
     .update({
-      title: generatedTitle,
       status: "processing",
       metadata: {
         ...music.metadata,

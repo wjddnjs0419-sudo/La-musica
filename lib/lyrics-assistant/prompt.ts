@@ -7,6 +7,8 @@
 // only produces lyrics text that the client drops into the existing Lyrics
 // textarea.
 
+import { fetchGeminiWithRetry } from "../geminiFetch";
+
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
 
 // One chat turn. `assistant` turns carry the structured lyrics the model
@@ -167,7 +169,7 @@ export async function generateLyrics(
 
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await fetchGeminiWithRetry(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",

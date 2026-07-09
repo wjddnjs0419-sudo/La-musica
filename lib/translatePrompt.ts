@@ -4,6 +4,8 @@
 // over REST (no SDK dependency). Translation never blocks generation: any
 // failure falls back to the original text.
 
+import { fetchGeminiWithRetry } from "./geminiFetch";
+
 // Default to a fast, cheap, GA free-tier model. `gemini-2.0-flash` is
 // deprecated (EOL 2026-06-01) and must not be used. Override via GEMINI_MODEL.
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
@@ -29,7 +31,7 @@ export async function translateToEnglish(text: string): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchGeminiWithRetry(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
