@@ -1,36 +1,40 @@
-# RESULT: Gemini 무료티어 RPM 경합으로 인한 동시 사용 실패 수정 - 2026-07-10
+# RESULT: MiniMax → ACE-Step 음악 생성 모델 전환 - 2026-07-10
 
 ## Background
-- Report: "lyrics assistant 지금 동시에 3명 사용하니까 안되네" — 동시 사용자 3명이면 AI 가사 어시스턴트가 실패.
-- 원인 조사: `GEMINI_API_KEY` 하나를 title 생성(`lib/musicTitle.ts`) · 번역(`lib/translatePrompt.ts`) · 스타일 정제(`lib/refineStylePrompt.ts`) · 가사 어시스턴트(`lib/lyrics-assistant/prompt.ts`) 4곳이 공유. 무료티어 한도(`gemini-2.5-flash-lite`, 15 RPM, 프로젝트 단위)를 곡 생성 1건(번역+정제+제목=최악 3콜)과 가사 어시스턴트 채팅이 함께 나눠 쓰다 보니 동시 사용자 소수만으로도 429에 부딪힘. 그 중 `generateLyrics`(가사 어시스턴트)는 타임아웃·재시도가 전혀 없어 429를 즉시 `gemini_failed`로 노출.
-- 사용자 확인 후 범위 확정: (1) 곡 생성 1건당 Gemini 호출 수 자체를 줄이고, (2) 남는 호출에 429 재시도 + 타임아웃을 추가.
-- 후속 결정: 처음엔 정제+제목 생성을 한 Gemini 콜로 합쳤으나, 사용자가 "제목은 Gemini 호출로 아예 생성하지 말자"고 확정 → 제목은 항상 로컬 휴리스틱(`buildFallbackMusicTitle`)만 사용하는 것으로 최종 변경. 곡 생성당 Gemini 호출이 항상 번역+정제(최대 2콜)로 고정됨.
+- Report: "노래 생성 왜이렇게 오래 걸리는건지 판단해봐" → 조사 결과 `minimax/music-2.6`(자기회귀 모델)이 곡당 2~4분(최대 6분) 걸리는 게 주 원인으로 확인.
+- 사용자 확인 후 방향 결정: "ACE-Step으로 가보자 minimax는 그냥 없애자" — dual-model/fallback 없이 완전 교체.
+- 브레인스토밍 중 실제 Replicate API를 직접 호출해 스펙 문서의 가정을 검증: (1) `fishaudio/ace-step-1.5`는 커뮤니티 모델이라 `model` 이름이 아닌 `version` 해시 고정이 필수(실측: `model`로 시도 시 422/404), (2) 입력 필드는 `tags`가 아니라 `prompt`(최대 ~512자, MiniMax의 2000자보다 훨씬 짧음), (3) `lyrics` 필드는 비워두면 리터럴 기본값 `"[Instrumental]"`로 무보컬 처리되어 MiniMax처럼 모델이 가사를 즉석 생성해주지 않음 — 사용자에게 확인 후 "가사 없는 보컬 요청은 400으로 거부"로 결정. 실제 20초 트랙 생성(한국어 가사 포함)을 2회 실제 실행해 predict_time ~6초, 출력 shape(mp3 URL 배열)이 MiniMax와 동일함을 확인.
 
 ## Implementation
-- **`lib/geminiFetch.ts`(신규)**: `fetchGeminiWithRetry()` — 3개 호출부(번역/정제/가사 어시스턴트)가 공유하는 fetch 래퍼. 시도마다 `AbortController` 타임아웃(기본 8s), 429/503 응답은 `Retry-After` 헤더(있으면 우선) 또는 지수 백오프로 최대 2회 재시도 후 포기. 일반 `fetch`와 동일한 계약(성공/비-ok Response 반환, 소진 시 throw)이라 호출부 diff가 최소화됨.
-- **`lib/translatePrompt.ts`, `lib/refineStylePrompt.ts`, `lib/lyrics-assistant/prompt.ts`**: 각자의 `fetch(...)` 호출을 `fetchGeminiWithRetry(...)`로 교체. `refineStylePrompt`는 기존 수동 `AbortController`/`setTimeout`을 걷어내고 `timeoutMs` 옵션으로 위임.
-- **`lib/musicTitle.ts`**: 자체 Gemini 콜을 쓰던 `generateMusicTitle()`을 완전히 삭제. 제목은 이제 항상 순수 함수 `buildFallbackMusicTitle()`(가사 훅 라인 → 없으면 genre/mood 기반)만 사용, Gemini 호출 경로 없음. `deriveTitleFromLyrics`/`sanitizeGeneratedTitle`/`formatGenreLabel`/`formatMoodLabel` 등 순수 헬퍼는 유지(다른 라우트에서도 재사용 중).
-- **`app/api/music/generate/route.ts`**: 제목은 `buildFallbackMusicTitle()`로 곧장 계산(Gemini 호출 없음), 정제는 `refineStylePrompt()` 단독 호출. (중간에 정제+제목을 한 콜로 합치는 `lib/refineStyleAndTitle.ts`를 만들었었지만, 제목 자체를 Gemini로 만들지 않기로 하면서 불필요해져 삭제 — 곡 생성 흐름은 `compile → refineStylePrompt → MiniMax`로 단순화.)
-- 결과: 곡 생성 1건당 Gemini 호출이 항상 번역(비영어일 때만)+정제 = **최대 2콜**로 고정(이전 최악 3콜 대비 감소, 제목 관련 변동성 제거). 남은 모든 호출(번역/정제/가사 어시스턴트)이 429에 자동 재시도.
+- **`lib/music.ts`**: `MINIMAX_MODEL` → `ACE_STEP_MODEL`("fishaudio/ace-step-1.5") + 신규 `ACE_STEP_VERSION`(예측 생성 시 `version`으로 전달, 실측 필수) + `ACE_STEP_DURATION_SECONDS`(180초 고정, UI 변경 없음). `MAX_PROMPT_CHARS` 2000→500(ACE-Step 스키마 한도에 맞춤). `buildMinimaxInput` → `buildAceStepInput`: `is_instrumental` 불리언 없이 `lyrics: "[Instrumental]"` 리터럴로 무보컬 신호.
+- **`lib/refineStylePrompt.ts`**: 정제 결과 길이 한도를 2000→500자로 축소(compileMusicPrompt 자체의 2000자 클램프는 그대로 — refine 단계가 ACE-Step 한도에 맞춰 한 번 더 압축). Gemini system instruction에 "400자 이내" 명시 목표 추가.
+- **`lib/music-prompt/buildMusicPrompt.ts`**: `LYRICLESS_VOCAL_GUIDANCE`(가사 없는 보컬 요청 시 모델이 알아서 가사를 짓게 하던 문구) 데드코드 제거 — 이제 라우트가 상류에서 차단하므로 도달 불가능한 분기였음.
+- **`app/api/music/generate/route.ts`**: `compileMusicPrompt` 직후 `!compiled.instrumental && !lyrics` 검증 추가 → `lyrics_required`(400), refine 호출·크레딧 차감 전에 거부. Replicate 호출을 `predictions.create({ version: ACE_STEP_VERSION, input: buildAceStepInput(...) })`로 교체, `p_model`도 `ACE_STEP_MODEL`로 교체.
+- **`components/music-workspace.tsx`**: `lyrics_required` 에러 코드에 대한 친절한 메시지("Add lyrics for vocal tracks, or switch to Instrumental.") 추가(기존 `insufficient_credit` 패턴과 동일).
+- **문서**: `docs/MINIMAX_PROMPT_ENGINEERING.md` → `docs/ACE_STEP_PROMPT_ENGINEERING.md`로 rename 후 모델/필드/한도 섹션 재작성, `docs/chatgpt-project/*.md` 4개 파일의 MiniMax/`is_instrumental` 언급을 ACE-Step 사실로 갱신, `lib/translatePrompt.ts`·`lib/music-prompt/buildLyricsPayload.ts`의 주석도 정리.
+- **범위 밖(의도적)**: duration UI 노출(고정값 유지), MiniMax fallback/feature flag(완전 제거가 목표), 프리셋 재튜닝(그대로 재사용).
 
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
-| `fetchGeminiWithRetry` (429 재시도/백오프/Retry-After/타임아웃/논리트라이어블/네트워크실패) | `vitest geminiFetch.test.ts` RED→GREEN | Passed (6) |
-| `translateToEnglish` 429 재시도 | `vitest translatePrompt.test.ts` RED→GREEN | Passed |
-| `refineStylePrompt` 429 재시도 (+ 기존 finalizeRefined 회귀 없음) | `vitest refineStylePrompt.test.ts` RED→GREEN | Passed (8) |
-| `generateLyrics` 429 재시도 | `vitest lyrics-assistant/prompt.test.ts` RED→GREEN | Passed (2) |
-| Full suite | `npx vitest run` | 62 passed (10 files) |
+| `buildAceStepInput`(프롬프트/가사 클램프, `[Instrumental]` 처리) | `vitest lib/music.test.ts` RED→GREEN | Passed (4 new + 3 기존) |
+| `finalizeRefined` 500자 클램프 | `vitest lib/refineStylePrompt.test.ts` RED→GREEN | Passed (8) |
+| `LYRICLESS_VOCAL_GUIDANCE` 제거 후 회귀 없음 | `vitest lib/music-prompt/buildMusicPrompt.test.ts` RED→GREEN | Passed (11) |
+| 실제 ACE-Step 예측 (스파이크: 20초 영어 트랙) | `curl` 직접 호출 + `afinfo` 길이 검증 | 성공, 20.04초 mp3, predict_time 6.1s |
+| 실제 ACE-Step 예측 (route 배선 검증: 한국어 가사 보컬 트랙) | `buildAceStepInput` 실사용 출력으로 `curl` 예측 생성 | 성공, mp3 URL 반환 |
+| Full suite | `npx vitest run` | 66 passed (10 files) |
 | Full codebase lint | `npm run lint` | Passed |
 | Build + typecheck | `npm run build` | Passed |
-| Prod deploy | 사용자가 직접 커밋/푸시/배포 | Pending(사용자) |
+| 남은 라이브 코드 레퍼런스 | `grep -rn "MINIMAX_MODEL\|buildMinimaxInput\|minimax/music"` | 주석 1건(의도적 비교 설명)만 남음 |
+| 브라우저 UI 실사용(로그인 → 실제 생성 → 재생) | 미실행 — 이 환경에 브라우저 자동화 도구 없음 | **사용자 확인 필요** |
+| Prod 커밋/배포 | main에 직접 커밋 완료(사용자 승인), 배포는 사용자 | Pending(배포는 사용자) |
 
 ## Lessons
-- 여러 기능이 **같은 무료티어 API 키의 RPM 예산을 공유**하면, 각 기능이 개별적으로는 "실패 시 폴백"이라 안전해 보여도 합산 호출 빈도가 한도를 넘는 순간 전부 동시에 흔들린다 — 호출부마다 개별 방어(타임아웃/재시도)를 넣는 것과 별개로, 애초에 호출 횟수 자체를 줄일 여지가 있는지 먼저 봐야 함.
-- 호출을 "합치는" 것보다 "아예 없애는" 게 가능하면 그게 낫다 — 제목 생성처럼 로컬 휴리스틱으로 충분히 대체 가능한 Gemini 호출은 합치기보다 제거가 근본적인 해결.
-- 재시도 래퍼는 일반 `fetch`와 동일한 반환/예외 계약을 유지하면 호출부 diff를 최소화할 수 있다(기존 `if (!res.ok)`/`catch` 로직 그대로 재사용 가능).
+- Replicate 커뮤니티 모델(공식 모델과 달리 `owner/name` 뒤에 자동 배포 HTTP API가 없는 모델)은 `model` 이름만으로 예측을 만들 수 없고 `version` 해시 고정이 필요하다는 걸 문서만으로는 알 수 없었음 — 실제 API 호출(모델 OpenAPI 스키마 조회 + 실제 예측 1회)로 검증하고 나서야 정확한 배선 방법을 확정할 수 있었다. 마케팅 페이지/블로그 스크레이핑 정보는 필드명조차 틀릴 수 있음(`tags`로 알려졌던 필드가 실제로는 `prompt`).
+- 모델 교체 시 "동등해 보이는" 필드도 세부 동작이 다를 수 있다 — MiniMax는 가사 없이도 보컬 트랙에 즉석 가사를 지어줬지만 ACE-Step은 그 기능이 없어 조용히 무보컬로 렌더링될 뻔했다. 이런 회귀는 스펙 단계에서 실제 스키마를 살펴보다가 우연히 발견했는데, 발견하지 못했다면 배포 후에야 "보컬 선택했는데 왜 인스트루멘털이 나오지" 버그로 드러났을 것.
+- 계획서(writing-plans) 작성 시 "테스트 파일이 없다"고 가정했던 `lib/music.test.ts`가 실제로는 이미 `resolveRenameTitle` 테스트를 담고 있었음 — Write 툴이 기존 파일 존재를 감지해 막아준 덕에 실행 단계에서 발견·수정(덮어쓰기 대신 추가). 계획 문서의 파일 존재 가정은 실행 직전에 다시 확인하는 게 안전.
 
 ## Follow-ups (미적용)
-- 무료티어 자체 RPM 상향(유료 Tier 1, 150~300 RPM)은 코드 변경이 아니라 사용자의 과금 결정 사항 — 트래픽이 계속 늘면 고려.
-- 폴백률/429 발생 빈도 모니터링: 이번 변경 이후 실제 동시 사용 환경에서 재시도로 얼마나 해소되는지 실측 필요(관측 로그 없음).
-- 로컬 휴리스틱 제목 품질이 Gemini 생성 제목보다 낮을 수 있음 — 사용자 피드백에 따라 재검토 여지.
+- **브라우저에서 실제 로그인 → 생성 → 재생 플로우 확인 필요** — 이 세션은 curl 레벨 실제 API 검증(2회 성공)과 build/lint/vitest 통과까지만 확인했고, `npm run dev` + UI 클릭 스모크 테스트는 브라우저 자동화 도구가 없어 수행하지 못함.
+- Duration 180초 고정값이 실제 사용자 체감에 적절한지(너무 짧다/길다) 피드백에 따라 조정 여지.
+- ACE-Step 출력 음악 품질이 MiniMax 대비 실사용에서 어떤지(장르별 편차 등) 프로덕션 트래픽으로 관찰 필요.
