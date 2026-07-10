@@ -17,12 +17,14 @@ type WorkspaceShellProps = {
   user?: WorkspaceShellUser | null;
   initialTracks?: Music[];
   initialCredit?: number;
+  loadInitialData?: boolean;
 };
 
 export default function WorkspaceShell({
   user,
   initialTracks = [],
   initialCredit = 0,
+  loadInitialData = false,
 }: WorkspaceShellProps) {
   const [creditModalOpen, setCreditModalOpen] = React.useState(false);
   const [remainingCredit, setRemainingCredit] = React.useState(initialCredit);
@@ -38,6 +40,7 @@ export default function WorkspaceShell({
         remainingCredit={remainingCredit}
         onRemainingCreditChange={setRemainingCredit}
         onOpenCreditModal={() => setCreditModalOpen(true)}
+        loadInitialData={loadInitialData}
       />
       <CreditModal
         open={creditModalOpen}

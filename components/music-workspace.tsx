@@ -20,6 +20,7 @@ type MusicWorkspaceProps = {
   remainingCredit?: number;
   onRemainingCreditChange?: (credit: number) => void;
   onOpenCreditModal?: () => void;
+  loadInitialData?: boolean;
 };
 
 const INSUFFICIENT_CREDIT_MESSAGE = "Not enough credits. Please upgrade.";
@@ -106,8 +107,12 @@ export default function MusicWorkspace({
   remainingCredit = 0,
   onRemainingCreditChange,
   onOpenCreditModal,
+  loadInitialData = false,
 }: MusicWorkspaceProps) {
   const [tracks, setTracks] = React.useState<Music[]>(initialTracks);
+  const [initialLoading, setInitialLoading] = React.useState(
+    () => loadInitialData,
+  );
   const [query, setQuery] = React.useState("");
   const [page, setPage] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
@@ -124,6 +129,54 @@ export default function MusicWorkspace({
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const polling = React.useRef<Set<string>>(new Set());
   const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!loadInitialData) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadWorkspaceData() {
+      setInitialLoading(true);
+      try {
+        const response = await fetch("/api/workspace/bootstrap", {
+          cache: "no-store",
+        });
+        const json = (await response.json().catch(() => ({}))) as {
+          tracks?: Music[];
+          credit?: number;
+          error?: string;
+        };
+
+        if (cancelled) return;
+
+        if (!response.ok) {
+          setError(json.error ?? `Workspace load failed (${response.status})`);
+          return;
+        }
+
+        setTracks(Array.isArray(json.tracks) ? json.tracks : []);
+        if (typeof json.credit === "number") {
+          onRemainingCreditChange?.(json.credit);
+        }
+        setError(null);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("workspace bootstrap failed", err);
+          setError("Workspace could not be loaded. Please refresh.");
+        }
+      } finally {
+        if (!cancelled) setInitialLoading(false);
+      }
+    }
+
+    void loadWorkspaceData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadInitialData, onRemainingCreditChange]);
 
   const activeTrack = React.useMemo(
     () => tracks.find((track) => track.id === activeTrackId) ?? null,
@@ -487,7 +540,9 @@ export default function MusicWorkspace({
         className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-3 py-4 sm:px-4 md:py-8">
-          {tracks.length === 0 ? (
+          {initialLoading ? (
+            <TrackListSkeleton />
+          ) : tracks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center text-white/40">
               <p className="text-sm">Create a song and it will appear here.</p>
             </div>
@@ -606,6 +661,30 @@ export default function MusicWorkspace({
           setCurrentTime(0);
         }}
       />
+    </div>
+  );
+}
+
+function TrackListSkeleton() {
+  return (
+    <div
+      aria-label="Loading tracks"
+      className="mx-auto flex w-full max-w-3xl flex-col gap-2"
+    >
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div
+          key={index}
+          className="grid min-h-20 animate-pulse grid-cols-[38px_42px_minmax(0,1fr)_32px] items-center gap-2 rounded-lg border border-white/7 bg-[#171a20]/80 px-3 py-3 shadow-[0_12px_34px_rgba(0,0,0,0.16)] sm:grid-cols-[42px_44px_minmax(0,1fr)_36px] sm:gap-3 sm:px-4"
+        >
+          <div className="h-9 w-9 rounded-lg bg-white/[0.08]" />
+          <div className="h-10 w-10 rounded-md bg-white/[0.08] sm:h-11 sm:w-11" />
+          <div className="min-w-0">
+            <div className="h-3.5 w-2/3 rounded bg-white/[0.1]" />
+            <div className="mt-2 h-2.5 w-32 rounded bg-white/[0.06]" />
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-white/[0.06]" />
+        </div>
+      ))}
     </div>
   );
 }
