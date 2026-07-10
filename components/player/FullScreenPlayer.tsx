@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as ReactDOM from "react-dom";
+import { createPortal } from "react-dom";
 import MusicThumbnail from "@/components/music-thumbnail";
 import LyricsView from "@/components/lyrics/LyricsView";
 import PlayerProgressBar from "@/components/player/PlayerProgressBar";
@@ -66,10 +66,31 @@ export default function FullScreenPlayer({
   const isInstrumental = Boolean(track.metadata?.instrumental);
   const hasLyrics = Boolean(lyricLines?.length);
 
+  // Lock scroll while fullscreen is mounted.
+  // Chrome shifts scroll responsibility from body to html when body gets overflow:hidden,
+  // so we lock both. Also reset window scroll to 0 so scroll-behavior:smooth on html
+  // doesn't animate a stale scroll position into view.
+  React.useEffect(() => {
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+    const prevScrollTop = window.scrollY;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    window.scrollTo(0, 0);
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+      window.scrollTo(0, prevScrollTop);
+    };
+  }, []);
+
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+
   const content = (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 9999, minHeight: "100dvh" }}
-      className="flex flex-col overflow-hidden"
+      style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 0, zIndex: 9999, overscrollBehavior: "none" }}
+      className="flex flex-col overflow-hidden touch-none"
     >
       {track.thumbnail_url ? (
         <img
@@ -185,8 +206,6 @@ export default function FullScreenPlayer({
     </div>
   );
 
-  // Portal to document.body so `position: fixed` escapes any ancestor
-  // `overflow: hidden` or `isolation: isolate` containing block that would
-  // otherwise clip the overlay (observed in workspace/page.tsx layout).
-  return ReactDOM.createPortal(content, document.body);
+  if (!mounted) return null;
+  return createPortal(content, document.body);
 }

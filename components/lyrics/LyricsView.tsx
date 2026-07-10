@@ -16,13 +16,19 @@ export default function LyricsView({
   instrumental = false,
 }: LyricsViewProps) {
   const activeIdx = findActiveLineIndex(lines, currentTimeMs);
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const activeLyricRef = React.useRef<HTMLParagraphElement>(null);
   const [userScrolling, setUserScrolling] = React.useState(false);
   const userScrollTimerRef = React.useRef<number | null>(null);
 
+  // Scroll the lyrics container directly — scrollIntoView propagates up to parent
+  // scroll contexts (body on iOS Safari) and causes the fullscreen player to jump.
   React.useEffect(() => {
-    if (!activeLyricRef.current || userScrolling) return;
-    activeLyricRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    const container = containerRef.current;
+    const line = activeLyricRef.current;
+    if (!container || !line || userScrolling) return;
+    const target = line.offsetTop - container.clientHeight / 2 + line.offsetHeight / 2;
+    container.scrollTo({ top: target, behavior: "smooth" });
   }, [activeIdx, userScrolling]);
 
   const handleScroll = React.useCallback(() => {
@@ -46,6 +52,7 @@ export default function LyricsView({
 
   return (
     <div
+      ref={containerRef}
       className="custom-scrollbar h-full overflow-y-auto px-6"
       onScroll={handleScroll}
     >
