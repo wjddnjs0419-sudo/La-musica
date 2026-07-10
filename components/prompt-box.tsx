@@ -76,6 +76,37 @@ const VOCAL_OPTIONS: { value: VocalMode; label: string }[] = [
   { value: "crowd_chant", label: "Crowd chant" },
 ];
 
+type Preset = {
+  label: string;
+  genre?: MusicGenre;
+  moods?: MusicMood[];
+  useCase?: MusicUseCase;
+  vocalMode?: VocalMode;
+  duration?: 60 | 180;
+};
+
+const PRESETS: Preset[] = [
+  {
+    label: "Football Chant",
+    genre: "football_chant",
+    vocalMode: "crowd_chant",
+    moods: ["energetic", "aggressive"],
+    useCase: "sports_chant",
+  },
+  {
+    label: "Meme",
+    genre: "hiphop_trap",
+    moods: ["funny"],
+    useCase: "short_form",
+    duration: 60,
+  },
+  {
+    label: "Sports Hype",
+    moods: ["energetic", "epic", "aggressive"],
+    useCase: "sports_chant",
+  },
+];
+
 // --- Minimal SVG icons ---
 const SendIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -189,6 +220,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
     const [language, setLanguage] = React.useState("");
     const [optionsOpen, setOptionsOpen] = React.useState(false);
     const [aiLyricsOpen, setAiLyricsOpen] = React.useState(false);
+    const [duration, setDuration] = React.useState<60 | 180>(180);
 
     React.useImperativeHandle(ref, () => internalTextareaRef.current!, []);
     React.useLayoutEffect(() => {
@@ -219,6 +251,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
         useCase: useCase || undefined,
         vocalMode,
         language: language || undefined,
+        duration,
       });
       setValue("");
       setLyrics("");
@@ -227,6 +260,7 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
       setUseCase("");
       setVocalMode("auto");
       setLanguage("");
+      setDuration(180);
       setLyricsOpen(false);
       setOptionsOpen(false);
     };
@@ -260,13 +294,15 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
         />
 
         {lyricsOpen && (
-          <textarea
-            value={lyrics}
-            onChange={(e) => setLyrics(e.target.value)}
-            placeholder="Lyrics (optional)"
-            rows={3}
-            className="custom-scrollbar mx-1 mb-1 max-h-32 w-[calc(100%-0.5rem)] resize-none overflow-y-auto rounded-2xl border-0 bg-black/5 p-3 text-sm text-foreground placeholder:text-muted-foreground focus:ring-0 focus-visible:outline-none dark:bg-white/5 dark:text-white dark:placeholder:text-gray-400"
-          />
+          <div className="mx-1 mb-1 flex flex-col gap-1">
+            <textarea
+              value={lyrics}
+              onChange={(e) => setLyrics(e.target.value)}
+              placeholder="Leave blank — AI will write original lyrics for you."
+              rows={3}
+              className="custom-scrollbar max-h-32 w-full resize-none overflow-y-auto rounded-2xl border-0 bg-black/5 p-3 text-sm text-foreground placeholder:text-muted-foreground focus:ring-0 focus-visible:outline-none dark:bg-white/5 dark:text-white dark:placeholder:text-gray-400"
+            />
+          </div>
         )}
 
         {optionsOpen && (
@@ -326,6 +362,28 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
               </select>
             </label>
 
+            <label className="flex flex-col gap-1 text-xs text-muted-foreground dark:text-gray-400">
+              Duration
+              <div className="flex gap-1" role="group" aria-label="Duration">
+                {([60, 180] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDuration(d)}
+                    aria-pressed={duration === d}
+                    className={cn(
+                      "rounded-lg px-3 py-2 text-sm transition-colors",
+                      duration === d
+                        ? "bg-[#2294ff] text-white dark:bg-[#99ceff] dark:text-black"
+                        : "bg-white/70 text-foreground dark:bg-[#3a3a3a] dark:text-white",
+                    )}
+                  >
+                    {d === 60 ? "Short (1 min)" : "Full (3 min)"}
+                  </button>
+                ))}
+              </div>
+            </label>
+
             <div className="flex flex-col gap-1 text-xs text-muted-foreground dark:text-gray-400">
               Mood
               <div className="flex flex-wrap gap-1" role="group" aria-label="Mood">
@@ -354,6 +412,28 @@ export const PromptBox = React.forwardRef<HTMLTextAreaElement, PromptBoxProps>(
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            <div className="sm:col-span-2 flex flex-col gap-1 text-xs text-muted-foreground dark:text-gray-400">
+              Quick presets
+              <div className="flex flex-wrap gap-1" role="group" aria-label="Quick presets">
+                {PRESETS.map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => {
+                      setGenre(preset.genre ?? "");
+                      setMoods(preset.moods ?? []);
+                      setUseCase(preset.useCase ?? "");
+                      setVocalMode(preset.vocalMode ?? "auto");
+                      setDuration(preset.duration ?? 180);
+                    }}
+                    className="rounded-full border border-current/20 px-2.5 py-1 text-xs transition-colors hover:bg-white/70 dark:hover:bg-[#3a3a3a]"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

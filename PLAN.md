@@ -6,9 +6,11 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 (none)
 
 ## In Progress
-- Contact page and navigation link - Add a `/contact` page using existing La Musica styling/components, wire the main menu Contact link to it, and validate with build/lint.
+(none)
 
 ## Done
+- [Done] Vercel Cron + DB 마이그레이션 + Phase 5 (2026-07-10) — vercel.json cron 5분마다 reconcile, reconcile 인증 Bearer 지원, generation_cost_logs DB 실제 적용, Duration 60s/180s 토글, Football Chant/Meme/Sports Hype 프리셋. 95 tests / lint / build 통과.
+- [Done] La Musica 리뉴얼 Phase 0~4 (2026-07-10) — README/docs ACE-Step으로 최신화, Viral Pack 35→50 credits, lyrics_required → auto lyrics generation, server-side reconcile route, polling idempotency, thumbnail bg분리, cost logging, UX 상태 메시지 개선. 93 tests / lint / build 통과.
 - [Done] 브랜드 로고 교체 (2026-07-10) - 사용자가 준비한 `la_musica_logo_assets_exact/` 새 로고(그라디언트 심볼)를 `public/`으로 이동하고 임시 폴더 삭제. `app/layout.tsx`에 `metadata.icons`(favicon.ico/svg+apple-touch-icon) 추가, OG 이미지를 `og-image.png`로 교체. `components/logo.tsx`를 `<img>` 기반 `variant: icon|horizontal` 컴포넌트로 재작성(항상 dark 배리언트), 헤더/푸터/법적고지/문의/인증은 가로형, 워크스페이스 네브바/로딩화면은 아이콘 단독 적용. footer 고정폭 className을 w-auto로 수정해 찌그러짐 방지. build/lint 통과, curl로 신규 에셋 200 + head 태그 확인. See RESULT.md.
 - [Done] 노래 생성 즉시 Pending 피드백 (2026-07-10) - Generate submit 즉시 임시 `pending` row(`Starting your track...`)를 목록 상단에 표시, 서버 성공 시 실제 music row로 교체 후 polling 시작. 실패 시 임시 row 제거 + 기존 에러/credit modal 처리. bootstrap 로드와 충돌하지 않게 optimistic row 보존, temp row polling/action 비활성화. build/lint 통과. See RESULT.md.
 - [Done] Workspace 스켈레톤 로딩 전환 (2026-07-10) - `/workspace` 서버 렌더에서 musics/credit DB 조회 제거, shell은 auth 사용자 정보만 받고 즉시 렌더. 신규 `/api/workspace/bootstrap` no-store API로 최근 음악 50개+크레딧 후속 로드, list skeleton 및 `app/workspace/loading.tsx` route skeleton 추가. build/lint 통과, local production `/workspace` 134ms→5~13ms 확인. See RESULT.md.

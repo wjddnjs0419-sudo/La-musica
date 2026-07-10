@@ -10,6 +10,9 @@ import { buildThumbnailPrompt } from "@/lib/prompts/buildThumbnailPrompt";
 
 // Poll endpoint: resolves a `processing` row by checking the Replicate
 // prediction, copying the finished mp3 into Storage, and finalizing the row.
+// Uses the user-scoped client (not admin) so storage uploads are attributed
+// to the authenticated user — this is intentionally separate from the admin
+// client used in the reconcile route (app/api/internal/reconcile-music).
 export async function GET(
   _request: NextRequest,
   ctx: RouteContext<"/api/music/[id]">,
@@ -38,12 +41,10 @@ export async function GET(
 
   const music = row as Music;
 
-  if (music.status === "completed" && music.thumbnail_status === "pending") {
-    const updated = await generateAndPersistThumbnail(client, user.id, music);
-    return NextResponse.json({ music: updated });
-  }
-
-  // Terminal states need no further music-generation work.
+  // Terminal states need no further music-generation work. Thumbnail generation
+  // runs in the background (started when music first completes) — the client
+  // shows a placeholder while thumbnail_status is "pending" and polls until
+  // thumbnail_status becomes "succeeded" or "failed".
   if (music.status === "completed" || music.status === "failed") {
     return NextResponse.json({ music });
   }
@@ -76,7 +77,7 @@ export async function GET(
     return NextResponse.json({ music }); // still starting/processing
   }
 
-  // Succeeded: minimax returns a single mp3 URL (string or 1-item array).
+  // Succeeded: extract audio URL from prediction output.
   const audioUrl = Array.isArray(prediction.output)
     ? prediction.output[0]
     : (prediction.output as string | undefined);
@@ -86,27 +87,35 @@ export async function GET(
     return NextResponse.json({ music: failed ?? music });
   }
 
-  // Copy the mp3 into our Storage bucket so it survives Replicate's TTL.
+  // Idempotency: if a previous poll already uploaded the audio (audio_key set)
+  // but the DB update to "completed" failed, skip re-upload and go straight to
+  // the DB update to avoid a duplicate storage object.
   let key: string;
   let url: string;
-  try {
-    const res = await fetch(audioUrl);
-    if (!res.ok) throw new Error(`download ${res.status}`);
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    const file = new File([bytes], `${id}.mp3`, { type: "audio/mpeg" });
+  if (music.audio_key && music.audio_url) {
+    key = music.audio_key;
+    url = music.audio_url;
+  } else {
+    // Copy the mp3 into our Storage bucket so it survives Replicate's TTL.
+    try {
+      const res = await fetch(audioUrl);
+      if (!res.ok) throw new Error(`download ${res.status}`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const file = new File([bytes], `${id}.mp3`, { type: "audio/mpeg" });
 
-    const uploadKey = `${user.id}/${id}.mp3`;
-    const { data: uploaded, error: uploadError } = await client.storage
-      .from(MUSICS_BUCKET)
-      .upload(uploadKey, file);
+      const uploadKey = `${user.id}/${id}.mp3`;
+      const { data: uploaded, error: uploadError } = await client.storage
+        .from(MUSICS_BUCKET)
+        .upload(uploadKey, file);
 
-    if (uploadError || !uploaded) throw uploadError ?? new Error("upload failed");
-    key = uploaded.key;
-    url = uploaded.url;
-  } catch (err) {
-    console.error("audio persist failed", err);
-    const failed = await refundAndMarkFailed(user.id, id, "could not store audio");
-    return NextResponse.json({ music: failed ?? music });
+      if (uploadError || !uploaded) throw uploadError ?? new Error("upload failed");
+      key = uploaded.key;
+      url = uploaded.url;
+    } catch (err) {
+      console.error("audio persist failed", err);
+      const failed = await refundAndMarkFailed(user.id, id, "could not store audio");
+      return NextResponse.json({ music: failed ?? music });
+    }
   }
 
   const thumbnailPrompt = buildPromptForMusic(music);
@@ -127,14 +136,15 @@ export async function GET(
     return NextResponse.json({ music }); // audio is stored; client can retry
   }
 
-  const withThumbnail = await generateAndPersistThumbnail(
-    client,
-    user.id,
-    updated[0] as Music,
-    thumbnailPrompt,
+  // Kick off thumbnail generation in the background — do not await it so the
+  // client receives the completed music immediately without waiting for the
+  // Replicate image model. thumbnail_status starts as "pending" and the next
+  // poll will observe the updated value.
+  generateAndPersistThumbnail(client, user.id, updated[0] as Music, thumbnailPrompt).catch(
+    (err) => console.error("bg thumbnail failed", { musicId: id, err }),
   );
 
-  return NextResponse.json({ music: withThumbnail });
+  return NextResponse.json({ music: updated[0] });
 }
 
 export async function PATCH(

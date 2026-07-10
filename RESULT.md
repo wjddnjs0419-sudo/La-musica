@@ -1,38 +1,46 @@
-# RESULT: 브랜드 로고 교체 - 2026-07-10
+# RESULT: Vercel Cron 연결 + DB 마이그레이션 적용 + Phase 5 - 2026-07-10
 
 ## Background
-- 사용자가 확정한 새 로고(보라-파랑 그라디언트 심볼)로 교체하기 위해 프로젝트 상위에 `la_musica_logo_assets_exact/`(favicon, icon/horizontal 라이트·다크 세트, og-image, 사용 가이드)를 준비해둠.
-- 기존 `components/logo.tsx`는 손으로 그린 리본 SVG를 `currentColor` 단색 stroke로 그리는 방식이라, 그라디언트가 들어간 새 심볼을 그대로 대체할 수 없었음 — 파일 참조(`<img>`) 방식으로 전환 필요.
-- 로고 사용처 8곳(헤더 데스크톱/모바일메뉴, 푸터, 워크스페이스 네브바, 워크스페이스 로딩화면, 법적고지, 문의, 인증페이지)을 전수 확인한 결과 전부 다크 배경(`text-white` 컨텍스트)이라 dark 배리언트만 필요.
-- `logoguide.md` 기준으로 "웹사이트 헤더/푸터"는 가로형(심볼+워드마크), "앱 내부 심볼/로딩화면/네브바"는 아이콘 단독을 권장 — 용도별로 분리 적용.
-- `node_modules/next/dist/docs`의 Next 16 favicon/OG 파일 컨벤션 문서를 확인해, 가이드가 제시한 `<link>` 태그와 동일한 `metadata.icons` 수동 설정으로 구현.
+Phase 0~4 완료 후 남은 Follow-up 3개 처리: Vercel Cron 연결, `generation_cost_logs` DB 실제 적용, Phase 5(Short-form duration + 프리셋).
 
 ## Implementation
-- **에셋 이동**: `la_musica_logo_assets_exact/`의 favicon 세트(`favicon.ico/svg/16~512.png`), `apple-touch-icon.png`, `logo-icon-{light,dark}.svg`, `logo-horizontal-{light,dark}.svg`, `og-image.png`를 `public/`으로 이동. 중복 래스터 PNG 로고본·source crop·문서 파일은 이동하지 않음.
-- **정리**: 구 `app/icon.svg`(수동 `metadata.icons`로 대체), 구 `public/og.png`(→`og-image.png`) 삭제. 이동 완료 후 `la_musica_logo_assets_exact/` 폴더 전체 삭제.
-- **`app/layout.tsx`**: `metadata.icons`(favicon.ico + favicon.svg + apple-touch-icon) 추가, OG/Twitter 이미지를 `/og.png` → `/og-image.png`로 변경.
-- **`components/logo.tsx`**: 인라인 SVG 컴포넌트를 `<img>` 기반으로 재작성. `variant: "icon" | "horizontal"` prop 추가(기본값 `icon`), 항상 dark 배리언트(`/logo-icon-dark.svg`, `/logo-horizontal-dark.svg`)를 렌더. 기존 `className`/`title` prop 시그니처는 유지해 호출부 대부분 무변경.
-- **호출부 8곳 배리언트 배정**:
-  - 가로형(`variant="horizontal"`): `headersection.tsx`(데스크톱 헤더 + 모바일 메뉴), `legal-page.tsx`, `contact-page.tsx`, `app/auth/page.tsx`, `footer-section.tsx`
-  - 아이콘 단독(기본값): `workspace-navbar.tsx`, `app/workspace/loading.tsx`
-- **`footer-section.tsx`**: 별도 `"La Musica"` 텍스트 span 제거(가로형 이미지에 워드마크 포함), `className`을 `h-9 w-16 shrink-0 sm:h-10 sm:w-20`(고정 폭) → `h-9 w-auto shrink-0 sm:h-10`(자동 폭)로 수정 — 정사각 아이콘 비율을 고정 폭에 넣으면 이미지가 찌그러지는 문제(가이드에서 명시적으로 금지) 방지.
-- `components/logo.tsx`의 `<img>`에 `@next/next/no-img-element` eslint-disable 주석 추가(정적 브랜드 에셋이라 최적화 불필요).
+
+### Vercel Cron 연결
+- `vercel.json` 신규: `*/5 * * * *` 스케줄로 `POST /api/internal/reconcile-music` 호출
+- `app/api/internal/reconcile-music/route.ts`:
+  - 인증 방식 수정: Vercel Cron이 보내는 `Authorization: Bearer <CRON_SECRET>` + 기존 `x-cron-secret` 둘 다 허용
+  - `CRON_SECRET`는 Vercel 시스템 변수(자동 주입) — 수동 등록 불필요
+
+### generation_cost_logs DB 적용
+- `npx @insforge/cli db import migrations/20260710000000_generation-cost-logs.sql` 실행 → 실제 InsForge DB에 테이블·인덱스 생성 완료
+
+### Phase 5 — Duration 옵션 + 프리셋
+- `lib/music.ts`:
+  - `GenerateRequest`에 `duration?: number` 필드 추가
+  - `buildAceStepInput()`에 `duration` 파라미터 추가 (기본값 `ACE_STEP_DURATION_SECONDS`)
+- `lib/music.test.ts`: duration 관련 테스트 2개 추가 (RED→GREEN 확인), 설명 "fixed" → "default" 수정
+- `app/api/music/generate/route.ts`:
+  - `duration` 파싱 추가 (상한 300s 클램프)
+  - `buildAceStepInput()` 호출에 `duration` 전달
+  - 비용 로그 `durationSeconds`를 실제 `duration ?? ACE_STEP_DURATION_SECONDS`로 수정
+- `components/prompt-box.tsx`:
+  - `Preset` 타입 `duration?: 60 | 180` 리터럴 유니온 (안전한 타입)
+  - `PRESETS` 배열: Football Chant / Meme (60s) / Sports Hype 3개
+  - Duration 토글 UI: Short (1 min) / Full (3 min)
+  - Quick presets 버튼 행 (클릭 시 관련 옵션 전체 교체)
+  - `handleSubmit`에 `duration` 포함, reset 시 180으로 초기화
 
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
-| Typecheck/build | `npm run build` | Passed (17 routes 생성) |
-| Lint | `npm run lint` | Passed (0 errors, 0 warnings) |
-| 신규 에셋 라우트 200 확인 | `curl` 로 `/`, `/logo-horizontal-dark.svg`, `/logo-icon-dark.svg`, `/favicon.svg`, `/apple-touch-icon.png`, `/og-image.png` | 전부 200 |
-| 헤더에 가로형 로고 렌더 확인 | `curl` HTML에서 `src="/logo-horizontal-dark.svg"` 존재 확인 | 확인됨 |
-| favicon/apple-touch-icon `<link>` 태그 확인 | `curl` HTML head 파싱 | `favicon.ico`(sizes=any), `favicon.svg`, `apple-touch-icon.png` 3개 모두 출력됨 |
-| 임시 폴더 제거 | `ls` | `la_musica_logo_assets_exact/` 삭제 확인 |
+| 전체 테스트 | `npx vitest run` | 95 tests passed (15 suites) |
+| 타입체크/빌드 | `npm run build` | Passed |
+| Lint | `npm run lint` | Passed (0 errors) |
+| 코드 리뷰 | Phase 5 서브에이전트 리뷰 | Important 3개 + Minor 수정 완료 |
 
 ## Lessons
-- 정사각 아이콘 → 가로형 워드마크 이미지로 교체할 때는 호출부의 고정 폭(`w-16` 등) className을 `w-auto`로 함께 손보지 않으면 이미지가 찌그러진다 — 배리언트 교체는 항상 aspect-ratio 가정도 같이 점검해야 한다.
-- `currentColor` 기반 단색 SVG는 그라디언트가 들어간 브랜드 자산으로 넘어가는 순간 재사용 불가 — 그라디언트 로고는 파일 참조(`<img>`/`next/image`)로 갈 수밖에 없다.
-- `@next/next/no-img-element`는 severity가 `warn`이라 `npm run lint`(에러만 실패 처리) 자체는 통과하지만, `eslint-disable` 주석은 실제로 경고가 발생하는 줄 바로 위에 둬야 "unused directive" 경고가 새로 생기지 않는다.
+- Vercel `CRON_SECRET`는 시스템 변수라 Vercel UI에서 수동 등록이 막힘 — 배포하면 자동 주입됨.
+- InsForge MCP는 Supabase project ref 형식(20자 소문자)만 수락 — InsForge 프로젝트엔 `@insforge/cli db import` 사용.
 
 ## Follow-ups (미적용)
-- 실제 브라우저에서 다크/라이트 다양한 화면(헤더, 푸터, 워크스페이스, 인증 페이지)을 육안으로 최종 확인 권장(이번엔 `curl` HTML/에셋 200 확인까지만 진행).
-- `public/`에 남겨둔 `favicon-16~512.png`는 현재 `metadata.icons`에서 직접 참조하지 않음 — 추후 PWA manifest를 추가할 계획이 있다면 그때 연결.
+- Polar Viral Pack product ID도 50 credits 기준으로 동기화 필요 (백엔드 Polar 대시보드 — 사용자 수동)

@@ -4,6 +4,58 @@
 
 ---
 
+# RESULT: La Musica 리뉴얼 Phase 0~4 - 2026-07-10
+
+## Background
+`la_musica_renewal_plan.md` 기반 리뉴얼. 제품 약속(텍스트→노래)과 실제 동작의 불일치 제거, 신뢰성 강화, cost 측정 체계 수립이 목적.
+
+## Implementation
+
+### Phase 0 — 정합성 복구
+- `README.md` 전면 재작성: `meta/musicgen` → ACE-Step, Polar 결제, Gemini 보조, credit 플랜 표 추가
+- `lib/credits.ts`: Viral Pack 35 → 50 credits (Creator 대비 단가 역전 해소)
+- `lib/credits.test.ts` 신규: 4개 테스트
+
+### Phase 1 — Auto Lyrics Generation
+- `lib/lyrics-assistant/generateAutoLyrics.ts` 신규: 빈 messages 단일 Gemini 호출
+- `lib/lyrics-assistant/generateAutoLyrics.test.ts` 신규: 4개 테스트
+- `app/api/music/generate/route.ts`: `lyrics_required` → auto-generate, `lyrics_generation_failed` 502
+
+### Phase 2 — Generation Reliability
+- `lib/reconcile-music.ts` 신규: DI 기반 순수 재조정 로직, 7가지 아웃컴, idempotent
+- `lib/reconcile-music.test.ts` 신규: 8개 테스트
+- `app/api/internal/reconcile-music/route.ts` 신규: CRON_SECRET 검증, 배치 50건
+- `app/api/music/[id]/route.ts`: audio_key idempotency, thumbnail fire-and-forget
+
+### Phase 3 — Cost Logging
+- `lib/cost-logging.ts` 신규: `buildCostLogRow()`, ACE-Step $0.000178/s, Gemini $0.0001/call
+- `migrations/20260710000000_generation-cost-logs.sql` 신규: `generation_cost_logs` 테이블
+
+### Phase 4 — UX
+- `components/music-workspace.tsx`: `lyrics_generation_failed` 처리, 상태 메시지 개선
+- `components/prompt-box.tsx`: lyrics placeholder 갱신
+
+## Verification
+93 tests / build / lint 통과. 서브에이전트 리뷰 Critical/Important 전량 수정.
+
+---
+
+# RESULT: 브랜드 로고 교체 - 2026-07-10
+
+## Background
+- 사용자가 확정한 새 로고(보라-파랑 그라디언트 심볼)로 교체하기 위해 프로젝트 상위에 `la_musica_logo_assets_exact/`(favicon, icon/horizontal 라이트·다크 세트, og-image, 사용 가이드)를 준비해둠.
+- 기존 `components/logo.tsx`는 손으로 그린 리본 SVG를 `currentColor` 단색 stroke로 그리는 방식이라, 그라디언트가 들어간 새 심볼을 그대로 대체할 수 없었음 — 파일 참조(`<img>`) 방식으로 전환 필요.
+
+## Implementation
+- README/logo 교체 완료. 상세는 PLAN.md Done 참조.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Build/lint | npm run build + lint | Passed |
+
+---
+
 # RESULT: 노래 생성 즉시 Pending 피드백 - 2026-07-10
 
 ## Background

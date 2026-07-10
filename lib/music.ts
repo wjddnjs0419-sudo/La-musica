@@ -73,6 +73,7 @@ export interface GenerateRequest {
   useCase?: MusicUseCase;
   vocalMode?: VocalMode;
   language?: string;
+  duration?: number;
 }
 
 // Build the Replicate fishaudio/ace-step-1.5 input payload. `prompt` carries
@@ -80,18 +81,19 @@ export interface GenerateRequest {
 // no `is_instrumental` boolean: instrumental tracks are signaled by sending
 // the literal string "[Instrumental]" as `lyrics`. Non-instrumental tracks
 // always receive real lyrics in production — the caller
-// (`app/api/music/generate/route.ts`) rejects vocal-mode requests with no
-// lyrics before this function is ever invoked — but this function still
-// falls back to "[Instrumental]" defensively if `lyrics` is somehow empty,
-// matching the belt-and-suspenders style of the old `buildMinimaxInput`.
+// (`app/api/music/generate/route.ts`) auto-generates lyrics via Gemini when
+// the user leaves the lyrics field blank — but this function still falls back
+// to "[Instrumental]" defensively if `lyrics` is somehow empty.
 export function buildAceStepInput({
   prompt,
   lyrics,
   instrumental = false,
+  duration = ACE_STEP_DURATION_SECONDS,
 }: {
   prompt: string;
   lyrics?: string;
   instrumental?: boolean;
+  duration?: number;
 }) {
   const composedPrompt = prompt.trim().slice(0, MAX_PROMPT_CHARS);
   const trimmedLyrics = lyrics?.trim().slice(0, MAX_LYRICS_CHARS);
@@ -99,7 +101,7 @@ export function buildAceStepInput({
   return {
     prompt: composedPrompt,
     lyrics: instrumental || !trimmedLyrics ? "[Instrumental]" : trimmedLyrics,
-    duration: ACE_STEP_DURATION_SECONDS,
+    duration,
     audio_format: "mp3",
   };
 }

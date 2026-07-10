@@ -11,13 +11,16 @@ import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import {
   ACE_STEP_MODEL,
   ACE_STEP_VERSION,
+  ACE_STEP_DURATION_SECONDS,
   buildAceStepInput,
   type Music,
 } from "@/lib/music";
-import { compileMusicPrompt } from "@/lib/music-prompt";
+import { compileMusicPrompt, buildLyricsPayload } from "@/lib/music-prompt";
 import { translateToEnglish } from "@/lib/translatePrompt";
 import { refineStylePrompt } from "@/lib/refineStylePrompt";
 import { buildFallbackMusicTitle } from "@/lib/musicTitle";
+import { generateAutoLyricsForSong } from "@/lib/lyrics-assistant/generateAutoLyrics";
+import { buildCostLogRow } from "@/lib/cost-logging";
 import type {
   MusicGenre,
   MusicMood,
@@ -42,6 +45,7 @@ export async function POST(request: NextRequest) {
     useCase?: unknown;
     vocalMode?: unknown;
     language?: unknown;
+    duration?: unknown;
   };
   try {
     body = await request.json();
@@ -72,6 +76,10 @@ export async function POST(request: NextRequest) {
       : undefined;
   const language =
     typeof body.language === "string" ? body.language : undefined;
+  const duration =
+    typeof body.duration === "number" && body.duration > 0
+      ? Math.min(Math.round(body.duration), 300)
+      : undefined;
 
   const auth = await getAuthenticatedClient(request);
   const { client, user, refreshedTokens } = auth;
@@ -113,27 +121,42 @@ export async function POST(request: NextRequest) {
     lyrics: lyrics || undefined,
   });
 
-  // ACE-Step has no server-side lyric improvisation (unlike MiniMax): a vocal
-  // mode with no lyrics would silently render as an instrumental track
-  // (empty `lyrics` defaults to "[Instrumental]" — see buildAceStepInput).
-  // Reject before spending a refine call, a DB round-trip, or a credit.
-  // `compiled.instrumental` is the fully-resolved flag (covers explicit
-  // `vocalMode`, the legacy `instrumental` boolean, and genre-based
-  // auto-resolution in `resolveVocalMode`), so this check can't miss a case
-  // the compiler itself would have treated as vocal.
+  // Determine lyrics payload and source.
+  // - User supplied lyrics → use as-is, source = "user"
+  // - Vocal + no lyrics → auto-generate via Gemini, source = "auto"
+  // - Instrumental → no lyrics needed, source = "instrumental"
+  let finalLyrics = lyrics;
+  const lyricsSource: "user" | "auto" | "instrumental" = compiled.instrumental
+    ? "instrumental"
+    : lyrics
+      ? "user"
+      : "auto";
+
   if (!compiled.instrumental && !lyrics) {
-    return jsonWithAuthCookies(
-      { error: "lyrics_required" },
-      { status: 400 },
-      refreshedTokens,
-    );
+    try {
+      finalLyrics = await generateAutoLyricsForSong({
+        prompt: userDescription,
+        genre,
+        moods,
+        vocalMode,
+        language,
+        useCase,
+      });
+    } catch (err) {
+      console.error("auto lyrics generation failed", err);
+      return jsonWithAuthCookies(
+        { error: "lyrics_generation_failed" },
+        { status: 502 },
+        refreshedTokens,
+      );
+    }
   }
 
   // Titles are never Gemini-generated — always derived locally (lyrics hook
   // line, else genre/mood) to keep song generation down to translate+refine
   // on the shared free-tier Gemini budget.
   const generatedTitle = buildFallbackMusicTitle({
-    lyrics,
+    lyrics: finalLyrics,
     instrumental: compiled.instrumental,
     genre,
     moods,
@@ -144,9 +167,25 @@ export async function POST(request: NextRequest) {
   // compiled prompt on any failure, so this never blocks generation.
   const refinedPrompt = await refineStylePrompt(compiled.prompt, compiled.instrumental);
 
+  // For vocal songs, resolve the lyrics payload for ACE-Step. Both paths run
+  // through buildLyricsPayload so section tags are canonical and the payload
+  // is capped at MAX_LYRICS_CHARS regardless of source.
+  // - user lyrics: compile step already called buildLyricsPayload; use compiled.lyrics
+  // - auto lyrics: Gemini output, normalize now via buildLyricsPayload
+  // - instrumental: undefined → buildAceStepInput inserts "[Instrumental]"
+  const aceLyricsPayload = compiled.instrumental
+    ? undefined
+    : lyricsSource === "user"
+      ? compiled.lyrics
+      : buildLyricsPayload(
+          { userDescription, lyrics: finalLyrics },
+          compiled.metadata.vocal_mode,
+        );
+
   const initialMetadata = {
     instrumental: compiled.instrumental,
-    ...(lyrics ? { lyrics } : {}),
+    // lyrics = effective lyrics used for generation (regardless of source)
+    ...(finalLyrics ? { lyrics: finalLyrics } : {}),
     ...(userDescription !== userDescriptionRaw
       ? { user_description_original: userDescriptionRaw }
       : {}),
@@ -155,7 +194,8 @@ export async function POST(request: NextRequest) {
     // was actually sent to ACE-Step (overrides compiled.metadata.final_music_prompt).
     compiled_music_prompt: compiled.prompt,
     final_music_prompt: refinedPrompt,
-    ...(compiled.lyrics ? { lyrics_payload: compiled.lyrics } : {}),
+    ...(aceLyricsPayload ? { lyrics_payload: aceLyricsPayload } : {}),
+    lyrics_source: lyricsSource,
   };
 
   const { data: reserved, error: reserveError } = await admin.database.rpc(
@@ -196,8 +236,9 @@ export async function POST(request: NextRequest) {
       version: ACE_STEP_VERSION,
       input: buildAceStepInput({
         prompt: refinedPrompt,
-        lyrics: compiled.lyrics,
+        lyrics: aceLyricsPayload,
         instrumental: compiled.instrumental,
+        duration,
       }),
     });
     predictionId = prediction.id;
@@ -235,6 +276,24 @@ export async function POST(request: NextRequest) {
       refreshedTokens,
     );
   }
+
+  // Fire-and-forget cost log — failure must not block the generation response.
+  const costRow = buildCostLogRow({
+    userId: user.id,
+    musicId: music.id,
+    predictionId,
+    musicModel: ACE_STEP_MODEL,
+    durationSeconds: duration ?? ACE_STEP_DURATION_SECONDS,
+    lyricsSource,
+    translationUsed: userDescription !== userDescriptionRaw,
+    styleRefineUsed: true,
+  });
+  admin.database
+    .from("generation_cost_logs")
+    .insert([costRow])
+    .then(({ error: logError }) => {
+      if (logError) console.error("cost log insert failed", logError);
+    });
 
   const remainingCredit = await readRemainingCredit(admin, user.id);
   return jsonWithAuthCookies(

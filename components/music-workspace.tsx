@@ -25,8 +25,8 @@ type MusicWorkspaceProps = {
 };
 
 const INSUFFICIENT_CREDIT_MESSAGE = "Not enough credits. Please upgrade.";
-const LYRICS_REQUIRED_MESSAGE =
-  "Add lyrics for vocal tracks, or switch to Instrumental.";
+const LYRICS_GENERATION_FAILED_MESSAGE =
+  "Couldn't generate lyrics automatically. Please add lyrics manually and try again.";
 
 const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -421,8 +421,8 @@ export default function MusicWorkspace({
             onOpenCreditModal?.();
             return;
           }
-          if (reason === "lyrics_required") {
-            setError(LYRICS_REQUIRED_MESSAGE);
+          if (reason === "lyrics_generation_failed") {
+            setError(LYRICS_GENERATION_FAILED_MESSAGE);
             return;
           }
           setError(reason);
@@ -820,8 +820,14 @@ function TrackRow({
         </div>
         {showMetadata && (
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-white/35">
-            <span>{formatDuration(track.duration_seconds)}</span>
-            <span>{formatDate(track.created_at)}</span>
+            {track.status === "failed" ? (
+              <span className="text-red-400/70">Generation failed — credit returned.</span>
+            ) : (
+              <>
+                <span>{formatDuration(track.duration_seconds)}</span>
+                <span>{formatDate(track.created_at)}</span>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -902,8 +908,8 @@ function StatusBadge({ status }: { status: Music["status"] }) {
     failed: "bg-red-400/15 text-red-300",
   };
   const labels: Record<Music["status"], string> = {
-    pending: "Pending",
-    processing: "Generating",
+    pending: "Starting...",
+    processing: "Composing...",
     completed: "Ready",
     failed: "Failed",
   };
@@ -918,8 +924,8 @@ function StatusBadge({ status }: { status: Music["status"] }) {
 
 function statusLabel(status: Music["status"]) {
   const labels: Record<Music["status"], string> = {
-    pending: "Pending",
-    processing: "Generating",
+    pending: "Starting...",
+    processing: "Composing your track...",
     completed: "Ready",
     failed: "Failed",
   };

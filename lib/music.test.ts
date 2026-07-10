@@ -18,7 +18,7 @@ describe("resolveRenameTitle", () => {
 });
 
 describe("buildAceStepInput", () => {
-  it("sends the trimmed prompt, lyrics, fixed duration, and mp3 format for a vocal track", () => {
+  it("sends the trimmed prompt, lyrics, default duration, and mp3 format for a vocal track", () => {
     const result = buildAceStepInput({
       prompt: "  upbeat synth pop  ",
       lyrics: "[Verse]\nwalking down the street",
@@ -55,5 +55,15 @@ describe("buildAceStepInput", () => {
     });
     expect(result.prompt.length).toBe(500);
     expect(result.lyrics.length).toBe(3500);
+  });
+
+  it("uses ACE_STEP_DURATION_SECONDS when no duration is supplied", () => {
+    const result = buildAceStepInput({ prompt: "test" });
+    expect(result.duration).toBe(ACE_STEP_DURATION_SECONDS);
+  });
+
+  it("uses the supplied duration instead of the default", () => {
+    const result = buildAceStepInput({ prompt: "test", duration: 60 });
+    expect(result.duration).toBe(60);
   });
 });
