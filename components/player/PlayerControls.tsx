@@ -29,43 +29,51 @@ const PauseIcon = (props: React.SVGProps<SVGSVGElement>) => (
 type PlayerControlsProps = {
   playing: boolean;
   onTogglePlay: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  compact?: boolean;
 };
 
 export default function PlayerControls({
   playing,
   onTogglePlay,
+  onPrev,
+  onNext,
+  compact = false,
 }: PlayerControlsProps) {
   return (
-    <div className="flex items-center gap-4 text-white/60 sm:gap-5">
+    <div className={`flex items-center text-white/60 ${compact ? "gap-1" : "gap-4 sm:gap-5"}`}>
       <button
         type="button"
-        className="flex h-10 w-10 items-center justify-center rounded-md transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+        onClick={onPrev}
+        disabled={!onPrev}
+        className={`flex items-center justify-center rounded-md transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15 disabled:cursor-default ${compact ? "h-8 w-8" : "h-10 w-10"}`}
         title="Previous"
-        disabled
       >
-        <PreviousIcon className="h-5 w-5 opacity-45" />
+        <PreviousIcon className={`${compact ? "h-4 w-4" : "h-5 w-5"} ${!onPrev ? "opacity-30" : ""}`} />
         <span className="sr-only">Previous track</span>
       </button>
       <button
         type="button"
         onClick={onTogglePlay}
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-black transition hover:bg-white/85 focus:outline-none focus:ring-2 focus:ring-white/30"
+        className={`flex items-center justify-center rounded-full bg-white text-black transition hover:bg-white/85 focus:outline-none focus:ring-2 focus:ring-white/30 ${compact ? "h-10 w-10" : "h-12 w-12"}`}
         title={playing ? "Pause" : "Play"}
       >
         {playing ? (
-          <PauseIcon className="h-6 w-6" />
+          <PauseIcon className={compact ? "h-5 w-5" : "h-6 w-6"} />
         ) : (
-          <PlayIcon className="h-6 w-6 pl-0.5" />
+          <PlayIcon className={`${compact ? "h-5 w-5" : "h-6 w-6"} pl-0.5`} />
         )}
         <span className="sr-only">{playing ? "Pause" : "Play"}</span>
       </button>
       <button
         type="button"
-        className="flex h-10 w-10 items-center justify-center rounded-md transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+        onClick={onNext}
+        disabled={!onNext}
+        className={`flex items-center justify-center rounded-md transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15 disabled:cursor-default ${compact ? "h-8 w-8" : "h-10 w-10"}`}
         title="Next"
-        disabled
       >
-        <NextIcon className="h-5 w-5 opacity-45" />
+        <NextIcon className={`${compact ? "h-4 w-4" : "h-5 w-5"} ${!onNext ? "opacity-30" : ""}`} />
         <span className="sr-only">Next track</span>
       </button>
     </div>

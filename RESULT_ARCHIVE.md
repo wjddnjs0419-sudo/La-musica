@@ -4,6 +4,81 @@
 
 ---
 
+# RESULT: Music Player 버그 수정 5개 - 2026-07-10
+
+## Background
+풀스크린 플레이어 5개 버그: 모바일 여백 과다, Prev/Next 미작동, 가사 누락("Instrumental track" 오표시), 가사 하이라이트 오작동, 앨범 커버 생성 직후 미반영.
+
+## Implementation
+- Bug 1: 가사 없을 때 lyrics 컨테이너 `flex-1` 제거, `hasLyrics` 분기
+- Bug 2: `PlayerControls`에 `onPrev?`/`onNext?` 추가, WorkspaceShell Prev/Next 로직 연결
+- Bug 3: `MUSIC_COLUMNS`에 `"metadata"` 추가, bootstrap 최적화 override 제거
+- Bug 4: 오디오 엘리먼트 실측 duration 우선 사용
+- Bug 5: 폴링 stop 조건에 `thumbnail_status !== "pending"` 추가
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| 빌드 | `npm run build` | Passed |
+| Lint | `npm run lint` | 0 errors |
+
+## Lessons
+- Bootstrap API의 metadata 최적화가 가사/instrumental 플래그 등 UI 로직에 영향
+- track.duration_seconds vs 오디오 실측값: null 가능성 있는 DB값보다 onLoadedMetadata 우선
+
+---
+
+# RESULT: Workspace UX Renewal Phase 1+2 - 2026-07-10
+
+## Background
+PRD(`la_musica_workspace_ux_prd.md`) + coding guide 기반 워크스페이스 전면 UX 개편.
+Phase 1: 기존 987줄 monolith(`music-workspace.tsx`) → 역할별 컴포넌트 분리, 동작 변경 없음.
+Phase 2: 새 UX 구현 — 생성 진행 화면, 실패 다이얼로그, 풀스크린 플레이어(가사 하이라이트), 모바일 볼륨 숨김, StatusBadge 제거.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| 타입체크/빌드 | `npm run build` | Passed |
+| Lint | `npm run lint` | Passed (0 errors, warning 1개: FullScreenPlayer img→next/image 권고 — 장식용 blur 배경이라 무시) |
+
+---
+
+---
+
+# RESULT: Vercel Cron 연결 + DB 마이그레이션 적용 + Phase 5 - 2026-07-10
+
+## Background
+Phase 0~4 완료 후 남은 Follow-up 3개 처리: Vercel Cron 연결, `generation_cost_logs` DB 실제 적용, Phase 5(Short-form duration + 프리셋).
+
+## Implementation
+
+### Vercel Cron 연결
+- `vercel.json` 신규: `*/5 * * * *` 스케줄로 `POST /api/internal/reconcile-music` 호출
+- `app/api/internal/reconcile-music/route.ts`:
+  - 인증 방식 수정: Vercel Cron이 보내는 `Authorization: Bearer <CRON_SECRET>` + 기존 `x-cron-secret` 둘 다 허용
+  - `CRON_SECRET`는 Vercel 시스템 변수(자동 주입) — 수동 등록 불필요
+
+### generation_cost_logs DB 적용
+- `npx @insforge/cli db import migrations/20260710000000_generation-cost-logs.sql` 실행 → 실제 InsForge DB에 테이블·인덱스 생성 완료
+
+### Phase 5 — Duration 옵션 + 프리셋
+- `lib/music.ts`: `GenerateRequest`에 `duration?: number` 필드 추가, `buildAceStepInput()`에 `duration` 파라미터 추가
+- `app/api/music/generate/route.ts`: `duration` 파싱(상한 300s 클램프), 비용 로그 수정
+- `components/prompt-box.tsx`: Short(1min)/Full(3min) 토글, Football Chant/Meme/Sports Hype 프리셋
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| 전체 테스트 | `npx vitest run` | 95 tests passed |
+| 타입체크/빌드 | `npm run build` | Passed |
+| Lint | `npm run lint` | Passed (0 errors) |
+
+## Lessons
+- Vercel `CRON_SECRET`는 시스템 변수라 Vercel UI에서 수동 등록이 막힘 — 배포하면 자동 주입됨.
+- InsForge MCP는 Supabase project ref 형식(20자 소문자)만 수락 — InsForge 프로젝트엔 `@insforge/cli db import` 사용.
+
+---
+
 # RESULT: La Musica 리뉴얼 Phase 0~4 - 2026-07-10
 
 ## Background

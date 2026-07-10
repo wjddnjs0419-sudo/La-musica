@@ -763,6 +763,21 @@ function TrackRow({
   const optimistic = track.id.startsWith(OPTIMISTIC_TRACK_PREFIX);
   const playable = track.status === "completed" && Boolean(track.audio_url);
   const showMetadata = !pending;
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (
+        menuRef.current?.contains(e.target as Node) ||
+        triggerRef.current?.contains(e.target as Node)
+      ) return;
+      onToggleMenu();
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [menuOpen, onToggleMenu]);
 
   return (
     <div
@@ -834,6 +849,7 @@ function TrackRow({
 
       <div className="flex items-center justify-end gap-2">
         <button
+          ref={triggerRef}
           type="button"
           onClick={onToggleMenu}
           disabled={optimistic}
@@ -847,7 +863,7 @@ function TrackRow({
       </div>
 
       {menuOpen && (
-        <div className="absolute right-3 top-14 z-20 w-40 overflow-hidden rounded-lg border border-white/10 bg-[#22252c] p-1 shadow-2xl sm:right-4">
+        <div ref={menuRef} className="absolute right-3 top-14 z-20 w-40 overflow-hidden rounded-lg border border-white/10 bg-[#22252c] p-1 shadow-2xl sm:right-4">
           <button
             type="button"
             onClick={onStartRename}
@@ -857,8 +873,8 @@ function TrackRow({
           </button>
           {track.audio_url ? (
             <a
-              href={track.audio_url}
-              download={`${safeFileName(track.title)}.mp3`}
+              href={`/api/music/${track.id}/download`}
+              onClick={onToggleMenu}
               className="block rounded-md px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08] hover:text-white"
             >
               Download
@@ -950,9 +966,6 @@ function formatDate(value: string) {
   });
 }
 
-function safeFileName(title: string) {
-  return title.trim().replace(/[\\/:*?"<>|]+/g, "-").slice(0, 80) || "track";
-}
 
 function createOptimisticTrack(payload: GenerateRequest): Music {
   const now = new Date().toISOString();

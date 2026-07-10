@@ -29,6 +29,8 @@ export type MiniPlayerProps = {
   onVolumeChange: (volume: number) => void;
   onClose: () => void;
   onOpenFullscreen?: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
 };
 
 export default function MiniPlayer({
@@ -42,6 +44,8 @@ export default function MiniPlayer({
   onVolumeChange,
   onClose,
   onOpenFullscreen,
+  onPrev,
+  onNext,
 }: MiniPlayerProps) {
   const resolvedDuration = duration || track.duration_seconds || 0;
 
@@ -55,7 +59,48 @@ export default function MiniPlayer({
         duration={resolvedDuration}
         onSeek={onSeek}
       />
-      <div className="grid min-h-16 grid-cols-[minmax(0,1fr)] items-center gap-3 px-3 py-3 lg:grid-cols-[minmax(220px,1fr)_minmax(260px,1.2fr)_minmax(180px,0.8fr)] lg:py-2">
+
+      {/* Mobile: single compact row — album art · title · |< ▶ >| · × */}
+      <div className="flex items-center gap-2 px-3 py-2 lg:hidden">
+        <button
+          type="button"
+          onClick={onOpenFullscreen}
+          disabled={!onOpenFullscreen}
+          aria-label="Open full player"
+          className="shrink-0 disabled:cursor-default"
+        >
+          <MusicThumbnail
+            track={track}
+            className="h-10 w-10"
+            showTitle={Boolean(track.thumbnail_url)}
+          />
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-white/90">
+            {track.title}
+          </p>
+          <p className="text-[10px] text-white/40">AI Generated</p>
+        </div>
+        <PlayerControls
+          playing={playing}
+          onTogglePlay={onTogglePlay}
+          onPrev={onPrev}
+          onNext={onNext}
+          compact
+        />
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white/50 transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+          title="Close player"
+        >
+          <CloseIcon className="h-4 w-4" />
+          <span className="sr-only">Close player</span>
+        </button>
+      </div>
+
+      {/* Desktop: 3-column grid */}
+      <div className="hidden min-h-16 items-center gap-3 px-3 py-2 lg:grid lg:grid-cols-[minmax(220px,1fr)_minmax(260px,1.2fr)_minmax(180px,0.8fr)]">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
@@ -66,7 +111,7 @@ export default function MiniPlayer({
           >
             <MusicThumbnail
               track={track}
-              className="h-11 w-11 sm:h-12 sm:w-12"
+              className="h-11 w-11"
               showTitle={Boolean(track.thumbnail_url)}
             />
           </button>
@@ -79,7 +124,12 @@ export default function MiniPlayer({
         </div>
 
         <div className="flex min-w-0 items-center justify-center">
-          <PlayerControls playing={playing} onTogglePlay={onTogglePlay} />
+          <PlayerControls
+            playing={playing}
+            onTogglePlay={onTogglePlay}
+            onPrev={onPrev}
+            onNext={onNext}
+          />
         </div>
 
         <div className="flex min-w-0 items-center justify-end gap-2">

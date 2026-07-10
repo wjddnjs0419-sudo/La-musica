@@ -28,8 +28,17 @@ export function parseMusicLyrics(
     .map((l) => l.trim())
     .filter((l) => l && !/^\[.*\]$/.test(l));
   if (!lines.length) return null;
-  // TODO: replace with real line timestamps when the generation backend provides them
-  return approximateLyricTimings(lines, durationSeconds ?? 0);
+  const dur = durationSeconds ?? 0;
+  if (!dur) return [];
+  // Assume ~10% intro, ~5% outro — shifts lyrics into the vocal window
+  const durationMs = dur * 1000;
+  const startMs = durationMs * 0.1;
+  const rangeMs = durationMs * 0.85;
+  return lines.map((text, i) => ({
+    text,
+    startMs: Math.round(startMs + (i / lines.length) * rangeMs),
+    endMs: Math.round(startMs + ((i + 1) / lines.length) * rangeMs),
+  }));
 }
 
 export function findActiveLineIndex(

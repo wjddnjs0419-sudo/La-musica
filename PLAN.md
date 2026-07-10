@@ -9,6 +9,9 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 (none)
 
 ## Done
+- [Done] MP3 메타데이터·플레이어 UX 3건 (2026-07-10) — ID3 태그 삽입 다운로드 API(제목+앨범아트, thumbnail fallback), 모바일 프로그레스바 시간 레이블 정렬 수정, 드롭다운 click-outside 핸들러 추가. build/lint 통과.
+- [Done] Music Player 버그 수정 5개 (2026-07-10) — 모바일 여백, Prev/Next, 가사 누락(bootstrap metadata 복구), 하이라이트 동기화, 앨범 커버 즉시 반영(썸네일 폴링 연장). 107 tests/lint/build 통과.
+- [Done] Workspace UX Renewal Phase 1+2 (2026-07-10) — music-workspace.tsx monolith 분해, GenerationProgressScreen/FailureDialog/FullScreenPlayer 신규, 가사 active-line 하이라이트, 모바일 볼륨 숨김, StatusBadge 제거, refund_status metadata 기록. build/lint 통과.
 - [Done] Vercel Cron + DB 마이그레이션 + Phase 5 (2026-07-10) — vercel.json cron 5분마다 reconcile, reconcile 인증 Bearer 지원, generation_cost_logs DB 실제 적용, Duration 60s/180s 토글, Football Chant/Meme/Sports Hype 프리셋. 95 tests / lint / build 통과.
 - [Done] La Musica 리뉴얼 Phase 0~4 (2026-07-10) — README/docs ACE-Step으로 최신화, Viral Pack 35→50 credits, lyrics_required → auto lyrics generation, server-side reconcile route, polling idempotency, thumbnail bg분리, cost logging, UX 상태 메시지 개선. 93 tests / lint / build 통과.
 - [Done] 브랜드 로고 교체 (2026-07-10) - 사용자가 준비한 `la_musica_logo_assets_exact/` 새 로고(그라디언트 심볼)를 `public/`으로 이동하고 임시 폴더 삭제. `app/layout.tsx`에 `metadata.icons`(favicon.ico/svg+apple-touch-icon) 추가, OG 이미지를 `og-image.png`로 교체. `components/logo.tsx`를 `<img>` 기반 `variant: icon|horizontal` 컴포넌트로 재작성(항상 dark 배리언트), 헤더/푸터/법적고지/문의/인증은 가로형, 워크스페이스 네브바/로딩화면은 아이콘 단독 적용. footer 고정폭 className을 w-auto로 수정해 찌그러짐 방지. build/lint 통과, curl로 신규 에셋 200 + head 태그 확인. See RESULT.md.

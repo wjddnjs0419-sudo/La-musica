@@ -4,11 +4,17 @@ import * as React from "react";
 import TrackList, { TrackListSkeleton } from "@/components/workspace/TrackList";
 import MusicComposer from "@/components/workspace/MusicComposer";
 import MiniPlayer from "@/components/player/MiniPlayer";
+import FullScreenPlayer from "@/components/player/FullScreenPlayer";
+import GenerationProgressScreen from "@/components/generation/GenerationProgressScreen";
+import GenerationFailureDialog, {
+  type RefundStatus,
+} from "@/components/generation/GenerationFailureDialog";
 import {
   resolveRenameTitle,
   type GenerateRequest,
   type Music,
 } from "@/lib/music";
+import type { GenerationPhase } from "@/lib/generation/progress";
 
 const POLL_INTERVAL = 3000;
 const PAGE_SIZE = 7;
@@ -53,9 +59,17 @@ export default function WorkspaceShell({
   const [duration, setDuration] = React.useState(0);
   const [volume, setVolume] = React.useState(0.85);
 
+  const [genPhase, setGenPhase] = React.useState<GenerationPhase>("idle");
+  const [genStartMs, setGenStartMs] = React.useState(0);
+  const [genRefundStatus, setGenRefundStatus] =
+    React.useState<RefundStatus>("pending");
+  const [fullscreenOpen, setFullscreenOpen] = React.useState(false);
+
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const polling = React.useRef<Set<string>>(new Set());
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const genMusicIdRef = React.useRef<string | null>(null);
+  const genCallbackRef = React.useRef<(music: Music) => void>(() => {});
 
   React.useEffect(() => {
     if (!loadInitialData) return;
@@ -107,6 +121,15 @@ export default function WorkspaceShell({
     [activeTrackId, tracks],
   );
 
+  const completedTracks = React.useMemo(
+    () => tracks.filter((t) => t.status === "completed" && Boolean(t.audio_url)),
+    [tracks],
+  );
+
+  const activeCompletedIndex = completedTracks.findIndex(
+    (t) => t.id === activeTrackId,
+  );
+
   const upsertTrack = React.useCallback((music: Music) => {
     setTracks((prev) => {
       const idx = prev.findIndex((t) => t.id === music.id);
@@ -144,10 +167,13 @@ export default function WorkspaceShell({
           const json = (await res.json()) as { music?: Music };
           if (json.music) {
             upsertTrack(json.music);
-            if (
+            genCallbackRef.current(json.music);
+            const done =
               json.music.status === "completed" ||
-              json.music.status === "failed"
-            ) {
+              json.music.status === "failed";
+            const thumbnailSettled =
+              json.music.thumbnail_status !== "pending";
+            if (done && thumbnailSettled) {
               polling.current.delete(id);
               return;
             }
@@ -166,7 +192,11 @@ export default function WorkspaceShell({
   React.useEffect(() => {
     tracks.forEach((track) => {
       if (track.id.startsWith(OPTIMISTIC_TRACK_PREFIX)) return;
-      if (track.status === "pending" || track.status === "processing") {
+      const needsGenPoll =
+        track.status === "pending" || track.status === "processing";
+      const needsThumbnailPoll =
+        track.status === "completed" && track.thumbnail_status === "pending";
+      if (needsGenPoll || needsThumbnailPoll) {
         poll(track.id);
       }
     });
@@ -259,6 +289,27 @@ export default function WorkspaceShell({
     setCurrentTime(seconds);
   }, []);
 
+  React.useEffect(() => {
+    genCallbackRef.current = (music: Music) => {
+      if (music.id !== genMusicIdRef.current) return;
+      if (music.status === "completed") {
+        genMusicIdRef.current = null;
+        setGenPhase("success");
+        window.setTimeout(() => {
+          setGenPhase("idle");
+          void loadAndPlayTrack(music);
+        }, 1200);
+      } else if (music.status === "failed") {
+        genMusicIdRef.current = null;
+        const refundStatus =
+          (music.metadata?.refund_status as RefundStatus | undefined) ??
+          "pending";
+        setGenRefundStatus(refundStatus);
+        setGenPhase("failed");
+      }
+    };
+  }, [loadAndPlayTrack]);
+
   const persistTrackDuration = React.useCallback(
     async (trackId: string, seconds: number) => {
       const roundedSeconds = Math.round(seconds);
@@ -282,6 +333,20 @@ export default function WorkspaceShell({
     [upsertTrack],
   );
 
+  const handlePrevTrack = React.useCallback(async () => {
+    if (activeCompletedIndex <= 0) return;
+    await loadAndPlayTrack(completedTracks[activeCompletedIndex - 1]);
+  }, [activeCompletedIndex, completedTracks, loadAndPlayTrack]);
+
+  const handleNextTrack = React.useCallback(async () => {
+    if (
+      activeCompletedIndex < 0 ||
+      activeCompletedIndex >= completedTracks.length - 1
+    )
+      return;
+    await loadAndPlayTrack(completedTracks[activeCompletedIndex + 1]);
+  }, [activeCompletedIndex, completedTracks, loadAndPlayTrack]);
+
   const handleClosePlayer = React.useCallback(() => {
     const audio = audioRef.current;
     audio?.pause();
@@ -290,6 +355,7 @@ export default function WorkspaceShell({
     setPlaying(false);
     setCurrentTime(0);
     setDuration(0);
+    setFullscreenOpen(false);
   }, []);
 
   const handleSend = React.useCallback(
@@ -298,6 +364,8 @@ export default function WorkspaceShell({
       setInitialLoading(false);
       setError(null);
       upsertTrack(optimisticTrack);
+      setGenPhase("generating");
+      setGenStartMs(Date.now());
 
       try {
         const res = await fetch("/api/music/generate", {
@@ -317,6 +385,7 @@ export default function WorkspaceShell({
           json = {};
         }
         if (!res.ok || !json.music) {
+          setGenPhase("idle");
           const reason = json.error || `HTTP ${res.status}` || "unknown";
           console.error("generate failed:", res.status, raw);
           if (typeof json.remaining_credit === "number") {
@@ -340,9 +409,11 @@ export default function WorkspaceShell({
         }
         setError(null);
         replaceTrack(optimisticTrack.id, json.music);
+        genMusicIdRef.current = json.music.id;
         poll(json.music.id);
       } catch (err) {
         console.error("generate request failed", err);
+        setGenPhase("idle");
         removeTrack(optimisticTrack.id);
         setError("Request failed. Check your network and try again.");
       }
@@ -534,10 +605,52 @@ export default function WorkspaceShell({
               onSeek={handleSeek}
               onVolumeChange={setVolume}
               onClose={handleClosePlayer}
+              onOpenFullscreen={() => setFullscreenOpen(true)}
+              onPrev={activeCompletedIndex > 0 ? handlePrevTrack : undefined}
+              onNext={
+                activeCompletedIndex < completedTracks.length - 1
+                  ? handleNextTrack
+                  : undefined
+              }
             />
           </div>
         )}
       </div>
+
+      {(genPhase === "generating" || genPhase === "success") && (
+        <GenerationProgressScreen
+          startMs={genStartMs}
+          phase={genPhase}
+          onClose={() => setGenPhase("idle")}
+        />
+      )}
+
+      {genPhase === "failed" && (
+        <GenerationFailureDialog
+          refundStatus={genRefundStatus}
+          onTryAgain={() => setGenPhase("idle")}
+          onEditPrompt={() => setGenPhase("idle")}
+          onClose={() => setGenPhase("idle")}
+        />
+      )}
+
+      {fullscreenOpen && activeTrack && (
+        <FullScreenPlayer
+          track={activeTrack}
+          playing={playing}
+          currentTime={currentTime}
+          duration={duration}
+          onTogglePlay={handleTogglePlayerPlayback}
+          onSeek={handleSeek}
+          onClose={() => setFullscreenOpen(false)}
+          onPrev={activeCompletedIndex > 0 ? handlePrevTrack : undefined}
+          onNext={
+            activeCompletedIndex < completedTracks.length - 1
+              ? handleNextTrack
+              : undefined
+          }
+        />
+      )}
 
       <audio
         ref={audioRef}

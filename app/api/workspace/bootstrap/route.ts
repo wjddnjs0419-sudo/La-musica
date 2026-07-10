@@ -22,11 +22,10 @@ const MUSIC_COLUMNS = [
   "model",
   "is_public",
   "error_message",
+  "metadata",
   "created_at",
   "updated_at",
 ].join(", ");
-
-type MusicBootstrapRow = Omit<Music, "metadata">;
 
 export const dynamic = "force-dynamic";
 
@@ -73,10 +72,7 @@ export async function GET() {
     );
   }
 
-  const rows = (tracksResult.data ?? []) as unknown as MusicBootstrapRow[];
-  const tracks = rows.map(
-    (track) => ({ ...track, metadata: {} }) satisfies Music,
-  );
+  const tracks = (tracksResult.data ?? []) as unknown as Music[];
   const creditRow = creditResult.data as { credit?: unknown } | null;
   const credit = typeof creditRow?.credit === "number" ? creditRow.credit : 0;
 

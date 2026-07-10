@@ -279,7 +279,23 @@ async function refundAndMarkFailed(
     console.error("music failure refund failed", error);
   }
 
-  return (data as Music | null) ?? null;
+  const music = data as Music | null;
+  const refundStatus = error ? "failed" : "refunded";
+  const existingMetadata = music?.metadata ?? {};
+
+  try {
+    const { data: updated } = await admin.database
+      .from("musics")
+      .update({ metadata: { ...existingMetadata, refund_status: refundStatus } })
+      .eq("id", id)
+      .select()
+      .maybeSingle();
+    if (updated) return updated as Music;
+  } catch (metaErr) {
+    console.error("refund_status metadata update failed", metaErr);
+  }
+
+  return music ?? null;
 }
 
 async function generateAndPersistThumbnail(

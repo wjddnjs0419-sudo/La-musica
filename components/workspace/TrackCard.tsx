@@ -52,27 +52,6 @@ const MoreIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-function StatusBadge({ status }: { status: Music["status"] }) {
-  const styles: Record<Music["status"], string> = {
-    pending: "bg-white/10 text-white/60",
-    processing: "bg-amber-400/15 text-amber-300",
-    completed: "bg-emerald-400/15 text-emerald-300",
-    failed: "bg-red-400/15 text-red-300",
-  };
-  const labels: Record<Music["status"], string> = {
-    pending: "Starting...",
-    processing: "Composing...",
-    completed: "Ready",
-    failed: "Failed",
-  };
-  return (
-    <span
-      className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${styles[status]}`}
-    >
-      {labels[status]}
-    </span>
-  );
-}
 
 function statusTooltip(status: Music["status"]): string {
   const labels: Record<Music["status"], string> = {
@@ -92,9 +71,6 @@ function formatDate(value: string): string {
   return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
 }
 
-function safeFileName(title: string): string {
-  return title.trim().replace(/[\\/:*?"<>|]+/g, "-").slice(0, 80) || "track";
-}
 
 export type TrackCardProps = {
   track: Music;
@@ -135,6 +111,21 @@ export default function TrackCard({
   onConfirmDelete,
   onCancelDelete,
 }: TrackCardProps) {
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (
+        menuRef.current?.contains(e.target as Node) ||
+        triggerRef.current?.contains(e.target as Node)
+      ) return;
+      onToggleMenu();
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [menuOpen, onToggleMenu]);
   const pending = track.status === "pending" || track.status === "processing";
   const optimistic = track.id.startsWith(OPTIMISTIC_TRACK_PREFIX);
   const playable = track.status === "completed" && Boolean(track.audio_url);
@@ -192,7 +183,6 @@ export default function TrackCard({
               {track.title}
             </p>
           )}
-          <StatusBadge status={track.status} />
         </div>
         {showMetadata && (
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-white/35">
@@ -212,6 +202,7 @@ export default function TrackCard({
 
       <div className="flex items-center justify-end gap-2">
         <button
+          ref={triggerRef}
           type="button"
           onClick={onToggleMenu}
           disabled={optimistic}
@@ -225,7 +216,7 @@ export default function TrackCard({
       </div>
 
       {menuOpen && (
-        <div className="absolute right-3 top-14 z-20 w-40 overflow-hidden rounded-lg border border-white/10 bg-[#22252c] p-1 shadow-2xl sm:right-4">
+        <div ref={menuRef} className="absolute right-3 top-14 z-20 w-40 overflow-hidden rounded-lg border border-white/10 bg-[#22252c] p-1 shadow-2xl sm:right-4">
           <button
             type="button"
             onClick={onStartRename}
@@ -235,8 +226,8 @@ export default function TrackCard({
           </button>
           {track.audio_url ? (
             <a
-              href={track.audio_url}
-              download={`${safeFileName(track.title)}.mp3`}
+              href={`/api/music/${track.id}/download`}
+              onClick={onToggleMenu}
               className="block rounded-md px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08] hover:text-white"
             >
               Download

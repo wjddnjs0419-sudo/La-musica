@@ -17,11 +17,8 @@ export default function PlayerProgressBar({
   const progressValue = duration ? Math.min(currentTime, duration) : 0;
 
   return (
-    <div className="grid grid-cols-[42px_minmax(0,1fr)_42px] items-center gap-3 px-3 pt-2">
-      <span className="text-right text-[10px] tabular-nums text-white/45">
-        {formatTime(currentTime)}
-      </span>
-      <div className="relative -my-3 py-3">
+    <div className="px-3 pt-2">
+      <div className="relative -my-2 py-2">
         <div className="relative h-1 bg-white/10">
           <progress
             value={progressValue}
@@ -38,13 +35,18 @@ export default function PlayerProgressBar({
             disabled={!duration}
             onChange={(event) => onSeek(Number(event.target.value))}
             aria-label="Seek track"
-            className="absolute inset-x-0 -inset-y-3 h-[calc(100%+24px)] w-full cursor-pointer appearance-none bg-transparent opacity-0"
+            className="absolute inset-x-0 -inset-y-2 h-[calc(100%+16px)] w-full cursor-pointer appearance-none bg-transparent opacity-0"
           />
         </div>
       </div>
-      <span className="text-[10px] tabular-nums text-white/45">
-        {duration ? formatTime(duration) : "--:--"}
-      </span>
+      <div className="flex justify-between pt-0.5">
+        <span className="text-[10px] tabular-nums text-white/45">
+          {formatTime(currentTime)}
+        </span>
+        <span className="text-[10px] tabular-nums text-white/45">
+          {duration ? formatTime(duration) : "--:--"}
+        </span>
+      </div>
     </div>
   );
 }

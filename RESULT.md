@@ -1,46 +1,27 @@
-# RESULT: Vercel Cron 연결 + DB 마이그레이션 적용 + Phase 5 - 2026-07-10
+# RESULT: MP3 메타데이터·플레이어 UX 수정 3건 - 2026-07-10
 
 ## Background
-Phase 0~4 완료 후 남은 Follow-up 3개 처리: Vercel Cron 연결, `generation_cost_logs` DB 실제 적용, Phase 5(Short-form duration + 프리셋).
+1. 다운로드 MP3에 앨범 커버 미삽입 (커버 있어도 iOS Music에 미표시)
+2. 모바일 MiniPlayer 프로그레스바 시간 레이블(0:20 / 3:00)이 아래 컨텐츠와 가로 정렬 어긋남
+3. 트랙 드롭다운 메뉴에서 외부 클릭 시 닫히지 않음 + 다운로드 클릭 후 메뉴 잔존
 
 ## Implementation
 
-### Vercel Cron 연결
-- `vercel.json` 신규: `*/5 * * * *` 스케줄로 `POST /api/internal/reconcile-music` 호출
-- `app/api/internal/reconcile-music/route.ts`:
-  - 인증 방식 수정: Vercel Cron이 보내는 `Authorization: Bearer <CRON_SECRET>` + 기존 `x-cron-secret` 둘 다 허용
-  - `CRON_SECRET`는 Vercel 시스템 변수(자동 주입) — 수동 등록 불필요
+### Fix 1 — 앨범 커버 미삽입
+`app/api/music/[id]/download/route.ts`에서 `cover_url`만 보던 것을 `cover_url ?? thumbnail_url` fallback으로 수정. MIME type도 `image/` 접두어 검증 추가.
 
-### generation_cost_logs DB 적용
-- `npx @insforge/cli db import migrations/20260710000000_generation-cost-logs.sql` 실행 → 실제 InsForge DB에 테이블·인덱스 생성 완료
+### Fix 2 — 프로그레스바 시간 레이블 정렬
+`PlayerProgressBar.tsx`: `grid-cols-[42px·bar·42px] gap-3` 구조 제거 → 바 아래 `flex justify-between`으로 시간 레이블 이동. 좌우 모두 `px-3` 기준에 맞아 아래 행(썸네일/컨트롤)과 완벽 정렬.
 
-### Phase 5 — Duration 옵션 + 프리셋
-- `lib/music.ts`:
-  - `GenerateRequest`에 `duration?: number` 필드 추가
-  - `buildAceStepInput()`에 `duration` 파라미터 추가 (기본값 `ACE_STEP_DURATION_SECONDS`)
-- `lib/music.test.ts`: duration 관련 테스트 2개 추가 (RED→GREEN 확인), 설명 "fixed" → "default" 수정
-- `app/api/music/generate/route.ts`:
-  - `duration` 파싱 추가 (상한 300s 클램프)
-  - `buildAceStepInput()` 호출에 `duration` 전달
-  - 비용 로그 `durationSeconds`를 실제 `duration ?? ACE_STEP_DURATION_SECONDS`로 수정
-- `components/prompt-box.tsx`:
-  - `Preset` 타입 `duration?: 60 | 180` 리터럴 유니온 (안전한 타입)
-  - `PRESETS` 배열: Football Chant / Meme (60s) / Sports Hype 3개
-  - Duration 토글 UI: Short (1 min) / Full (3 min)
-  - Quick presets 버튼 행 (클릭 시 관련 옵션 전체 교체)
-  - `handleSubmit`에 `duration` 포함, reset 시 180으로 초기화
+### Fix 3 — 드롭다운 click-outside
+`TrackCard.tsx`·`music-workspace.tsx` TrackRow 양쪽에 `useRef`(menu div + trigger button) + `useEffect`(`pointerdown` 리스너) 추가. 메뉴·트리거 바깥 클릭 시 메뉴 닫힘. 다운로드 링크에 `onClick={onToggleMenu}` 추가로 다운로드 즉시 닫힘.
 
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
-| 전체 테스트 | `npx vitest run` | 95 tests passed (15 suites) |
 | 타입체크/빌드 | `npm run build` | Passed |
-| Lint | `npm run lint` | Passed (0 errors) |
-| 코드 리뷰 | Phase 5 서브에이전트 리뷰 | Important 3개 + Minor 수정 완료 |
+| Lint | `npm run lint` | 0 errors, warning 1개(기존 동일) |
 
 ## Lessons
-- Vercel `CRON_SECRET`는 시스템 변수라 Vercel UI에서 수동 등록이 막힘 — 배포하면 자동 주입됨.
-- InsForge MCP는 Supabase project ref 형식(20자 소문자)만 수락 — InsForge 프로젝트엔 `@insforge/cli db import` 사용.
-
-## Follow-ups (미적용)
-- Polar Viral Pack product ID도 50 credits 기준으로 동기화 필요 (백엔드 Polar 대시보드 — 사용자 수동)
+- InsForge storage URL은 크로스 오리진이라 `download` attr 무시됨 → same-origin API 엔드포인트로 변경 시 click-outside 같은 부수 효과도 함께 수동 처리 필요.
+- `cover_url`과 `thumbnail_url`은 독립 생성 타이밍 → 다운로드·공유 시 fallback 필수.
