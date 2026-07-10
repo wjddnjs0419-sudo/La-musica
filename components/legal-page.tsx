@@ -24,7 +24,7 @@ export default function LegalPage({
       <header className="sticky top-0 z-50 w-full">
         <div className="flex w-full items-center justify-between px-3 py-5 sm:px-4 lg:px-20">
           <Link href="/" aria-label="La Musica" className="text-white">
-            <Logo className="h-9 w-auto sm:h-10" />
+            <Logo variant="horizontal" className="h-9 w-auto sm:h-10" />
           </Link>
           <Link
             href="/"

@@ -21,7 +21,7 @@ export default function ContactPage() {
       <header className="sticky top-0 z-50 w-full">
         <div className="flex w-full items-center justify-between px-4 py-4 sm:px-6 md:py-5 lg:px-20">
           <Link href="/" aria-label="La Musica" className="text-white">
-            <Logo className="h-8 w-auto sm:h-10" />
+            <Logo variant="horizontal" className="h-8 w-auto sm:h-10" />
           </Link>
 
           <nav aria-label="Contact page navigation" className="flex items-center gap-5">

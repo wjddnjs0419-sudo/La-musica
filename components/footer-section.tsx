@@ -44,10 +44,10 @@ export default function FooterSection({ ctaHref = "/auth" }: FooterSectionProps)
               aria-label="La Musica home"
               className="inline-flex items-center gap-3 text-white transition-colors hover:text-sky-100"
             >
-              <Logo className="h-9 w-16 shrink-0 sm:h-10 sm:w-20" />
-              <span className="text-lg font-semibold sm:text-xl">
-                La Musica
-              </span>
+              <Logo
+                variant="horizontal"
+                className="h-9 w-auto shrink-0 sm:h-10"
+              />
             </Link>
             <p className="mt-4 text-sm leading-6 text-white/60 sm:text-base sm:leading-7">
               Create AI music from a prompt, a mood, or a moment.

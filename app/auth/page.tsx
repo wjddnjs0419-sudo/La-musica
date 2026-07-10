@@ -61,7 +61,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
               aria-label="La Musica"
               className="inline-flex text-white transition-colors hover:text-white/80"
             >
-              <Logo className="h-10 w-auto" />
+              <Logo variant="horizontal" className="h-10 w-auto" />
             </Link>
             <p className="mt-2 text-xs font-medium text-white/35">
               Moments connected through music

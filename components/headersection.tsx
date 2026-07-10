@@ -58,7 +58,7 @@ export default function HeaderSection({
     <header className="sticky top-0 z-50 w-full">
       <div className="flex w-full items-center justify-between px-4 py-4 sm:px-6 md:py-5 lg:px-20">
         <Link href="/" aria-label="La Musica" className="text-white">
-          <Logo className="h-8 w-auto sm:h-10" />
+          <Logo variant="horizontal" className="h-8 w-auto sm:h-10" />
         </Link>
 
         <div className="hidden items-center gap-4 md:flex lg:gap-6">
@@ -108,7 +108,7 @@ export default function HeaderSection({
           }`}
         >
           <div className="flex items-center justify-between gap-3">
-            <Logo className="h-8 w-auto text-white" />
+            <Logo variant="horizontal" className="h-8 w-auto text-white" />
             <button
               type="button"
               onClick={() => setMenuOpen(false)}
