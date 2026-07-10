@@ -12,12 +12,21 @@ export default async function Workspace() {
   let initialCredit = 0;
 
   if (user) {
-    const { data: tracks, error } = await client.database
-      .from("musics")
-      .select()
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(50);
+    const [tracksResult, creditResult] = await Promise.all([
+      client.database
+        .from("musics")
+        .select()
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50),
+      client.database
+        .from("user_credits")
+        .select("credit")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
+
+    const { data: tracks, error } = tracksResult;
 
     if (error) {
       console.error("workspace music list failed", error);
@@ -25,11 +34,7 @@ export default async function Workspace() {
       initialTracks = (tracks ?? []) as Music[];
     }
 
-    const { data: creditRow, error: creditError } = await client.database
-      .from("user_credits")
-      .select("credit")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const { data: creditRow, error: creditError } = creditResult;
 
     if (creditError) {
       console.error("workspace credit read failed", creditError);

@@ -1,11 +1,16 @@
+import AuthAwareGetStartedBadge from "@/components/auth-aware-get-started-badge";
 import GetStartedBadge from "@/components/get-started-badge";
 import LineWaves from "@/components/LineWaves";
 
 type CtaSectionProps = {
   ctaHref?: string;
+  authAwareCta?: boolean;
 };
 
-export default function CtaSection({ ctaHref }: CtaSectionProps) {
+export default function CtaSection({
+  ctaHref,
+  authAwareCta = false,
+}: CtaSectionProps) {
   return (
     <section className="relative isolate overflow-hidden px-4 py-16 sm:px-8 sm:py-32 lg:px-12">
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
@@ -35,7 +40,11 @@ export default function CtaSection({ ctaHref }: CtaSectionProps) {
           finished song in seconds.
         </p>
         <div className="pointer-events-auto mt-8">
-          <GetStartedBadge href={ctaHref} />
+          {authAwareCta ? (
+            <AuthAwareGetStartedBadge />
+          ) : (
+            <GetStartedBadge href={ctaHref} />
+          )}
         </div>
       </div>
     </section>

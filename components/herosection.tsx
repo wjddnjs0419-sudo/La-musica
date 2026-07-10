@@ -1,13 +1,18 @@
 "use client";
 
 import { LiquidMetal, liquidMetalPresets } from "@paper-design/shaders-react";
+import AuthAwareGetStartedBadge from "@/components/auth-aware-get-started-badge";
 import GetStartedBadge from "@/components/get-started-badge";
 
 type HeroSectionProps = {
   ctaHref?: string;
+  authAwareCta?: boolean;
 };
 
-export default function HeroSection({ ctaHref }: HeroSectionProps) {
+export default function HeroSection({
+  ctaHref,
+  authAwareCta = false,
+}: HeroSectionProps) {
   return (
     <section className="relative isolate overflow-hidden px-4 pb-10 pt-3 sm:px-8 lg:px-12 lg:pb-14 lg:pt-4">
       <div className="mx-auto grid max-w-7xl gap-8 lg:min-h-[calc(100vh-7rem)] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.9fr)] lg:gap-12">
@@ -45,7 +50,11 @@ export default function HeroSection({ ctaHref }: HeroSectionProps) {
               tracks faster and more effortlessly than ever.
             </p>
             <div className="mt-6">
-              <GetStartedBadge href={ctaHref} />
+              {authAwareCta ? (
+                <AuthAwareGetStartedBadge />
+              ) : (
+                <GetStartedBadge href={ctaHref} />
+              )}
             </div>
           </div>
         </div>

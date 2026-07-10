@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type SVGProps } from "react";
+import AuthAwareGetStartedBadge from "@/components/auth-aware-get-started-badge";
 import GetStartedBadge from "@/components/get-started-badge";
 import Logo from "@/components/logo";
 
@@ -13,6 +14,7 @@ const navItems = [
 
 type HeaderSectionProps = {
   ctaHref?: string;
+  authAwareCta?: boolean;
 };
 
 function MenuIcon(props: SVGProps<SVGSVGElement>) {
@@ -41,8 +43,16 @@ function CloseIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-export default function HeaderSection({ ctaHref }: HeaderSectionProps) {
+export default function HeaderSection({
+  ctaHref,
+  authAwareCta = false,
+}: HeaderSectionProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const cta = authAwareCta ? (
+    <AuthAwareGetStartedBadge />
+  ) : (
+    <GetStartedBadge href={ctaHref} />
+  );
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -64,7 +74,7 @@ export default function HeaderSection({ ctaHref }: HeaderSectionProps) {
             ))}
           </nav>
 
-          <GetStartedBadge href={ctaHref} />
+          {cta}
         </div>
 
         <button
@@ -123,7 +133,11 @@ export default function HeaderSection({ ctaHref }: HeaderSectionProps) {
           </nav>
 
           <div className="mt-auto pb-2 pt-8">
-            <GetStartedBadge href={ctaHref} />
+            {authAwareCta ? (
+              <AuthAwareGetStartedBadge />
+            ) : (
+              <GetStartedBadge href={ctaHref} />
+            )}
           </div>
         </aside>
       </div>
