@@ -1,32 +1,31 @@
-# RESULT: Workspace 스켈레톤 로딩 전환 - 2026-07-10
+# RESULT: 노래 생성 즉시 Pending 피드백 - 2026-07-10
 
 ## Background
-- 사용자가 `Open Workspace` 클릭 시 여전히 약 1초가 걸린다고 보고. 배포된 `/workspace`는 비로그인 기준으로도 300~570ms였고, 로그인 상태에서는 서버 인증 확인 뒤 `musics` 50개와 `user_credits` 조회까지 기다린 뒤 HTML/RSC를 내려주는 구조였음.
-- Next 16 streaming 문서 확인: `loading.tsx`는 즉시 스켈레톤을 제공하지만, 실제 체감 개선을 위해서는 느린 데이터 접근을 route shell 밖이나 아래 경계로 밀어야 함. 이번 변경은 `/workspace` 서버 렌더에서 사용자 데이터 DB 조회를 제거하고, shell 이후 클라이언트 bootstrap 요청으로 분리.
-- 사용자가 "컴포넌트를 하위 컴포넌트로 쪼개면 빨라지나"도 질문. 결론: 단순 파일 분리는 같은 import graph면 초기 번들 감소가 거의 없고, `next/dynamic`/lazy import로 비초기 UI(`CreditModal`, Lyrics Assistant 등)를 뒤로 미룰 때만 초기 로드 개선이 큼.
+- 사용자가 Generate 클릭 후 노래 목록에 항목이 2~3초 늦게 뜬다고 보고. 원인은 클라이언트가 `/api/music/generate` 응답을 기다린 뒤에야 `upsertTrack(json.music)`을 호출하는 구조였음.
+- 서버 generate route는 응답 전 인증/크레딧 조회, Gemini 번역, 프롬프트 정제, 크레딧 예약 RPC, Replicate prediction 생성, DB update, 남은 크레딧 조회까지 수행하므로 즉시 목록 반영이 불가능했음.
+- 사용자 오해("버튼 눌렀는데 생성 안 되나?")를 줄이는 목적에는 API 분리보다 클라이언트 낙관적 pending row가 가장 작은 변경으로 효과가 큼.
 
 ## Implementation
-- **`app/workspace/page.tsx`**: 서버 렌더에서 음악 목록/크레딧 DB 조회 제거. 이제 `getCurrentUser()`로 navbar에 필요한 사용자 표시 정보와 `loadInitialData` 여부만 결정하고 바로 `WorkspaceShell`을 렌더.
-- **`app/api/workspace/bootstrap/route.ts`**(신규): 로그인 사용자의 최근 음악 50개와 크레딧을 no-store JSON으로 반환. `musics`는 `select()` 전체 대신 UI에 필요한 컬럼만 명시하고 `metadata`는 빈 객체로 채워 payload를 줄임.
-- **`components/workspace-shell.tsx`**: `loadInitialData` prop을 `MusicWorkspace`로 전달.
-- **`components/music-workspace.tsx`**: `loadInitialData`가 true면 mount 후 `/api/workspace/bootstrap`을 호출해 tracks/credit을 채움. 로딩 중에는 리스트 영역에 `TrackListSkeleton`을 표시하고, 완료 후 기존 empty/search/result UI로 전환.
-- **`app/workspace/loading.tsx`**(신규): route-level 즉시 스켈레톤 추가. navbar/search/avatar/list/prompt composer 자리의 shape를 실제 workspace와 비슷하게 맞춤.
+- **`components/music-workspace.tsx`**: `handleSend` 시작 즉시 임시 `pending` 트랙(`Starting your track...`)을 목록 맨 위에 추가. 서버 응답 성공 시 임시 row를 실제 DB row로 교체하고 기존 polling 시작.
+- generate 실패 시 임시 row 제거 후 기존 에러 UX 유지. `insufficient_credit`은 크레딧 모달을 열고, `lyrics_required`는 가사 필요 메시지를 표시.
+- bootstrap 로딩 중 Generate를 눌러도 임시 row가 목록 bootstrap 응답에 덮어써지지 않도록, bootstrap setTracks에서 optimistic row를 보존 후 서버 tracks를 병합.
+- 임시 row는 실제 DB id가 아니므로 polling 대상에서 제외하고, track action menu도 disabled 처리.
 
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
 | Typecheck/build | `npm run build` | Passed |
 | Lint | `npm run lint` | Passed |
-| Route table | `npm run build` | `/workspace` dynamic 유지, 신규 `/api/workspace/bootstrap` dynamic |
-| Local production shell timing | `npm run start` 후 `/workspace` fetch 5회 | 134ms → 13ms → 9ms → 6ms → 5ms |
-| Bootstrap unauthorized path | `npm run start` 후 `/api/workspace/bootstrap` 비로그인 fetch | 401, 5ms → 1ms |
-| Data freshness | 코드 확인 | 사용자별 tracks/credit은 no-store bootstrap API에서 최신 조회 |
+| Optimistic row creation | 코드 확인 | `handleSend` 시작 즉시 temp `pending` track 추가 |
+| Success replacement | 코드 확인 | server `json.music`로 temp row 교체 후 poll 시작 |
+| Failure cleanup | 코드 확인 | 에러 시 temp row 제거 + 기존 에러/credit modal 처리 |
+| Invalid temp server calls 방지 | 코드 확인 | temp row는 polling 제외, action menu disabled |
 
 ## Lessons
-- 스켈레톤 자체보다 더 중요한 것은 "무엇을 기다리지 않게 만들었는가"다. 이번에는 목록/크레딧 DB 조회를 shell 이후로 밀어 첫 화면을 빠르게 했다.
-- 단순 컴포넌트 분리는 성능 최적화가 아니다. 같은 route에서 정적 import되면 같은 클라이언트 번들에 들어가므로, 실제 초기 JS 감소는 lazy/dynamic import가 필요하다.
-- `select()` 전체 조회는 편하지만 초기 workspace payload를 키울 수 있다. UI에 필요한 컬럼만 선택하고 metadata를 제외해 bootstrap 응답을 가볍게 유지했다.
+- 사용자에게 중요한 첫 피드백은 "완성"이 아니라 "접수됨"이다. 긴 서버 준비 단계를 기다리기 전에 pending row를 보여주면 클릭 실패로 오해할 여지가 줄어든다.
+- optimistic row는 실제 DB row가 아니므로 polling/rename/delete 같은 서버 액션에서 제외해야 한다.
+- bootstrap 후속 로딩과 optimistic UI가 동시에 존재할 수 있으므로, 서버 목록 로드가 임시 row를 지우지 않게 병합 로직이 필요했다.
 
 ## Follow-ups (미적용)
-- 실제 로그인 세션으로 브라우저에서 `Open Workspace` 클릭 → 스켈레톤 → 목록 채움 흐름을 확인 필요.
-- 다음 성능 후보: `CreditModal`, Lyrics Assistant, 일부 고급 prompt UI를 `next/dynamic`으로 lazy load해 초기 workspace JS를 더 줄이기.
+- 실제 로그인 세션에서 Generate 클릭 즉시 pending row가 보이고, 2~3초 후 실제 processing row로 교체되는지 브라우저 확인 필요.
+- 다음 단계로 PromptBox send 버튼 자체를 request 중 disabled/loading 처리하면 중복 제출 방지도 더 명확해짐.

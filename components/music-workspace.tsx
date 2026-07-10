@@ -8,6 +8,7 @@ import { resolveRenameTitle, type GenerateRequest, type Music } from "@/lib/musi
 
 const POLL_INTERVAL = 3000;
 const PAGE_SIZE = 7;
+const OPTIMISTIC_TRACK_PREFIX = "optimistic-";
 
 type ClassValue = string | number | boolean | null | undefined;
 
@@ -156,7 +157,11 @@ export default function MusicWorkspace({
           return;
         }
 
-        setTracks(Array.isArray(json.tracks) ? json.tracks : []);
+        const serverTracks = Array.isArray(json.tracks) ? json.tracks : [];
+        setTracks((prev) => [
+          ...prev.filter((track) => track.id.startsWith(OPTIMISTIC_TRACK_PREFIX)),
+          ...serverTracks,
+        ]);
         if (typeof json.credit === "number") {
           onRemainingCreditChange?.(json.credit);
         }
@@ -193,6 +198,19 @@ export default function MusicWorkspace({
     });
   }, []);
 
+  const replaceTrack = React.useCallback((placeholderId: string, music: Music) => {
+    setTracks((prev) => [
+      music,
+      ...prev.filter(
+        (track) => track.id !== placeholderId && track.id !== music.id,
+      ),
+    ]);
+  }, []);
+
+  const removeTrack = React.useCallback((trackId: string) => {
+    setTracks((prev) => prev.filter((track) => track.id !== trackId));
+  }, []);
+
   const poll = React.useCallback(
     (id: string) => {
       if (polling.current.has(id)) return;
@@ -225,6 +243,7 @@ export default function MusicWorkspace({
 
   React.useEffect(() => {
     tracks.forEach((track) => {
+      if (track.id.startsWith(OPTIMISTIC_TRACK_PREFIX)) return;
       if (track.status === "pending" || track.status === "processing") {
         poll(track.id);
       }
@@ -368,6 +387,11 @@ export default function MusicWorkspace({
 
   const handleSend = React.useCallback(
     async (payload: GenerateRequest) => {
+      const optimisticTrack = createOptimisticTrack(payload);
+      setInitialLoading(false);
+      setError(null);
+      upsertTrack(optimisticTrack);
+
       try {
         const res = await fetch("/api/music/generate", {
           method: "POST",
@@ -391,6 +415,7 @@ export default function MusicWorkspace({
           if (typeof json.remaining_credit === "number") {
             onRemainingCreditChange?.(json.remaining_credit);
           }
+          removeTrack(optimisticTrack.id);
           if (reason === "insufficient_credit") {
             setError(INSUFFICIENT_CREDIT_MESSAGE);
             onOpenCreditModal?.();
@@ -407,14 +432,22 @@ export default function MusicWorkspace({
           onRemainingCreditChange?.(json.remaining_credit);
         }
         setError(null);
-        upsertTrack(json.music);
+        replaceTrack(optimisticTrack.id, json.music);
         poll(json.music.id);
       } catch (err) {
         console.error("generate request failed", err);
+        removeTrack(optimisticTrack.id);
         setError("Request failed. Check your network and try again.");
       }
     },
-    [onOpenCreditModal, onRemainingCreditChange, poll, upsertTrack],
+    [
+      onOpenCreditModal,
+      onRemainingCreditChange,
+      poll,
+      removeTrack,
+      replaceTrack,
+      upsertTrack,
+    ],
   );
 
   // Open the inline title editor (window.prompt is unsupported in this runtime).
@@ -727,6 +760,7 @@ function TrackRow({
   onCancelDelete: () => void;
 }) {
   const pending = track.status === "pending" || track.status === "processing";
+  const optimistic = track.id.startsWith(OPTIMISTIC_TRACK_PREFIX);
   const playable = track.status === "completed" && Boolean(track.audio_url);
   const showMetadata = !pending;
 
@@ -796,8 +830,9 @@ function TrackRow({
         <button
           type="button"
           onClick={onToggleMenu}
+          disabled={optimistic}
           title="Track actions"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/[0.08] hover:text-white"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white/45"
           aria-expanded={menuOpen}
         >
           <MoreIcon className="h-4 w-4" />
@@ -911,4 +946,35 @@ function formatDate(value: string) {
 
 function safeFileName(title: string) {
   return title.trim().replace(/[\\/:*?"<>|]+/g, "-").slice(0, 80) || "track";
+}
+
+function createOptimisticTrack(payload: GenerateRequest): Music {
+  const now = new Date().toISOString();
+  const id =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? `${OPTIMISTIC_TRACK_PREFIX}${crypto.randomUUID()}`
+      : `${OPTIMISTIC_TRACK_PREFIX}${Date.now()}`;
+
+  return {
+    id,
+    user_id: "pending",
+    title: "Starting your track...",
+    prompt: payload.prompt,
+    status: "pending",
+    audio_url: null,
+    audio_key: null,
+    cover_url: null,
+    cover_key: null,
+    thumbnail_url: null,
+    thumbnail_key: null,
+    thumbnail_prompt: null,
+    thumbnail_status: null,
+    duration_seconds: null,
+    model: null,
+    is_public: false,
+    error_message: null,
+    metadata: {},
+    created_at: now,
+    updated_at: now,
+  };
 }
