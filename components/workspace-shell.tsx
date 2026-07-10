@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import CreditModal from "@/components/credit-modal";
-import MusicWorkspace from "@/components/music-workspace";
+import MusicWorkspace from "@/components/workspace/WorkspaceShell";
 import WorkspaceNavbar from "@/components/workspace-navbar";
 import type { Music } from "@/lib/music";
 

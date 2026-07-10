@@ -1,0 +1,600 @@
+"use client";
+
+import * as React from "react";
+import TrackList, { TrackListSkeleton } from "@/components/workspace/TrackList";
+import MusicComposer from "@/components/workspace/MusicComposer";
+import MiniPlayer from "@/components/player/MiniPlayer";
+import {
+  resolveRenameTitle,
+  type GenerateRequest,
+  type Music,
+} from "@/lib/music";
+
+const POLL_INTERVAL = 3000;
+const PAGE_SIZE = 7;
+const OPTIMISTIC_TRACK_PREFIX = "optimistic-";
+
+const INSUFFICIENT_CREDIT_MESSAGE = "Not enough credits. Please upgrade.";
+const LYRICS_GENERATION_FAILED_MESSAGE =
+  "Couldn't generate lyrics automatically. Please add lyrics manually and try again.";
+
+type WorkspaceShellProps = {
+  initialTracks?: Music[];
+  remainingCredit?: number;
+  onRemainingCreditChange?: (credit: number) => void;
+  onOpenCreditModal?: () => void;
+  loadInitialData?: boolean;
+};
+
+export default function WorkspaceShell({
+  initialTracks = [],
+  remainingCredit = 0,
+  onRemainingCreditChange,
+  onOpenCreditModal,
+  loadInitialData = false,
+}: WorkspaceShellProps) {
+  const [tracks, setTracks] = React.useState<Music[]>(initialTracks);
+  const [initialLoading, setInitialLoading] = React.useState(
+    () => loadInitialData,
+  );
+  const [query, setQuery] = React.useState("");
+  const [page, setPage] = React.useState(0);
+  const [error, setError] = React.useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
+  const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [renamingId, setRenamingId] = React.useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = React.useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(
+    null,
+  );
+  const [activeTrackId, setActiveTrackId] = React.useState<string | null>(null);
+  const [playing, setPlaying] = React.useState(false);
+  const [currentTime, setCurrentTime] = React.useState(0);
+  const [duration, setDuration] = React.useState(0);
+  const [volume, setVolume] = React.useState(0.85);
+
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+  const polling = React.useRef<Set<string>>(new Set());
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!loadInitialData) return;
+    let cancelled = false;
+
+    async function loadWorkspaceData() {
+      setInitialLoading(true);
+      try {
+        const response = await fetch("/api/workspace/bootstrap", {
+          cache: "no-store",
+        });
+        const json = (await response.json().catch(() => ({}))) as {
+          tracks?: Music[];
+          credit?: number;
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!response.ok) {
+          setError(json.error ?? `Workspace load failed (${response.status})`);
+          return;
+        }
+        const serverTracks = Array.isArray(json.tracks) ? json.tracks : [];
+        setTracks((prev) => [
+          ...prev.filter((t) => t.id.startsWith(OPTIMISTIC_TRACK_PREFIX)),
+          ...serverTracks,
+        ]);
+        if (typeof json.credit === "number") {
+          onRemainingCreditChange?.(json.credit);
+        }
+        setError(null);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("workspace bootstrap failed", err);
+          setError("Workspace could not be loaded. Please refresh.");
+        }
+      } finally {
+        if (!cancelled) setInitialLoading(false);
+      }
+    }
+
+    void loadWorkspaceData();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadInitialData, onRemainingCreditChange]);
+
+  const activeTrack = React.useMemo(
+    () => tracks.find((t) => t.id === activeTrackId) ?? null,
+    [activeTrackId, tracks],
+  );
+
+  const upsertTrack = React.useCallback((music: Music) => {
+    setTracks((prev) => {
+      const idx = prev.findIndex((t) => t.id === music.id);
+      if (idx === -1) return [music, ...prev];
+      const next = [...prev];
+      next[idx] = music;
+      return next;
+    });
+  }, []);
+
+  const replaceTrack = React.useCallback(
+    (placeholderId: string, music: Music) => {
+      setTracks((prev) => [
+        music,
+        ...prev.filter(
+          (t) => t.id !== placeholderId && t.id !== music.id,
+        ),
+      ]);
+    },
+    [],
+  );
+
+  const removeTrack = React.useCallback((trackId: string) => {
+    setTracks((prev) => prev.filter((t) => t.id !== trackId));
+  }, []);
+
+  const poll = React.useCallback(
+    (id: string) => {
+      if (polling.current.has(id)) return;
+      polling.current.add(id);
+
+      const tick = async () => {
+        try {
+          const res = await fetch(`/api/music/${id}`);
+          const json = (await res.json()) as { music?: Music };
+          if (json.music) {
+            upsertTrack(json.music);
+            if (
+              json.music.status === "completed" ||
+              json.music.status === "failed"
+            ) {
+              polling.current.delete(id);
+              return;
+            }
+          }
+        } catch {
+          // Keep polling through temporary network failures.
+        }
+        window.setTimeout(tick, POLL_INTERVAL);
+      };
+
+      window.setTimeout(tick, POLL_INTERVAL);
+    },
+    [upsertTrack],
+  );
+
+  React.useEffect(() => {
+    tracks.forEach((track) => {
+      if (track.id.startsWith(OPTIMISTIC_TRACK_PREFIX)) return;
+      if (track.status === "pending" || track.status === "processing") {
+        poll(track.id);
+      }
+    });
+  }, [poll, tracks]);
+
+  React.useEffect(() => {
+    const handleSearch = (event: Event) => {
+      const nextQuery =
+        event instanceof CustomEvent && typeof event.detail === "string"
+          ? event.detail
+          : "";
+      setQuery(nextQuery);
+    };
+    window.addEventListener("workspace-search", handleSearch);
+    return () => window.removeEventListener("workspace-search", handleSearch);
+  }, []);
+
+  React.useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.volume = volume;
+  }, [volume]);
+
+  const playAudio = React.useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    try {
+      await audio.play();
+      setPlaying(true);
+    } catch {
+      setPlaying(false);
+    }
+  }, []);
+
+  const loadAndPlayTrack = React.useCallback(
+    async (track: Music) => {
+      const audio = audioRef.current;
+      if (!audio || !track.audio_url) return;
+      audio.pause();
+      audio.src = track.audio_url;
+      audio.currentTime = 0;
+      audio.volume = volume;
+      audio.load();
+      setActiveTrackId(track.id);
+      setCurrentTime(0);
+      setDuration(track.duration_seconds ?? 0);
+      await playAudio();
+    },
+    [playAudio, volume],
+  );
+
+  const handleToggleTrackPlayback = React.useCallback(
+    async (track: Music) => {
+      if (track.status !== "completed" || !track.audio_url) return;
+      const audio = audioRef.current;
+      if (!audio) return;
+      if (activeTrackId === track.id) {
+        if (playing) {
+          audio.pause();
+          setPlaying(false);
+          return;
+        }
+        await playAudio();
+        return;
+      }
+      await loadAndPlayTrack(track);
+    },
+    [activeTrackId, loadAndPlayTrack, playAudio, playing],
+  );
+
+  const handleTogglePlayerPlayback = React.useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio || !activeTrack?.audio_url) return;
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+      return;
+    }
+    if (!audio.src) {
+      audio.src = activeTrack.audio_url;
+      audio.load();
+    }
+    await playAudio();
+  }, [activeTrack, playAudio, playing]);
+
+  const handleSeek = React.useCallback((seconds: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = seconds;
+    setCurrentTime(seconds);
+  }, []);
+
+  const persistTrackDuration = React.useCallback(
+    async (trackId: string, seconds: number) => {
+      const roundedSeconds = Math.round(seconds);
+      setTracks((prev) =>
+        prev.map((t) =>
+          t.id === trackId ? { ...t, duration_seconds: roundedSeconds } : t,
+        ),
+      );
+      try {
+        const res = await fetch(`/api/music/${trackId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ duration_seconds: roundedSeconds }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { music?: Music };
+        if (res.ok && json.music) upsertTrack(json.music);
+      } catch (err) {
+        console.error("duration persist failed", err);
+      }
+    },
+    [upsertTrack],
+  );
+
+  const handleClosePlayer = React.useCallback(() => {
+    const audio = audioRef.current;
+    audio?.pause();
+    if (audio) audio.currentTime = 0;
+    setActiveTrackId(null);
+    setPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+  }, []);
+
+  const handleSend = React.useCallback(
+    async (payload: GenerateRequest) => {
+      const optimisticTrack = createOptimisticTrack(payload);
+      setInitialLoading(false);
+      setError(null);
+      upsertTrack(optimisticTrack);
+
+      try {
+        const res = await fetch("/api/music/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const raw = await res.text();
+        let json: {
+          music?: Music;
+          error?: string;
+          remaining_credit?: number;
+        } = {};
+        try {
+          json = raw ? JSON.parse(raw) : {};
+        } catch {
+          json = {};
+        }
+        if (!res.ok || !json.music) {
+          const reason = json.error || `HTTP ${res.status}` || "unknown";
+          console.error("generate failed:", res.status, raw);
+          if (typeof json.remaining_credit === "number") {
+            onRemainingCreditChange?.(json.remaining_credit);
+          }
+          removeTrack(optimisticTrack.id);
+          if (reason === "insufficient_credit") {
+            setError(INSUFFICIENT_CREDIT_MESSAGE);
+            onOpenCreditModal?.();
+            return;
+          }
+          if (reason === "lyrics_generation_failed") {
+            setError(LYRICS_GENERATION_FAILED_MESSAGE);
+            return;
+          }
+          setError(reason);
+          return;
+        }
+        if (typeof json.remaining_credit === "number") {
+          onRemainingCreditChange?.(json.remaining_credit);
+        }
+        setError(null);
+        replaceTrack(optimisticTrack.id, json.music);
+        poll(json.music.id);
+      } catch (err) {
+        console.error("generate request failed", err);
+        removeTrack(optimisticTrack.id);
+        setError("Request failed. Check your network and try again.");
+      }
+    },
+    [
+      onOpenCreditModal,
+      onRemainingCreditChange,
+      poll,
+      removeTrack,
+      replaceTrack,
+      upsertTrack,
+    ],
+  );
+
+  const handleStartRename = React.useCallback((track: Music) => {
+    setOpenMenuId(null);
+    setRenamingId(track.id);
+    setRenameDraft(track.title);
+  }, []);
+
+  const handleCancelRename = React.useCallback(() => {
+    setRenamingId(null);
+    setRenameDraft("");
+  }, []);
+
+  const handleCommitRename = React.useCallback(
+    async (track: Music) => {
+      const nextTitle = resolveRenameTitle(renameDraft, track.title);
+      setRenamingId(null);
+      setRenameDraft("");
+      if (!nextTitle) return;
+      setBusyId(track.id);
+      try {
+        const res = await fetch(`/api/music/${track.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: nextTitle }),
+        });
+        const json = (await res.json()) as { music?: Music; error?: string };
+        if (!res.ok || !json.music) {
+          setError(json.error || `Rename failed (${res.status})`);
+          return;
+        }
+        setError(null);
+        upsertTrack(json.music);
+      } catch (err) {
+        console.error("rename failed", err);
+        setError("Rename failed. Check your network and try again.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [renameDraft, upsertTrack],
+  );
+
+  const handleDelete = React.useCallback(
+    async (track: Music) => {
+      setOpenMenuId(null);
+      setConfirmDeleteId(null);
+      setBusyId(track.id);
+      try {
+        const res = await fetch(`/api/music/${track.id}`, {
+          method: "DELETE",
+        });
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        if (!res.ok) {
+          setError(json.error || `Delete failed (${res.status})`);
+          return;
+        }
+        setError(null);
+        if (activeTrackId === track.id) handleClosePlayer();
+        setTracks((prev) => prev.filter((t) => t.id !== track.id));
+      } catch (err) {
+        console.error("delete failed", err);
+        setError("Delete failed. Check your network and try again.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [activeTrackId, handleClosePlayer],
+  );
+
+  // --- Derived state ---
+
+  const filteredTracks = React.useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return tracks;
+    return tracks.filter((t) =>
+      [t.title, t.prompt, t.status]
+        .filter(Boolean)
+        .some((v) => v.toLowerCase().includes(needle)),
+    );
+  }, [query, tracks]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTracks.length / PAGE_SIZE));
+
+  const [prevQuery, setPrevQuery] = React.useState(query);
+  if (query !== prevQuery) {
+    setPrevQuery(query);
+    setPage(0);
+  }
+
+  const safePage = Math.min(page, totalPages - 1);
+
+  const pagedTracks = React.useMemo(
+    () =>
+      filteredTracks.slice(
+        safePage * PAGE_SIZE,
+        safePage * PAGE_SIZE + PAGE_SIZE,
+      ),
+    [filteredTracks, safePage],
+  );
+
+  const goToPage = React.useCallback(
+    (next: number) => {
+      const clamped = Math.min(Math.max(next, 0), totalPages - 1);
+      setPage(clamped);
+      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [totalPages],
+  );
+
+  // --- Render ---
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        ref={scrollRef}
+        className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-3 py-4 sm:px-4 md:py-8">
+          {initialLoading ? (
+            <TrackListSkeleton />
+          ) : tracks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center text-white/40">
+              <p className="text-sm">Create a song and it will appear here.</p>
+            </div>
+          ) : filteredTracks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center text-white/40">
+              <p className="text-sm">No tracks match your search.</p>
+            </div>
+          ) : (
+            <TrackList
+              tracks={pagedTracks}
+              busyId={busyId}
+              openMenuId={openMenuId}
+              activeTrackId={activeTrackId}
+              playingId={playing ? activeTrackId : null}
+              renamingId={renamingId}
+              renameDraft={renameDraft}
+              confirmDeleteId={confirmDeleteId}
+              page={safePage}
+              totalPages={totalPages}
+              onGoToPage={goToPage}
+              onTogglePlayback={handleToggleTrackPlayback}
+              onToggleMenu={(trackId) => {
+                setConfirmDeleteId(null);
+                setOpenMenuId((id) => (id === trackId ? null : trackId));
+              }}
+              onRenameDraftChange={setRenameDraft}
+              onStartRename={handleStartRename}
+              onCommitRename={handleCommitRename}
+              onCancelRename={handleCancelRename}
+              onRequestDelete={(trackId) => setConfirmDeleteId(trackId)}
+              onConfirmDelete={handleDelete}
+              onCancelDelete={() => setConfirmDeleteId(null)}
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="w-full shrink-0 px-3 pb-4 sm:px-4 sm:pb-6">
+        <MusicComposer
+          remainingCredits={remainingCredit}
+          error={error}
+          onSend={handleSend}
+        />
+        {activeTrack?.audio_url && (
+          <div className="w-full">
+            <MiniPlayer
+              track={activeTrack}
+              playing={playing}
+              currentTime={currentTime}
+              duration={duration}
+              volume={volume}
+              onTogglePlay={handleTogglePlayerPlayback}
+              onSeek={handleSeek}
+              onVolumeChange={setVolume}
+              onClose={handleClosePlayer}
+            />
+          </div>
+        )}
+      </div>
+
+      <audio
+        ref={audioRef}
+        preload="metadata"
+        className="hidden"
+        onLoadedMetadata={(event) => {
+          const nextDuration = event.currentTarget.duration;
+          if (Number.isFinite(nextDuration)) {
+            setDuration(nextDuration);
+            if (
+              activeTrackId &&
+              Math.round(nextDuration) !== activeTrack?.duration_seconds
+            ) {
+              void persistTrackDuration(activeTrackId, nextDuration);
+            }
+          }
+        }}
+        onTimeUpdate={(event) =>
+          setCurrentTime(event.currentTarget.currentTime)
+        }
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false);
+          setCurrentTime(0);
+        }}
+      />
+    </div>
+  );
+}
+
+function createOptimisticTrack(payload: GenerateRequest): Music {
+  const now = new Date().toISOString();
+  const id =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? `${OPTIMISTIC_TRACK_PREFIX}${crypto.randomUUID()}`
+      : `${OPTIMISTIC_TRACK_PREFIX}${Date.now()}`;
+  return {
+    id,
+    user_id: "pending",
+    title: "Starting your track...",
+    prompt: payload.prompt,
+    status: "pending",
+    audio_url: null,
+    audio_key: null,
+    cover_url: null,
+    cover_key: null,
+    thumbnail_url: null,
+    thumbnail_key: null,
+    thumbnail_prompt: null,
+    thumbnail_status: null,
+    duration_seconds: null,
+    model: null,
+    is_public: false,
+    error_message: null,
+    metadata: {},
+    created_at: now,
+    updated_at: now,
+  };
+}
