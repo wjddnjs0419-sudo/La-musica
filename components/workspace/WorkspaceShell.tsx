@@ -15,6 +15,7 @@ import {
   type Music,
 } from "@/lib/music";
 import type { GenerationPhase } from "@/lib/generation/progress";
+import { shouldContinueLyricsPolling, shouldStopLyricsPolling } from "@/lib/lyrics/sync";
 
 const POLL_INTERVAL = 3000;
 const PAGE_SIZE = 7;
@@ -27,14 +28,22 @@ const LYRICS_GENERATION_FAILED_MESSAGE =
 type WorkspaceShellProps = {
   initialTracks?: Music[];
   remainingCredit?: number;
+  onUserChange?: (user: WorkspaceUser | null) => void;
   onRemainingCreditChange?: (credit: number) => void;
   onOpenCreditModal?: () => void;
   loadInitialData?: boolean;
 };
 
+type WorkspaceUser = {
+  name?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
+};
+
 export default function WorkspaceShell({
   initialTracks = [],
   remainingCredit = 0,
+  onUserChange,
   onRemainingCreditChange,
   onOpenCreditModal,
   loadInitialData = false,
@@ -66,7 +75,7 @@ export default function WorkspaceShell({
   const [fullscreenOpen, setFullscreenOpen] = React.useState(false);
 
   const audioRef = React.useRef<HTMLAudioElement>(null);
-  const polling = React.useRef<Set<string>>(new Set());
+  const polling = React.useRef<Map<string, number>>(new Map());
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const genMusicIdRef = React.useRef<string | null>(null);
   const genCallbackRef = React.useRef<(music: Music) => void>(() => {});
@@ -82,15 +91,21 @@ export default function WorkspaceShell({
           cache: "no-store",
         });
         const json = (await response.json().catch(() => ({}))) as {
+          user?: WorkspaceUser | null;
           tracks?: Music[];
           credit?: number;
           error?: string;
         };
         if (cancelled) return;
+        if (response.status === 401) {
+          window.location.assign("/auth");
+          return;
+        }
         if (!response.ok) {
           setError(json.error ?? `Workspace load failed (${response.status})`);
           return;
         }
+        onUserChange?.(json.user ?? null);
         const serverTracks = Array.isArray(json.tracks) ? json.tracks : [];
         setTracks((prev) => [
           ...prev.filter((t) => t.id.startsWith(OPTIMISTIC_TRACK_PREFIX)),
@@ -114,7 +129,7 @@ export default function WorkspaceShell({
     return () => {
       cancelled = true;
     };
-  }, [loadInitialData, onRemainingCreditChange]);
+  }, [loadInitialData, onRemainingCreditChange, onUserChange]);
 
   const activeTrack = React.useMemo(
     () => tracks.find((t) => t.id === activeTrackId) ?? null,
@@ -159,7 +174,7 @@ export default function WorkspaceShell({
   const poll = React.useCallback(
     (id: string) => {
       if (polling.current.has(id)) return;
-      polling.current.add(id);
+      polling.current.set(id, Date.now());
 
       const tick = async () => {
         try {
@@ -173,7 +188,11 @@ export default function WorkspaceShell({
               json.music.status === "failed";
             const thumbnailSettled =
               json.music.thumbnail_status !== "pending";
-            if (done && thumbnailSettled) {
+            const pollStartedAt = polling.current.get(id) ?? Date.now();
+            const lyricsSettled =
+              !shouldContinueLyricsPolling(json.music.metadata) ||
+              shouldStopLyricsPolling(pollStartedAt, Date.now());
+            if (done && thumbnailSettled && lyricsSettled) {
               polling.current.delete(id);
               return;
             }
@@ -196,7 +215,10 @@ export default function WorkspaceShell({
         track.status === "pending" || track.status === "processing";
       const needsThumbnailPoll =
         track.status === "completed" && track.thumbnail_status === "pending";
-      if (needsGenPoll || needsThumbnailPoll) {
+      const needsLyricsPoll =
+        track.status === "completed" &&
+        shouldContinueLyricsPolling(track.metadata);
+      if (needsGenPoll || needsThumbnailPoll || needsLyricsPoll) {
         poll(track.id);
       }
     });

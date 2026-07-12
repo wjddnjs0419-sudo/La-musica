@@ -38,11 +38,7 @@ export async function GET(request: NextRequest) {
   // (ON CONFLICT DO NOTHING), so running it on every login is safe and only
   // users without a credit row are ever topped up. Never blocks login.
   try {
-    const sessionClient = createServerClient({
-      accessToken: data.accessToken,
-    });
-    const { data: userData } = await sessionClient.auth.getCurrentUser();
-    const userId = userData?.user?.id;
+    const userId = data.user?.id;
     if (userId) {
       const admin = createInsforgeAdminClient();
       await grantFreeCreditSafely(admin, userId);

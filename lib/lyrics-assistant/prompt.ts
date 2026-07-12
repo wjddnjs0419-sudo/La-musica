@@ -46,6 +46,8 @@ CORE RULES
 
 STRUCTURE
 - Use clear section tags on their own lines, chosen from: [Intro], [Verse], [Verse 2], [Pre Chorus], [Chorus], [Hook], [Post Chorus], [Bridge], [Final Chorus], [Outro]. Use only the sections the song needs.
+- Do not write parenthetical stage directions or instrumental effects in the lyrics field. Avoid lines like instrumental break, beat drop, guitar solo, drum fill, or similar production notes; those belong in the music style, not sung lyrics.
+- Do not put production notes inline after lyric lines. The lyrics field should contain only section tags and words intended to be sung or chanted.
 - Prefer a catchy, memorable hook and a repeatable chorus.
 - Keep the output concise enough for a normal song generation workflow — typically 1-2 verses, a chorus, and optionally a pre-chorus / bridge / drop. Do not write extremely long lyrics.
 

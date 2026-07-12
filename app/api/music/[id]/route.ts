@@ -5,8 +5,15 @@ import Replicate from "replicate";
 import { generateThumbnail } from "@/lib/image/generateThumbnail";
 import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import { MUSICS_BUCKET, type Music } from "@/lib/music";
+import { buildInitialLyricsSyncMetadata } from "@/lib/lyrics/sync";
+import { ensureLyricsSyncStarted } from "@/lib/lyrics/ensureLyricsSync";
 import { formatGenreLabel, formatMoodLabel } from "@/lib/musicTitle";
 import { buildThumbnailPrompt } from "@/lib/prompts/buildThumbnailPrompt";
+
+// Gemini audio upload (~20s timeout) + alignment (~60s timeout) can run
+// inside after() after this route's response is sent; give the function
+// enough budget to actually finish instead of being frozen mid-flight.
+export const maxDuration = 90;
 
 // Poll endpoint: resolves a `processing` row by checking the Replicate
 // prediction, copying the finished mp3 into Storage, and finalizing the row.
@@ -45,7 +52,12 @@ export async function GET(
   // runs in the background (started when music first completes) — the client
   // shows a placeholder while thumbnail_status is "pending" and polls until
   // thumbnail_status becomes "succeeded" or "failed".
-  if (music.status === "completed" || music.status === "failed") {
+  if (music.status === "completed") {
+    const ensured = await ensureLyricsSyncStarted(createInsforgeAdminClient(), music);
+    return NextResponse.json({ music: ensured });
+  }
+
+  if (music.status === "failed") {
     return NextResponse.json({ music });
   }
 
@@ -127,8 +139,10 @@ export async function GET(
       audio_key: key,
       thumbnail_prompt: thumbnailPrompt,
       thumbnail_status: "pending",
+      metadata: buildInitialLyricsSyncMetadata(music.metadata),
     })
     .eq("id", id)
+    .eq("status", "processing") // guard against double-write (parity with reconcile-music)
     .select();
 
   if (updateError || !updated?.[0]) {
@@ -144,7 +158,8 @@ export async function GET(
     (err) => console.error("bg thumbnail failed", { musicId: id, err }),
   );
 
-  return NextResponse.json({ music: updated[0] });
+  const ensured = await ensureLyricsSyncStarted(createInsforgeAdminClient(), updated[0] as Music);
+  return NextResponse.json({ music: ensured });
 }
 
 export async function PATCH(

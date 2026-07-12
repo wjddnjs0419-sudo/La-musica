@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   parseMusicLyrics,
+  parseLrcLyrics,
   approximateLyricTimings,
   findActiveLineIndex,
 } from "./lyrics";
@@ -28,6 +29,64 @@ describe("parseMusicLyrics", () => {
     expect(lines!.map((l) => l.text)).toEqual(["Hello world", "Sing along"]);
   });
 
+  it("prefers normalized lyrics_payload over raw lyrics", () => {
+    const lines = parseMusicLyrics(
+      {
+        lyrics: "[Verse]\n(raw intro)\nRaw line",
+        lyrics_payload: "[Verse]\nClean line\n[Chorus]\nClean hook",
+      },
+      60,
+    );
+    expect(lines!.map((l) => l.text)).toEqual(["Clean line", "Clean hook"]);
+  });
+
+  it("prefers true LRC metadata over lyrics_payload and raw lyrics", () => {
+    const lines = parseMusicLyrics(
+      {
+        lyrics: "Raw line",
+        lyrics_payload: "Clean line",
+        lyrics_lrc: "[00:04.50]Timed line\n[00:08.25]Timed hook",
+      },
+      60,
+    );
+
+    expect(lines).toEqual([
+      { startMs: 4500, endMs: 8250, text: "Timed line" },
+      { startMs: 8250, endMs: undefined, text: "Timed hook" },
+    ]);
+  });
+
+  it("uses LRC timestamps embedded in lyrics_payload for any lyrics source", () => {
+    const lines = parseMusicLyrics(
+      {
+        lyrics_payload: "[Verse]\n[00:10.00]Auto or user line\n[00:14.75]Shared sync path",
+        lyrics_source: "auto",
+      },
+      null,
+    );
+
+    expect(lines).toEqual([
+      { startMs: 10000, endMs: 14750, text: "Auto or user line" },
+      { startMs: 14750, endMs: undefined, text: "Shared sync path" },
+    ]);
+  });
+
+  it("removes recognized bracket tags/directions but never touches parenthetical lyrics", () => {
+    const lines = parseMusicLyrics(
+      {
+        lyrics:
+          "[Verse]\n(Instrumental break)\nFirst line (beat drops)\n(oh yeah)\n[Guitar solo]\nLast line",
+      },
+      60,
+    );
+    expect(lines!.map((l) => l.text)).toEqual([
+      "(Instrumental break)",
+      "First line (beat drops)",
+      "(oh yeah)",
+      "Last line",
+    ]);
+  });
+
   it("returns empty array (not null) when duration is 0 — caller must supply real duration", () => {
     const lines = parseMusicLyrics({ lyrics: "Some lyrics" }, 0);
     // Empty array because approximateLyricTimings bails on duration=0.
@@ -45,6 +104,33 @@ describe("parseMusicLyrics", () => {
     expect(lines![0].text).toBe("Line one");
     expect(lines![1].startMs).toBe(31500);
     expect(lines![1].text).toBe("Line two");
+  });
+});
+
+describe("parseLrcLyrics", () => {
+  it("parses centisecond and millisecond LRC timestamps", () => {
+    expect(parseLrcLyrics("[01:02.34]Centisecond\n[01:03.456]Millisecond")).toEqual([
+      { startMs: 62340, text: "Centisecond" },
+      { startMs: 63456, text: "Millisecond" },
+    ]);
+  });
+
+  it("expands multiple timestamps on one lyric line", () => {
+    expect(parseLrcLyrics("[00:01.00][00:02.50]Repeat hook")).toEqual([
+      { startMs: 1000, text: "Repeat hook" },
+      { startMs: 2500, text: "Repeat hook" },
+    ]);
+  });
+
+  it("filters section tags but keeps parenthetical lyrics in timed display text", () => {
+    expect(
+      parseLrcLyrics(
+        "[00:01.00][Verse]\n[00:02.00]Sing this (beat drops)\n[00:03.00](oh yeah)",
+      ),
+    ).toEqual([
+      { startMs: 2000, text: "Sing this (beat drops)" },
+      { startMs: 3000, text: "(oh yeah)" },
+    ]);
   });
 });
 

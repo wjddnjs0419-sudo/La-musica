@@ -84,8 +84,8 @@ export default function FullScreenPlayer({
     };
   }, []);
 
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => { setMounted(true); }, []);
+  const portalTarget =
+    typeof document === "undefined" ? null : document.body;
 
   const content = (
     <div
@@ -206,6 +206,6 @@ export default function FullScreenPlayer({
     </div>
   );
 
-  if (!mounted) return null;
-  return createPortal(content, document.body);
+  if (!portalTarget) return null;
+  return createPortal(content, portalTarget);
 }

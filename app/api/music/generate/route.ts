@@ -20,6 +20,7 @@ import { translateToEnglish } from "@/lib/translatePrompt";
 import { refineStylePrompt } from "@/lib/refineStylePrompt";
 import { buildFallbackMusicTitle } from "@/lib/musicTitle";
 import { generateAutoLyricsForSong } from "@/lib/lyrics-assistant/generateAutoLyrics";
+import { buildInitialLyricsSyncMetadata } from "@/lib/lyrics/sync";
 import { buildCostLogRow } from "@/lib/cost-logging";
 import type {
   MusicGenre,
@@ -182,7 +183,7 @@ export async function POST(request: NextRequest) {
           compiled.metadata.vocal_mode,
         );
 
-  const initialMetadata = {
+  const initialMetadata = buildInitialLyricsSyncMetadata({
     instrumental: compiled.instrumental,
     // lyrics = effective lyrics used for generation (regardless of source)
     ...(finalLyrics ? { lyrics: finalLyrics } : {}),
@@ -196,7 +197,7 @@ export async function POST(request: NextRequest) {
     final_music_prompt: refinedPrompt,
     ...(aceLyricsPayload ? { lyrics_payload: aceLyricsPayload } : {}),
     lyrics_source: lyricsSource,
-  };
+  });
 
   const { data: reserved, error: reserveError } = await admin.database.rpc(
     "create_music_with_credit",

@@ -1,3 +1,5 @@
+import { lyricDisplayLines } from "../lyrics/format";
+
 export type LyricLine = {
   startMs: number;
   endMs?: number;
@@ -21,12 +23,13 @@ export function parseMusicLyrics(
   metadata: Record<string, unknown>,
   durationSeconds: number | null,
 ): LyricLine[] | null {
-  const raw = metadata?.lyrics as string | undefined;
+  const raw = resolveLyricsText(metadata);
   if (!raw || raw.trim() === "[Instrumental]" || !raw.trim()) return null;
-  const lines = raw
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l && !/^\[.*\]$/.test(l));
+
+  const lrcLines = parseLrcLyrics(raw);
+  if (lrcLines.length) return withEndTimes(lrcLines);
+
+  const lines = lyricDisplayLines(raw);
   if (!lines.length) return null;
   const dur = durationSeconds ?? 0;
   if (!dur) return [];
@@ -38,6 +41,61 @@ export function parseMusicLyrics(
     text,
     startMs: Math.round(startMs + (i / lines.length) * rangeMs),
     endMs: Math.round(startMs + ((i + 1) / lines.length) * rangeMs),
+  }));
+}
+
+function resolveLyricsText(metadata: Record<string, unknown>): string | undefined {
+  const lrc = metadata?.lyrics_lrc;
+  if (typeof lrc === "string" && lrc.trim()) return lrc;
+  const payload = metadata?.lyrics_payload;
+  if (typeof payload === "string" && payload.trim()) return payload;
+  const lyrics = metadata?.lyrics;
+  return typeof lyrics === "string" ? lyrics : undefined;
+}
+
+export function parseLrcLyrics(lyrics: string): LyricLine[] {
+  const timedLines: LyricLine[] = [];
+
+  for (const rawLine of lyrics.split("\n")) {
+    const timestamps = [...rawLine.matchAll(/\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g)];
+    if (!timestamps.length) continue;
+
+    const text = rawLine
+      .replace(/\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g, "")
+      .trim();
+    if (!text) continue;
+    const displayLines = lyricDisplayLines(text);
+    if (!displayLines.length) continue;
+
+    for (const timestamp of timestamps) {
+      const startMs = lrcTimestampToMs(timestamp);
+      if (startMs === null) continue;
+      timedLines.push({ startMs, text: displayLines.join(" ") });
+    }
+  }
+
+  return timedLines.sort((a, b) => a.startMs - b.startMs);
+}
+
+function lrcTimestampToMs(match: RegExpMatchArray): number | null {
+  const minutes = Number(match[1]);
+  const seconds = Number(match[2]);
+  if (!Number.isFinite(minutes) || !Number.isFinite(seconds) || seconds > 59) {
+    return null;
+  }
+
+  const fraction = match[3] ?? "";
+  const fractionMs = fraction
+    ? Math.round(Number(`0.${fraction.padEnd(3, "0").slice(0, 3)}`) * 1000)
+    : 0;
+
+  return minutes * 60_000 + seconds * 1000 + fractionMs;
+}
+
+function withEndTimes(lines: LyricLine[]): LyricLine[] {
+  return lines.map((line, index) => ({
+    ...line,
+    endMs: lines[index + 1]?.startMs,
   }));
 }
 

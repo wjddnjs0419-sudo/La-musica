@@ -29,6 +29,12 @@ export const MUSICS_BUCKET = "musics";
 
 export type MusicStatus = "pending" | "processing" | "completed" | "failed";
 export type ThumbnailStatus = "pending" | "succeeded" | "failed";
+export type LyricsSyncStatus =
+  | "pending"
+  | "syncing"
+  | "synced"
+  | "failed"
+  | "skipped";
 
 export interface Music {
   id: string;

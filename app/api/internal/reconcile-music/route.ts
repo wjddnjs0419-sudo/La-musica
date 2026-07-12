@@ -2,12 +2,19 @@ import { NextResponse, type NextRequest } from "next/server";
 import Replicate from "replicate";
 import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import { MUSICS_BUCKET, type Music } from "@/lib/music";
+import { buildInitialLyricsSyncMetadata } from "@/lib/lyrics/sync";
+import { ensureLyricsSyncStarted } from "@/lib/lyrics/ensureLyricsSync";
 import { reconcileMusicRow } from "@/lib/reconcile-music";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 const BATCH_LIMIT = 50;
 const INSFORGE_URL =
   process.env.INSFORGE_URL ?? process.env.NEXT_PUBLIC_INSFORGE_URL ?? "";
+
+// Gemini audio upload (~20s timeout) + alignment (~60s timeout) can run
+// inside after() after this route's response is sent; give the function
+// enough budget to actually finish instead of being frozen mid-flight.
+export const maxDuration = 90;
 
 // Internal cron endpoint: reconciles processing music rows that the client
 // may not have polled to completion (tab closed, network drop, etc.).
@@ -62,12 +69,26 @@ export async function POST(request: NextRequest) {
           return { url: uploaded.url, key: uploaded.key };
         },
         markCompleted: async (musicId, audioUrl, audioKey) => {
-          const { error: updateError } = await admin.database
+          const { data: updated, error: updateError } = await admin.database
             .from("musics")
-            .update({ status: "completed", audio_url: audioUrl, audio_key: audioKey })
+            .update({
+              status: "completed",
+              audio_url: audioUrl,
+              audio_key: audioKey,
+              metadata: buildInitialLyricsSyncMetadata(music.metadata),
+            })
             .eq("id", musicId)
-            .eq("status", "processing"); // guard against double-write
+            .eq("status", "processing") // guard against double-write
+            .select()
+            .maybeSingle();
           if (updateError) console.error("reconcile: markCompleted failed", updateError);
+          if (updated) {
+            try {
+              await ensureLyricsSyncStarted(admin, updated as Music);
+            } catch (err) {
+              console.error("reconcile: lyrics sync start failed", { musicId, err });
+            }
+          }
         },
         getAudioUrl: (key) =>
           `${INSFORGE_URL}/storage/v1/object/public/${MUSICS_BUCKET}/${key}`,

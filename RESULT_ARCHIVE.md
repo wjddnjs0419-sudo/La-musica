@@ -4,6 +4,167 @@
 
 ---
 
+# RESULT: Auto-generate LRC after audio completion Phase 2 - 2026-07-11
+
+## Background
+Phase 1까지는 `lyrics_lrc`가 이미 있을 때만 true timed playback이 가능했고, timestamp가 없는 가사는 플레이어가 approximate sync를 런타임 계산해 보여줬다. 이번 작업에서는 completed mp3와 최종 `lyrics_payload`를 기준으로 user lyrics와 AI-generated lyrics 모두 같은 post-generation alignment를 거쳐 `metadata.lyrics_lrc`를 자동 저장하도록 연결했다.
+
+## Implementation
+
+### Fix 1 — Gemini audio alignment helper
+`lib/lyrics/sync.ts`를 추가했다. 이 모듈은 `lyrics_sync_status` 판정(`pending` / `syncing` / `synced` / `failed` / `skipped`), 기존 timed lyrics 감지, canonical LRC 직렬화, 그리고 Gemini audio file upload + structured JSON alignment 응답을 `metadata.lyrics_lrc` 형식으로 바꾸는 로직을 담당한다. 정렬 결과는 원문 재작성 대신 line index + `start_ms`만 받아 source lyric lines를 그대로 LRC에 다시 조립한다.
+
+### Fix 2 — generation/finalize metadata state machine
+`app/api/music/generate/route.ts`는 generation row 생성 시점에 `lyrics_sync_status` 초기값을 함께 저장한다. instrumental/no-lyrics는 `skipped`, 이미 timed lyrics가 있으면 `synced`, 일반 가사는 `pending`으로 시작한다.
+
+`app/api/music/[id]/route.ts`는 completed 전환 시 `pending` 상태를 유지한 채 row를 마무리하고, 직후 `syncing`으로 올린 다음 background alignment를 시작한다. 성공 시 `lyrics_lrc`, `lyrics_sync_model`, `lyrics_synced_at`, `lyrics_sync_status: "synced"`를 저장하고, 실패 시 `lyrics_sync_error`와 `lyrics_sync_status: "failed"`를 저장한다. 만약 completed row가 어떤 이유로 `pending`에 남아 있으면 subsequent poll에서 다시 sync를 시작하도록 recovery 경로도 넣었다.
+
+### Fix 3 — cron reconcile parity + client polling
+`app/api/internal/reconcile-music/route.ts`도 completed row를 만들 때 같은 metadata 초기화와 background lyrics sync를 시작하도록 맞췄다. 따라서 사용자 polling으로 완료된 곡과 cron reconcile로 완료된 곡이 같은 LRC pipeline을 탄다.
+
+`components/workspace/WorkspaceShell.tsx`와 레거시 `components/music-workspace.tsx`는 polling 종료 조건에 `lyrics_sync_status`를 추가했다. 이제 `completed`가 먼저 와도 `lyrics_sync_status`가 `pending`/`syncing`이면 polling을 계속하고, `synced`/`failed`/`skipped`가 되면 멈춘다.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Lyrics sync helper tests | `npx vitest run lib/lyrics/sync.test.ts lib/player/lyrics.test.ts` | Passed (27 tests) |
+| Lint | `npm run lint` | Passed (0 errors, 기존 `FullScreenPlayer` `<img>` warning 1개 유지) |
+| Build/typecheck | `npm run build` | Passed |
+
+## Lessons
+- “같은 sync 파이프라인”과 “자동 LRC 생성”은 다른 단계다. 이번 Phase 2는 그 둘을 실제로 연결해 `completed -> syncing -> synced/failed/skipped` lifecycle을 만들었다.
+- Gemini alignment는 line index만 반환받고 원문 lyric lines를 다시 조립하는 편이, 모델이 가사를 미세하게 바꾸는 문제를 막기에 더 안전하다.
+- 이번 세션에서는 외부 Gemini alignment를 실제 앱 경로에 연결했지만, 실데이터 기준 quality tuning은 별도 후속 점검이 필요하다. 특히 반복 후렴, 애드립, 아주 짧은 훅에서는 prompt/model tuning 여지가 있다.
+
+---
+
+# RESULT: LRC parser + unified timed playback fallback Phase 1 - 2026-07-11
+
+## Background
+플레이어 highlighter는 지금까지 곡 길이에 가사 줄 수를 균등 분배하는 approximate sync만 사용했다. 이번 작업에서는 user lyrics와 AI-generated lyrics를 구분하지 않고, 동일한 `LyricLine[]` playback 경로에서 LRC timestamp를 우선 처리하도록 1차 기반을 만들었다. LRC가 없을 때 자동으로 true LRC를 만드는 것은 아니며, 그 경우 기존처럼 런타임 approximate timestamp를 계산한다. 실제 오디오를 분석해 LRC를 생성하는 post-generation alignment는 별도 Phase 2로 남겼다.
+
+## Implementation
+
+### Fix 1 — LRC 우선 파싱
+`lib/player/lyrics.ts`에 `parseLrcLyrics()`를 추가했다. `[mm:ss.xx]` / `[mm:ss.xxx]` timestamp를 millisecond로 변환하고, 같은 줄에 여러 timestamp가 붙은 LRC 반복 라인도 각각 timed line으로 확장한다.
+
+### Fix 2 — 통합 lyrics source 경로
+`parseMusicLyrics()`가 `metadata.lyrics_lrc`를 최우선으로 읽고, 없으면 기존처럼 `lyrics_payload`, `lyrics` 순서로 fallback한다. 어느 필드든 LRC timestamp가 들어 있으면 duration 없이도 실제 timestamp 기반 `LyricLine[]`을 반환한다. LRC가 없으면 기존 10% intro / 85% vocal window approximate fallback을 유지하며, 이 fallback은 저장된 LRC가 아니라 플레이어 런타임 계산값이다.
+
+### Fix 3 — 표시 정규화 재사용
+LRC text도 기존 `lyricDisplayLines()` 정규화 경로를 통과한다. 따라서 section tag, instrumental/stage direction 제거 규칙은 approximate lyrics와 timed lyrics에서 동일하다.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| LRC parser unit tests | `npx vitest run lib/player/lyrics.test.ts` | Passed (19 tests) |
+| User/auto unified path | Unit test with `lyrics_source: "auto"` + LRC in `lyrics_payload` | Passed |
+| Fallback preservation | Existing approximate timing tests | Passed |
+
+## Lessons
+- AI lyrics도 생성 후에는 user lyrics와 같은 sync target이다. 차이는 timestamp source가 아니라 저장/생성 시점뿐이다.
+- Phase 1은 playback contract와 approximate fallback을 통합한 것이고, true 자동 LRC 생성은 아직 아니다.
+- Phase 2는 completed mp3 + final `lyrics_payload` 기준으로 `metadata.lyrics_lrc` 또는 구조화된 timing 필드를 채우는 post-generation alignment가 되어야 한다.
+
+---
+
+# RESULT: Workspace fast entry auth deblocking - 2026-07-11
+
+## Background
+이전 성능 작업은 `/workspace` 서버 렌더에서 `musics`/`user_credits` 조회를 제거했지만, 페이지 진입 전 `proxy.ts`의 `updateSession()`과 `/workspace` 서버 컴포넌트의 `getCurrentUser()`가 여전히 남아 있었다. 이미 로그인된 사용자도 workspace shell 표시 전에 auth 네트워크 왕복을 기다리는 구조라 UX가 느리게 느껴질 수 있었다.
+
+## Implementation
+
+### Fix 1 — `/workspace` 정적 shell 전환
+`app/workspace/page.tsx`에서 InsForge SSR auth 조회를 제거하고 `WorkspaceShell loadInitialData`만 렌더하도록 변경했다. 빌드 route table에서 `/workspace`가 `○ Static`으로 전환됨을 확인했다.
+
+### Fix 2 — bootstrap 단일 auth 경로
+`/api/workspace/bootstrap`이 user/tracks/credit을 함께 반환하도록 확장했다. 클라이언트 shell은 bootstrap 성공 후 navbar 사용자 정보와 credit/tracks를 채우고, 401이면 `/auth`로 이동한다.
+
+### Fix 3 — Proxy session update 제외
+`proxy.ts` matcher에서 `/workspace`를 제외했다. 실제 권한 확인은 API 레벨에 남겨두고, 페이지 표시 전 세션 갱신 대기를 제거했다.
+
+### Fix 4 — OAuth callback 중복 auth 조회 제거
+`exchangeOAuthCode()` 응답에 포함된 `data.user.id`를 사용하도록 바꿔 callback 내부의 추가 `getCurrentUser()` 왕복을 제거했다. 무료 크레딧 RPC는 기존처럼 유지한다.
+
+### Fix 5 — 쿼리 인덱스 마이그레이션
+`migrations/20260711081542_workspace-fast-entry-index.sql`에 `public.musics(user_id, created_at DESC)` 인덱스를 추가했다. 먼저 pending 상태였던 `20260710000000_generation-cost-logs.sql`을 적용한 뒤 workspace 인덱스 migration도 적용했다.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| Lint | `npm run lint` | Passed (0 errors, warning 1개: 기존 FullScreenPlayer 장식용 `<img>` 권고) |
+| Build/typecheck | `npm run build` | Passed; `/workspace` = `○ Static`, `/api/workspace/bootstrap` = `ƒ Dynamic` |
+| Local production shell timing | `npm run start` 후 `curl /workspace` 5회 | 88ms → 1.9ms → 3.2ms → 4.3ms → 1.6ms |
+| Unauthorized bootstrap | `curl /api/workspace/bootstrap` without cookies | 401 in 43ms |
+| DB migration apply | `npx @insforge/cli db migrations up 20260710000000_generation-cost-logs.sql` + `npx @insforge/cli db migrations up 20260711081542_workspace-fast-entry-index.sql` | Passed |
+| DB index verification | `pg_indexes` query | Passed: `generation_cost_logs_*` indexes and `idx_musics_user_id_created_at` exist |
+
+## Lessons
+- 음악/크레딧 DB 조회를 뒤로 미뤄도, Proxy/session refresh와 서버 auth 조회가 shell 앞에 남아 있으면 체감 성능은 계속 느릴 수 있다.
+- UX 우선 workspace는 optimistic shell + API-level auth가 더 적합하다. 생성/결제/다운로드 같은 mutation API에서 엄격히 확인하면 된다.
+
+---
+
+# RESULT: Lyrics formatting stabilization - 2026-07-11
+
+## Background
+가사 입력 경로가 두 가지(사용자 직접 입력, AI Lyrics Assistant/auto lyrics)로 나뉘면서 표시용 원문과 ACE-Step 생성용 정규화본이 달라졌다. 플레이어는 원문 `metadata.lyrics`만 읽어 괄호형 instrumental effect가 가사 줄로 표시되고, approximate highlighter의 줄 수 계산도 함께 어긋났다. 진짜 time-sync/LRC alignment는 후속 작업으로 분리했다.
+
+## Implementation
+
+### Fix 1 — 공통 가사 정규화
+`lib/lyrics/format.ts`를 추가해 section tag canonicalization, stage direction 제거, display line 추출을 공유화했다. `(Instrumental break)`, `(beat drops)`, `[Guitar solo]` 같은 편곡/무대 지시는 제거하고, `(oh yeah)`처럼 부를 수 있는 괄호 애드립은 유지한다.
+
+### Fix 2 — 플레이어 표시/타이밍 입력 우선순위
+`parseMusicLyrics()`가 `metadata.lyrics_payload`를 우선 읽고, 없을 때만 `metadata.lyrics`로 fallback하도록 변경했다. 표시/타이밍 줄은 공통 정규화기를 거쳐 section tag와 instrumental effect를 제외한다.
+
+### Fix 3 — 생성 payload + AI prompt 강화
+`buildLyricsPayload()`도 공통 정규화기를 사용해 ACE-Step에 stage direction이 들어가지 않도록 했다. Lyrics Assistant system prompt에는 parenthetical production note와 inline production note를 lyrics field에 쓰지 말라는 규칙을 추가했다.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| 관련 단위 테스트 | `npx vitest run lib/player/lyrics.test.ts lib/music-prompt/buildLyricsPayload.test.ts lib/lyrics-assistant/prompt.test.ts` | Passed (21 tests) |
+| 전체 빌드 | `npm run build` | Passed |
+| Lint | `npm run lint` | Passed (0 errors, warning 1개: 기존 FullScreenPlayer 장식용 `<img>` 권고) |
+
+## Lessons
+- 현재 highlighter는 true time-sync가 아니라 곡 길이 기반 approximate sync다. 줄 목록에 비가사 지시문이 섞이면 타이밍 오차가 더 커진다.
+- 표시용 가사와 생성용 가사를 분리하더라도, 플레이어는 생성에 쓰인 정규화본을 우선 보는 편이 사용자 체감과 더 맞다.
+
+---
+
+# RESULT: MP3 메타데이터·플레이어 UX 수정 3건 - 2026-07-10
+
+## Background
+1. 다운로드 MP3에 앨범 커버 미삽입 (커버 있어도 iOS Music에 미표시)
+2. 모바일 MiniPlayer 프로그레스바 시간 레이블(0:20 / 3:00)이 아래 컨텐츠와 가로 정렬 어긋남
+3. 트랙 드롭다운 메뉴에서 외부 클릭 시 닫히지 않음 + 다운로드 클릭 후 메뉴 잔존
+
+## Implementation
+
+### Fix 1 — 앨범 커버 미삽입
+`app/api/music/[id]/download/route.ts`에서 `cover_url`만 보던 것을 `cover_url ?? thumbnail_url` fallback으로 수정. MIME type도 `image/` 접두어 검증 추가.
+
+### Fix 2 — 프로그레스바 시간 레이블 정렬
+`PlayerProgressBar.tsx`: `grid-cols-[42px·bar·42px] gap-3` 구조 제거 → 바 아래 `flex justify-between`으로 시간 레이블 이동. 좌우 모두 `px-3` 기준에 맞아 아래 행(썸네일/컨트롤)과 완벽 정렬.
+
+### Fix 3 — 드롭다운 click-outside
+`TrackCard.tsx`·`music-workspace.tsx` TrackRow 양쪽에 `useRef`(menu div + trigger button) + `useEffect`(`pointerdown` 리스너) 추가. 메뉴·트리거 바깥 클릭 시 메뉴 닫힘. 다운로드 링크에 `onClick={onToggleMenu}` 추가로 다운로드 즉시 닫힘.
+
+## Verification Matrix
+| Change | Checks | Result |
+|---|---|---|
+| 타입체크/빌드 | `npm run build` | Passed |
+| Lint | `npm run lint` | 0 errors, warning 1개(기존 동일) |
+
+## Lessons
+- InsForge storage URL은 크로스 오리진이라 `download` attr 무시됨 → same-origin API 엔드포인트로 변경 시 click-outside 같은 부수 효과도 함께 수동 처리 필요.
+- `cover_url`과 `thumbnail_url`은 독립 생성 타이밍 → 다운로드·공유 시 fallback 필수.
+
+---
+
 # RESULT: Music Player 버그 수정 5개 - 2026-07-10
 
 ## Background

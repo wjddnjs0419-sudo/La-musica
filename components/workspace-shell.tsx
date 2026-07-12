@@ -27,17 +27,20 @@ export default function WorkspaceShell({
   loadInitialData = false,
 }: WorkspaceShellProps) {
   const [creditModalOpen, setCreditModalOpen] = React.useState(false);
+  const [currentUser, setCurrentUser] =
+    React.useState<WorkspaceShellUser | null>(user ?? null);
   const [remainingCredit, setRemainingCredit] = React.useState(initialCredit);
 
   return (
     <>
       <WorkspaceNavbar
-        user={user}
+        user={currentUser}
         onOpenCreditModal={() => setCreditModalOpen(true)}
       />
       <MusicWorkspace
         initialTracks={initialTracks}
         remainingCredit={remainingCredit}
+        onUserChange={setCurrentUser}
         onRemainingCreditChange={setRemainingCredit}
         onOpenCreditModal={() => setCreditModalOpen(true)}
         loadInitialData={loadInitialData}

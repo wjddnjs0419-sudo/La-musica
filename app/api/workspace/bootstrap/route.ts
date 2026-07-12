@@ -75,9 +75,22 @@ export async function GET() {
   const tracks = (tracksResult.data ?? []) as unknown as Music[];
   const creditRow = creditResult.data as { credit?: unknown } | null;
   const credit = typeof creditRow?.credit === "number" ? creditRow.credit : 0;
+  const profile = user.profile as
+    | { name?: unknown; avatar_url?: unknown }
+    | null
+    | undefined;
 
   return NextResponse.json(
-    { tracks, credit },
+    {
+      user: {
+        name: typeof profile?.name === "string" ? profile.name : null,
+        email: user.email,
+        avatarUrl:
+          typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
+      },
+      tracks,
+      credit,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
