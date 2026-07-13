@@ -55,7 +55,52 @@ type GeminiFile = {
   name: string;
   uri: string;
   mimeType: string;
+  state?: string;
 };
+
+const GEMINI_FILE_TERMINAL_FAILURE_STATES = new Set(["FAILED", "CANCELLED"]);
+const DEFAULT_FILE_ACTIVE_POLL_INTERVAL_MS = 1000;
+const DEFAULT_FILE_ACTIVE_MAX_ATTEMPTS = 30;
+
+// Files uploaded to the Gemini Files API start out PROCESSING; calling
+// generateContent with a file_uri before it reaches ACTIVE fails the
+// request. Poll the file resource until it settles.
+export async function pollGeminiFileUntilActive(
+  file: GeminiFile,
+  apiKey: string,
+  opts: {
+    sleep?: (ms: number) => Promise<void>;
+    pollIntervalMs?: number;
+    maxAttempts?: number;
+  } = {},
+): Promise<GeminiFile> {
+  const sleep =
+    opts.sleep ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
+  const pollIntervalMs = opts.pollIntervalMs ?? DEFAULT_FILE_ACTIVE_POLL_INTERVAL_MS;
+  const maxAttempts = opts.maxAttempts ?? DEFAULT_FILE_ACTIVE_MAX_ATTEMPTS;
+
+  let current = file;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (current.state === "ACTIVE") return current;
+    if (current.state && GEMINI_FILE_TERMINAL_FAILURE_STATES.has(current.state)) {
+      throw new Error("lyrics_sync_file_failed");
+    }
+
+    await sleep(pollIntervalMs);
+
+    const res = await fetchGeminiWithRetry(
+      `${GEMINI_BASE_URL}/v1beta/${current.name}?key=${apiKey}`,
+      { method: "GET" },
+      { timeoutMs: 10000, maxRetries: 1 },
+    );
+    if (!res.ok) throw new Error("lyrics_sync_file_state_check_failed");
+    const data = (await res.json()) as { state?: string };
+    current = { ...current, state: data.state };
+  }
+
+  if (current.state === "ACTIVE") return current;
+  throw new Error("lyrics_sync_file_active_timeout");
+}
 
 export function resolveLyricsSyncText(
   metadata: Record<string, unknown>,
@@ -104,6 +149,22 @@ export function shouldContinueLyricsPolling(
 // client stops polling for it rather than retrying forever.
 export const LYRICS_POLL_MAX_WAIT_MS = 2 * 60 * 1000;
 
+// Client-side lyrics poll cutoff must anchor to when lyrics sync itself
+// started being polled-for, not to when the caller started polling the
+// track overall (generation can take most of the track-level poll window,
+// leaving lyrics sync almost no time before a shared cutoff fires).
+// Returns the timestamp to keep using as the lyrics-specific poll start:
+// the existing one if already recorded, `nowMs` on the first tick where
+// lyrics polling is still needed, or `undefined` once it's no longer needed.
+export function resolveLyricsPollStart(
+  existingStartMs: number | undefined,
+  metadata: Record<string, unknown>,
+  nowMs: number,
+): number | undefined {
+  if (existingStartMs != null) return existingStartMs;
+  return shouldContinueLyricsPolling(metadata) ? nowMs : undefined;
+}
+
 export function shouldStopLyricsPolling(
   pollingStartedAtMs: number,
   nowMs: number,
@@ -135,17 +196,22 @@ export function serializeLrc(lines: LyricLine[]): string {
     .join("\n");
 }
 
-export function buildLrcFromTimedMatches(
+// Lyric line order (line_index), not the order Gemini happened to return
+// matches in or their raw start_ms, is ground truth: a match whose start_ms
+// regresses relative to the previous *kept* line_index is a mis-hearing
+// (e.g. a repeated chorus/ad-lib matched to the wrong occurrence) and is
+// dropped rather than allowed to reorder playback.
+export function normalizeTimedMatches(
   lyricLines: string[],
   matches: Array<{ line_index?: number; start_ms?: number }>,
   durationSeconds?: number | null,
-): string {
+): LyricLine[] {
   const maxMs =
     typeof durationSeconds === "number" && durationSeconds > 0
       ? durationSeconds * 1000 + 5000
       : Number.POSITIVE_INFINITY;
 
-  const normalized = matches
+  const candidates = matches
     .map((match) => {
       const lineIndex = Number(match.line_index);
       const startMs = Number(match.start_ms);
@@ -166,17 +232,42 @@ export function buildLrcFromTimedMatches(
       };
     })
     .filter((line): line is { lineIndex: number; startMs: number; text: string } => Boolean(line))
-    .sort((a, b) => a.startMs - b.startMs);
+    .sort((a, b) => a.lineIndex - b.lineIndex);
 
   const seen = new Set<number>();
-  const deduped: LyricLine[] = [];
-  for (const line of normalized) {
+  const ordered: LyricLine[] = [];
+  let lastStartMs = -1;
+  for (const line of candidates) {
     if (seen.has(line.lineIndex)) continue;
+    if (line.startMs <= lastStartMs) continue;
     seen.add(line.lineIndex);
-    deduped.push({ startMs: line.startMs, text: line.text });
+    lastStartMs = line.startMs;
+    ordered.push({ startMs: line.startMs, text: line.text });
   }
 
-  return serializeLrc(deduped);
+  return ordered;
+}
+
+export function buildLrcFromTimedMatches(
+  lyricLines: string[],
+  matches: Array<{ line_index?: number; start_ms?: number }>,
+  durationSeconds?: number | null,
+): string {
+  return serializeLrc(normalizeTimedMatches(lyricLines, matches, durationSeconds));
+}
+
+// Fraction of source lyric lines that ended up with a valid timestamp.
+// Below MIN_COVERAGE_RATIO, treat the alignment as failed rather than
+// display a track where most lines silently have no timing at all.
+export const MIN_LYRICS_SYNC_COVERAGE_RATIO = 0.85;
+
+export function computeLyricsSyncCoverageRatio(
+  lyricLines: string[],
+  matches: Array<{ line_index?: number; start_ms?: number }>,
+  durationSeconds?: number | null,
+): number {
+  if (!lyricLines.length) return 0;
+  return normalizeTimedMatches(lyricLines, matches, durationSeconds).length / lyricLines.length;
 }
 
 export async function generateLyricsLrcFromAudio({
@@ -195,9 +286,10 @@ export async function generateLyricsLrcFromAudio({
   if (!apiKey) throw new Error("gemini_unconfigured");
 
   const model = process.env.GEMINI_AUDIO_MODEL || DEFAULT_GEMINI_AUDIO_MODEL;
-  const file = await uploadAudioFileToGemini(audioUrl, apiKey);
+  const uploaded = await uploadAudioFileToGemini(audioUrl, apiKey);
 
   try {
+    const file = await pollGeminiFileUntilActive(uploaded, apiKey);
     const prompt = buildLyricsAlignmentPrompt(lyricLines, durationSeconds);
     const url = `${GEMINI_BASE_URL}/v1beta/models/${model}:generateContent`;
     const res = await fetchGeminiWithRetry(
@@ -253,15 +345,17 @@ export async function generateLyricsLrcFromAudio({
     if (!out) throw new Error("lyrics_sync_bad_output");
 
     const parsed = parseLyricsAlignmentResponse(out);
-    const lrc = buildLrcFromTimedMatches(
-      lyricLines,
-      parsed.matches ?? [],
-      durationSeconds,
-    );
+    const matches = parsed.matches ?? [];
+    const coverageRatio = computeLyricsSyncCoverageRatio(lyricLines, matches, durationSeconds);
+    if (coverageRatio < MIN_LYRICS_SYNC_COVERAGE_RATIO) {
+      throw new Error("insufficient_alignment_coverage");
+    }
+
+    const lrc = buildLrcFromTimedMatches(lyricLines, matches, durationSeconds);
     if (!lrc.trim()) throw new Error("lyrics_sync_empty");
     return { lrc, model };
   } finally {
-    void deleteGeminiFile(file.name, apiKey);
+    void deleteGeminiFile(uploaded.name, apiKey);
   }
 }
 
@@ -358,11 +452,13 @@ async function uploadAudioFileToGemini(
       uri?: string;
       mimeType?: string;
       mime_type?: string;
+      state?: string;
     };
     name?: string;
     uri?: string;
     mimeType?: string;
     mime_type?: string;
+    state?: string;
   };
 
   const file = data.file ?? data;
@@ -373,7 +469,7 @@ async function uploadAudioFileToGemini(
     throw new Error("lyrics_sync_file_missing");
   }
 
-  return { name, uri, mimeType: uploadedMimeType };
+  return { name, uri, mimeType: uploadedMimeType, state: file.state };
 }
 
 async function deleteGeminiFile(name: string, apiKey: string): Promise<void> {

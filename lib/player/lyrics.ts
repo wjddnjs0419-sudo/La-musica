@@ -106,5 +106,5 @@ export function findActiveLineIndex(
   for (let i = lines.length - 1; i >= 0; i--) {
     if (currentTimeMs >= lines[i].startMs) return i;
   }
-  return 0;
+  return -1;
 }

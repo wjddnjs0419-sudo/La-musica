@@ -1,37 +1,34 @@
-# RESULT: 앨범 커버 미반영 버그 수정 - 2026-07-13
+# RESULT: Lyrics sync 2차 리뷰 P0 findings 5건 수정 - 2026-07-13
 
 ## Background
-사용자(`jake051096@gmail.com`)가 가장 최근 생성한 곡 "This is the sound"의 앨범 커버가 워크스페이스에 반영되지 않는다는 신고. Replicate 쪽 로그에서는 이미지 생성이 성공한 것으로 보였으나 DB에는 반영 안 됨. `insforge-debug` 스킬로 DB를 직접 조회해 확인:
-- 해당 곡만 `thumbnail_status = "pending"`, `thumbnail_url`/`thumbnail_key`가 `null`로 멈춰 있었음 (전체 완료곡 48개 중 47개는 `succeeded` — 이번 건 1건만 발생한 케이스).
-
-## Root Cause
-`app/api/music/[id]/route.ts`의 finalize 경로에서 썸네일 생성을 `await` 없이 던지는 fire-and-forget 방식으로 실행:
-```ts
-generateAndPersistThumbnail(client, user.id, updated[0] as Music, thumbnailPrompt).catch(...);
-```
-Vercel 서버리스 함수는 `NextResponse.json(...)` 응답이 나가는 순간 함수를 종료/freeze할 수 있어, Replicate 이미지 생성(1단계)은 끝났더라도 이후 다운로드→Storage 업로드→DB 업데이트(2~4단계)가 마무리되기 전에 함수가 죽으면 `thumbnail_status`가 영원히 `pending`에 멈춘다. 같은 파일의 가사 싱크 백그라운드 작업(`ensureLyricsSyncStarted`)은 이미 `next/server`의 `after()`로 감싸 이 문제를 피하고 있었는데, 썸네일 쪽만 그 패턴이 빠져 있었다. 완료된 트랙에 대해 썸네일 재시도를 거는 경로도 없어서(가사 싱크와 달리) 한 번 이렇게 멈추면 자동 복구되지 않았다.
+사용자가 별도로 작성된 리뷰 문서(`LA_MUSICA_LYRICS_SYNC_REVIEW.md`)를 공유 — synced-lyrics 파이프라인(`lib/lyrics/sync.ts`, `lib/lyrics/ensureLyricsSync.ts`, `lib/player/lyrics.ts`, `WorkspaceShell.tsx`)에 대한 2차 리뷰로, 하루 전(2026-07-12) 이미 findings 7건을 수정한 세션(`RESULT_ARCHIVE.md`)과는 별개의 이슈를 지적했다. 코드 대조로 리뷰의 P0 5건이 모두 실재함을 확인 후 사용자 승인 하에 TDD로 수정했다.
 
 ## Implementation
 
-### Fix — 썸네일 생성을 `after()`로 스케줄링
-- 신규 모듈 `lib/image/ensureThumbnail.ts`: 기존 route.ts에 인라인으로 있던 `generateAndPersistThumbnail`(Replicate 호출 → Storage 업로드 → DB 반영, 실패 시 `thumbnail_status: "failed"` 기록)을 그대로 옮기고, 이를 `after()`로 감싸는 `scheduleThumbnailGeneration(client, userId, music, prompt)`를 새로 export — `lib/lyrics/ensureLyricsSync.ts`의 `after()` 패턴과 동일 구조.
-- `app/api/music/[id]/route.ts`는 이제 `scheduleThumbnailGeneration(...)`만 호출. vitest는 `lib/**/*.test.ts`만 실행하도록 설정돼 있어(`vitest.config.ts`) route.ts 자체는 단위 테스트 대상이 아니므로, 테스트 가능하도록 로직을 `lib/`로 추출하는 이 저장소의 기존 컨벤션을 따랐다.
-- TDD: `lib/image/ensureThumbnail.test.ts`를 먼저 작성(모듈 부재로 RED 확인) → 최소 구현으로 GREEN. 커버 항목: (1) `after()`로 스케줄만 되고 즉시 실행되지 않는지, (2) 성공 시 `thumbnail_url`/`thumbnail_key`/`thumbnail_status: "succeeded"`가 올바른 id로 반영되는지, (3) 생성 실패 시 `thumbnail_status: "failed"`로 기록되어 `pending`에 방치되지 않는지.
+### Fix #1 — `findActiveLineIndex` 기본값 -1
+`lib/player/lyrics.ts`의 fallback이 `return 0`이라 첫 timestamp 도달 전에도 항상 첫 줄이 활성화되던 버그. `-1`로 변경. `LyricsView.tsx`는 이미 `i === activeIdx` 비교만 쓰고 있어 별도 UI 변경 불필요(어떤 줄도 활성화되지 않음, `nearActive`는 부작용 없이 다음 줄들을 은은하게 표시).
 
-### 데이터 복구 (1회성)
-자동 재시도 경로가 없어 DB 값을 되돌리는 것만으로는 반영되지 않으므로, 로컬에서 1회성 스크립트로 해당 레코드의 기존 `thumbnail_prompt`를 재사용해 Replicate(`flux-schnell`) 이미지를 다시 생성하고 InsForge admin 클라이언트로 Storage 업로드 + DB 업데이트(`thumbnail_url`/`thumbnail_key`/`thumbnail_status: "succeeded"`)까지 직접 수행. 실행 후 스크립트 파일은 삭제, DB 조회로 반영 확인 완료.
+### Fix #2 — `line_index` 기준 정렬 + 단조 증가 검증
+`buildLrcFromTimedMatches`가 `start_ms` 기준으로만 정렬해, Gemini가 반복 후렴구/애드리브를 잘못 들어 순서가 꼬인 `start_ms`를 반환하면 가사 표시 순서 자체가 깨질 수 있었다. 내부 로직을 `normalizeTimedMatches`로 추출해 `line_index` 기준 정렬로 바꾸고, 이전에 채택된 항목의 `start_ms`보다 작거나 같은 항목은 (line_index가 이어져도) 드롭하는 단조 증가 검증을 추가.
+
+### Fix #3 — coverage ratio 검증
+Gemini가 전체 가사 줄의 일부만 반환해도 LRC가 비어있지만 않으면 무조건 `synced`로 처리되던 문제. `computeLyricsSyncCoverageRatio`(normalizeTimedMatches 결과 개수 / 전체 줄 수)를 추가하고, `generateLyricsLrcFromAudio`에서 `MIN_LYRICS_SYNC_COVERAGE_RATIO`(0.85) 미만이면 `insufficient_alignment_coverage`로 실패 처리 — partial match가 부분 성공한 것처럼 보이지 않게 함.
+
+### Fix #4 — Gemini 파일 `ACTIVE` 상태 polling
+`uploadAudioFileToGemini`가 파일 finalize 직후 상태 확인 없이 바로 `generateContent`를 호출하고 있었다(파일이 `PROCESSING`인 상태에서 요청이 실패할 수 있음). `pollGeminiFileUntilActive(file, apiKey, opts)`를 신규 추가 — `FAILED`/`CANCELLED`면 즉시 실패, 지정 횟수(기본 30회, 1초 간격) 내에 `ACTIVE`가 안 되면 timeout 에러. `generateLyricsLrcFromAudio`에서 업로드 직후 호출하도록 연결.
+
+### Fix #5 — 가사 싱크 전용 클라이언트 폴링 시작 시각 분리
+`WorkspaceShell.tsx`의 `pollStartedAt`이 트랙 전체 폴링(음악 생성) 시작 시각을 가사 싱크 cutoff에도 그대로 재사용하고 있어, 생성이 오래 걸리면 가사 싱크에 남는 폴링 여유 시간이 줄어드는 문제(어제 Fix #2는 "무한 폴링 방지"만 다뤘고 타이머 분리는 안 함). `resolveLyricsPollStart(existingStartMs, metadata, nowMs)`를 신규 추가 — 가사 싱크가 실제로 필요해진 첫 tick에만 시각을 기록하고, 이미 기록됐으면 그대로 유지, 더 이상 필요 없으면 `undefined`. `WorkspaceShell.tsx`에 별도 `lyricsPolling` ref(Map)로 연결해 `polling` ref(트랙 폴링 시작 시각)와 분리.
 
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
-| 신규 유닛 테스트 | `npx vitest run lib/image/ensureThumbnail.test.ts` | RED(모듈 없음) 확인 → GREEN(3 tests) |
-| 전체 단위 테스트 | `npm run test` | Passed (20 files / 144 tests) |
+| 전체 단위 테스트 | `npx vitest run` | Passed (20 files / 158 tests) |
 | 타입체크 | `npx tsc --noEmit` | Passed |
-| Lint | `npm run lint` | Passed (0 errors, 기존 `FullScreenPlayer` `<img>` warning 1개 유지) |
 | Build | `npm run build` | Passed |
-| 데이터 복구 확인 | InsForge CLI `db query` (수정 전/후) | `pending`/`null` → `succeeded`/실제 URL 확인 |
+| Lint | `npm run lint` | Passed (0 errors, 기존 `FullScreenPlayer` `<img>` warning 1개 유지) |
 
 ## Lessons
-- 같은 파일 안에 "제대로 만든 배경 작업"(가사 싱크, `after()` 사용)과 "허술한 배경 작업"(썸네일, bare fire-and-forget)이 나란히 있었다 — 한쪽에 이미 검증된 패턴이 있으면 그 패턴이 다른 유사 작업에도 일관되게 적용됐는지 점검할 가치가 있다.
-- 이번 건은 48개 완료곡 중 1개만 발생 — 재현이 안 되는 드문 실패라도 "완료곡 전체에서 몇 건이 같은 상태인지" DB로 직접 세어보면 회귀 가능성 있는 버그인지 일회성 우연인지 바로 구분된다.
-- 이 프로젝트는 vitest가 `lib/**/*.test.ts`만 대상으로 하므로, route 핸들러에 로직을 인라인으로 두면 TDD를 못 걸고 넘어가기 쉽다 — 라우트 파일은 얇게 유지하고 오케스트레이션 로직은 `lib/`로 빼는 습관이 곧 테스트 가능성을 보장한다.
+- 전날 세션에서 findings 7건을 이미 고쳤더라도, "동일 파일에 대한 리뷰"가 항상 동일한 이슈를 반복 지적하는 건 아니다 — 코드를 실제로 대조하지 않고 "어제 다 고쳤다"고 가정했다면 이번 5건을 놓쳤을 것.
+- `buildLrcFromTimedMatches`처럼 정렬 기준(`start_ms` vs `line_index`) 하나가 전체 결과의 정합성을 좌우하는 경우, 기존 테스트가 우연히 통과하는 입력만 쓰고 있으면(이번 케이스는 `start_ms` 순서와 `line_index` 순서가 늘 일치하는 예시들뿐이었음) 회귀를 못 잡는다 — 두 기준이 갈리는 예시를 반드시 테스트에 넣어야 실제 정렬 로직을 검증한 게 된다.
+- 클라이언트 폴링 cutoff처럼 "언제부터 카운트하는지"가 핵심인 로직은 순수 함수(`resolveLyricsPollStart`)로 뽑아 유닛 테스트하고, 컴포넌트에는 그 반환값을 ref에 반영하는 배선만 남기는 편이 React 클로저 안에 검증 불가능한 상태 로직을 묻어두는 것보다 안전하다.

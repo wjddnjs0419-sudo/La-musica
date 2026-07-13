@@ -158,8 +158,16 @@ describe("findActiveLineIndex", () => {
     { startMs: 20000, text: "C" },
   ];
 
-  it("returns 0 before the first line starts", () => {
+  it("returns the first index once current time reaches the first line's start", () => {
     expect(findActiveLineIndex(lines, 0)).toBe(0);
+  });
+
+  it("returns -1 before the first line's start (no line highlighted yet)", () => {
+    const shifted = [
+      { startMs: 15000, text: "A" },
+      { startMs: 25000, text: "B" },
+    ];
+    expect(findActiveLineIndex(shifted, 3000)).toBe(-1);
   });
 
   it("returns correct index mid-song", () => {
