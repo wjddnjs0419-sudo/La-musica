@@ -1,40 +1,37 @@
-# RESULT: Synced-lyrics 기능 배포 전 리뷰 findings 7건 수정 - 2026-07-12
+# RESULT: 앨범 커버 미반영 버그 수정 - 2026-07-13
 
 ## Background
-"synced lyrics 배포 전 테스트"를 요청받아 `code-review` 스킬(고효율, 5개 finder 에이전트 병렬)로 아직 커밋되지 않은 synced-lyrics 기능(LRC 파싱 + Gemini 오디오 정렬 백그라운드 sync 파이프라인) 전체를 검토했다. 정확성 findings 7건이 나왔고, 그중 4건(#1/#2/#4/#5)은 배포 시 기능이 아예 동작하지 않거나(서버리스 종료로 백그라운드 작업 소실) 비용이 새는(동시성 가드 부재로 Gemini 중복 호출, 배포 시 기존 카탈로그 소급 트리거) 심각도였다. 사용자 승인 하에 7건 전부를 TDD로 수정했다.
+사용자(`jake051096@gmail.com`)가 가장 최근 생성한 곡 "This is the sound"의 앨범 커버가 워크스페이스에 반영되지 않는다는 신고. Replicate 쪽 로그에서는 이미지 생성이 성공한 것으로 보였으나 DB에는 반영 안 됨. `insforge-debug` 스킬로 DB를 직접 조회해 확인:
+- 해당 곡만 `thumbnail_status = "pending"`, `thumbnail_url`/`thumbnail_key`가 `null`로 멈춰 있었음 (전체 완료곡 48개 중 47개는 `succeeded` — 이번 건 1건만 발생한 케이스).
+
+## Root Cause
+`app/api/music/[id]/route.ts`의 finalize 경로에서 썸네일 생성을 `await` 없이 던지는 fire-and-forget 방식으로 실행:
+```ts
+generateAndPersistThumbnail(client, user.id, updated[0] as Music, thumbnailPrompt).catch(...);
+```
+Vercel 서버리스 함수는 `NextResponse.json(...)` 응답이 나가는 순간 함수를 종료/freeze할 수 있어, Replicate 이미지 생성(1단계)은 끝났더라도 이후 다운로드→Storage 업로드→DB 업데이트(2~4단계)가 마무리되기 전에 함수가 죽으면 `thumbnail_status`가 영원히 `pending`에 멈춘다. 같은 파일의 가사 싱크 백그라운드 작업(`ensureLyricsSyncStarted`)은 이미 `next/server`의 `after()`로 감싸 이 문제를 피하고 있었는데, 썸네일 쪽만 그 패턴이 빠져 있었다. 완료된 트랙에 대해 썸네일 재시도를 거는 경로도 없어서(가사 싱크와 달리) 한 번 이렇게 멈추면 자동 복구되지 않았다.
 
 ## Implementation
 
-### Fix #7 — finalize UPDATE 이중쓰기 가드
-`app/api/music/[id]/route.ts`의 `processing → completed` UPDATE에 `.eq("status", "processing")` 가드 추가 (reconcile-music의 `markCompleted`와 동일 패턴). 중복 finalize 요청이 lyrics-sync 상태를 되돌리는 경로를 차단.
+### Fix — 썸네일 생성을 `after()`로 스케줄링
+- 신규 모듈 `lib/image/ensureThumbnail.ts`: 기존 route.ts에 인라인으로 있던 `generateAndPersistThumbnail`(Replicate 호출 → Storage 업로드 → DB 반영, 실패 시 `thumbnail_status: "failed"` 기록)을 그대로 옮기고, 이를 `after()`로 감싸는 `scheduleThumbnailGeneration(client, userId, music, prompt)`를 새로 export — `lib/lyrics/ensureLyricsSync.ts`의 `after()` 패턴과 동일 구조.
+- `app/api/music/[id]/route.ts`는 이제 `scheduleThumbnailGeneration(...)`만 호출. vitest는 `lib/**/*.test.ts`만 실행하도록 설정돼 있어(`vitest.config.ts`) route.ts 자체는 단위 테스트 대상이 아니므로, 테스트 가능하도록 로직을 `lib/`로 추출하는 이 저장소의 기존 컨벤션을 따랐다.
+- TDD: `lib/image/ensureThumbnail.test.ts`를 먼저 작성(모듈 부재로 RED 확인) → 최소 구현으로 GREEN. 커버 항목: (1) `after()`로 스케줄만 되고 즉시 실행되지 않는지, (2) 성공 시 `thumbnail_url`/`thumbnail_key`/`thumbnail_status: "succeeded"`가 올바른 id로 반영되는지, (3) 생성 실패 시 `thumbnail_status: "failed"`로 기록되어 `pending`에 방치되지 않는지.
 
-### Fix #6 — stage-direction 정규식이 실제 가사를 지우는 문제
-`lib/lyrics/format.ts`를 두 갈래로 분리했다: `sanitizeLyricsForModel`(음악 생성 모델 페이로드용, `buildLyricsPayload.ts`가 사용)은 소괄호 stage-direction 스트리핑을 그대로 유지 — 생성 모델에게 instrumental gap을 알려주는 정당한 용도라 회귀시키지 않았다. `lyricDisplayLines`(플레이어 표시 + Gemini 정렬 ground truth, `lib/player/lyrics.ts`/`lib/lyrics/sync.ts`가 사용)는 소괄호를 절대 건드리지 않도록 바꾸고, 대괄호도 인식된 태그/방향 지시일 때만 제거하도록(무조건 leading bracket 제거하던 버그 포함) 좁혔다. `lib/lyrics/format.test.ts` 신규 + 기존 `lyrics.test.ts`/`buildLyricsPayload.test.ts` 기대값 갱신.
-
-### Fix #5 + #4 + #1 — 공유 오케스트레이션 모듈 + CAS 가드 + `after()`
-`lib/lyrics/ensureLyricsSync.ts`를 신규로 만들어 두 라우트(`app/api/internal/reconcile-music/route.ts`, `app/api/music/[id]/route.ts`)에 ~110줄씩 복붙돼 있던 `ensureLyricsSyncStarted`/`syncLyricsInBackground`/`updateMusicMetadata`를 하나로 통합했다.
-- `pending → syncing` 전환은 `.eq("metadata->>lyrics_sync_status", observedStatus)`(명시값 없으면 `.is("metadata->lyrics_sync_status", null)`) CAS 가드로 감싸, 두 트리거(cron + 클라이언트 poll)가 동시에 관측해도 하나만 실제로 sync를 시작하게 했다. 가드가 안 맞으면(이미 다른 프로세스가 선점) 아무 것도 하지 않고 반환.
-- `syncing`으로 3분 넘게 멈춰 있으면(백그라운드 작업이 죽은 것으로 간주) 같은 CAS로 재시도를 허용 — "stuck" 복구 경로.
-- 최종 synced/failed/skipped 기록도 `.eq("metadata->>lyrics_sync_status", "syncing")` 가드를 걸어, 뒤늦게 끝난 중복 실행이 이미 확정된 결과를 덮어쓰지 못하게 했다.
-- 실제 오디오 업로드+정렬(`syncLyricsInBackground`)은 `next/server`의 `after()`로 감싸 응답 반환 후에도 실행이 보장되도록 하고, 두 라우트에 `export const maxDuration = 90` 추가. CAS 쓰기 자체는 빠르므로 두 라우트 모두 `await ensureLyricsSyncStarted(...)`로 통일(이전엔 reconcile 쪽만 fire-and-forget).
-- `lib/lyrics/ensureLyricsSync.test.ts` 신규(9 tests): CAS 성공/충돌/stale 재시도/IS NULL 가드/synced·skipped·failed 결과 기록을 admin 클라이언트 mock으로 검증.
-
-### Fix #2 — 클라이언트 무한 폴링 방지 + 죽은 파일 제거
-`lib/lyrics/sync.ts`에 순수 함수 `shouldStopLyricsPolling(startedAtMs, nowMs, maxWaitMs = 2분)` 추가. `components/workspace/WorkspaceShell.tsx`의 `polling` ref를 `Set<string>`에서 `Map<string, number>`(폴링 시작 시각 기록)로 바꾸고, lyrics 폴링 지속 조건에 이 cutoff를 결합해 2분 넘도록 안 끝나면 lyrics 폴링만 중단한다(트랙 상태 폴링과 무관). 아무데서도 import되지 않던 죽은 컴포넌트 `components/music-workspace.tsx`(리팩터 이전 monolith, `git grep`으로 재확인 후) 삭제.
-
-### Fix #3 — 기존 카탈로그 소급 백필 마이그레이션
-`migrations/20260712112811_backfill-lyrics-sync-status-skipped.sql` 작성/적용. `status='completed'`이고 `metadata->>'lyrics_sync_status'`가 없는 행을 전부 `"skipped"`로 백필 — 신규 생성곡만 auto-sync 대상이 되도록 하고, 배포 직후 워크스페이스 첫 로드에서 기존 곡들이 무더기로 Gemini 호출을 트리거하는 걸 막았다. 적용 전 대상 카운트를 InsForge CLI로 확인(완료곡 47개 중 20개 대상), 적용 후 재확인해 0개로 백필 완료 확인.
+### 데이터 복구 (1회성)
+자동 재시도 경로가 없어 DB 값을 되돌리는 것만으로는 반영되지 않으므로, 로컬에서 1회성 스크립트로 해당 레코드의 기존 `thumbnail_prompt`를 재사용해 Replicate(`flux-schnell`) 이미지를 다시 생성하고 InsForge admin 클라이언트로 Storage 업로드 + DB 업데이트(`thumbnail_url`/`thumbnail_key`/`thumbnail_status: "succeeded"`)까지 직접 수행. 실행 후 스크립트 파일은 삭제, DB 조회로 반영 확인 완료.
 
 ## Verification Matrix
 | Change | Checks | Result |
 |---|---|---|
-| 전체 단위 테스트 | `npx vitest run` | Passed (19 files / 141 tests) |
+| 신규 유닛 테스트 | `npx vitest run lib/image/ensureThumbnail.test.ts` | RED(모듈 없음) 확인 → GREEN(3 tests) |
+| 전체 단위 테스트 | `npm run test` | Passed (20 files / 144 tests) |
 | 타입체크 | `npx tsc --noEmit` | Passed |
-| Build | `npm run build` | Passed |
 | Lint | `npm run lint` | Passed (0 errors, 기존 `FullScreenPlayer` `<img>` warning 1개 유지) |
-| 백필 마이그레이션 | InsForge CLI `db query` 전/후 카운트 | 20개 대상 → 0개 잔여 확인 |
+| Build | `npm run build` | Passed |
+| 데이터 복구 확인 | InsForge CLI `db query` (수정 전/후) | `pending`/`null` → `succeeded`/실제 URL 확인 |
 
 ## Lessons
-- 리뷰에서 나온 findings를 순서 없이 바로 고치기보다, 의존관계(공유 모듈 추출이 CAS 가드·`after()` 적용을 한 곳에서만 고치게 해줌)를 먼저 따져 묶어서 처리하는 편이 총 작업량이 줄었다 — 7건이 실질적으로 5개 구현 단계로 수렴.
-- 같은 `stripStageDirections` 로직을 "화면 표시"와 "생성 모델 페이로드" 두 군데가 공유하고 있었는데, 전자만 고쳐야 할 버그를 공유 함수에서 고치면 후자(정당한 동작)에 회귀가 생긴다 — 공유 코드를 고칠 땐 모든 소비자의 요구사항이 실제로 같은지 먼저 확인해야 한다.
-- 마이그레이션 적용 전 `SELECT count(*)`로 실제 영향받는 행 수를 먼저 확인한 게 유효했다 — "47개 완료곡 중 20개가 소급 트리거 대상"이라는 구체적 숫자가 나오고 나서야 이 finding이 가설이 아니라 실제 문제였음이 확인됐다.
+- 같은 파일 안에 "제대로 만든 배경 작업"(가사 싱크, `after()` 사용)과 "허술한 배경 작업"(썸네일, bare fire-and-forget)이 나란히 있었다 — 한쪽에 이미 검증된 패턴이 있으면 그 패턴이 다른 유사 작업에도 일관되게 적용됐는지 점검할 가치가 있다.
+- 이번 건은 48개 완료곡 중 1개만 발생 — 재현이 안 되는 드문 실패라도 "완료곡 전체에서 몇 건이 같은 상태인지" DB로 직접 세어보면 회귀 가능성 있는 버그인지 일회성 우연인지 바로 구분된다.
+- 이 프로젝트는 vitest가 `lib/**/*.test.ts`만 대상으로 하므로, route 핸들러에 로직을 인라인으로 두면 TDD를 못 걸고 넘어가기 쉽다 — 라우트 파일은 얇게 유지하고 오케스트레이션 로직은 `lib/`로 빼는 습관이 곧 테스트 가능성을 보장한다.

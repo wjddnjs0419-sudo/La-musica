@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@insforge/sdk/ssr";
 import Replicate from "replicate";
-import { generateThumbnail } from "@/lib/image/generateThumbnail";
+import { scheduleThumbnailGeneration } from "@/lib/image/ensureThumbnail";
 import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import { MUSICS_BUCKET, type Music } from "@/lib/music";
 import { buildInitialLyricsSyncMetadata } from "@/lib/lyrics/sync";
@@ -150,13 +150,12 @@ export async function GET(
     return NextResponse.json({ music }); // audio is stored; client can retry
   }
 
-  // Kick off thumbnail generation in the background — do not await it so the
-  // client receives the completed music immediately without waiting for the
-  // Replicate image model. thumbnail_status starts as "pending" and the next
-  // poll will observe the updated value.
-  generateAndPersistThumbnail(client, user.id, updated[0] as Music, thumbnailPrompt).catch(
-    (err) => console.error("bg thumbnail failed", { musicId: id, err }),
-  );
+  // Kick off thumbnail generation in the background — scheduled via after()
+  // so the client receives the completed music immediately (without waiting
+  // for the Replicate image model) while the function stays alive long
+  // enough to actually finish the upload + DB write. thumbnail_status starts
+  // as "pending" and the next poll will observe the updated value.
+  scheduleThumbnailGeneration(client, user.id, updated[0] as Music, thumbnailPrompt);
 
   const ensured = await ensureLyricsSyncStarted(createInsforgeAdminClient(), updated[0] as Music);
   return NextResponse.json({ music: ensured });
@@ -311,69 +310,6 @@ async function refundAndMarkFailed(
   }
 
   return music ?? null;
-}
-
-async function generateAndPersistThumbnail(
-  client: ReturnType<typeof createServerClient>,
-  userId: string,
-  music: Music,
-  prompt = music.thumbnail_prompt ?? buildPromptForMusic(music),
-): Promise<Music> {
-  try {
-    const blob = await generateThumbnail(prompt);
-    const file = new File([blob], `${music.id}.webp`, { type: "image/webp" });
-    const uploadKey = `${userId}/${music.id}-thumbnail-${Date.now()}.webp`;
-    const { data: uploaded, error: uploadError } = await client.storage
-      .from(MUSICS_BUCKET)
-      .upload(uploadKey, file);
-
-    if (uploadError || !uploaded) {
-      throw uploadError ?? new Error("thumbnail_upload_failed");
-    }
-
-    const { data: updated, error: updateError } = await client.database
-      .from("musics")
-      .update({
-        thumbnail_url: uploaded.url,
-        thumbnail_key: uploaded.key,
-        thumbnail_prompt: prompt,
-        thumbnail_status: "succeeded",
-      })
-      .eq("id", music.id)
-      .select();
-
-    if (updateError || !updated?.[0]) {
-      throw updateError ?? new Error("thumbnail_update_failed");
-    }
-
-    return updated[0] as Music;
-  } catch (err) {
-    console.error("thumbnail generation failed", { musicId: music.id, err });
-    const { data: updated, error } = await client.database
-      .from("musics")
-      .update({
-        thumbnail_url: null,
-        thumbnail_key: null,
-        thumbnail_prompt: prompt,
-        thumbnail_status: "failed",
-      })
-      .eq("id", music.id)
-      .select();
-
-    if (error) {
-      console.error("thumbnail failure status update failed", {
-        musicId: music.id,
-        error,
-      });
-      return { ...music, thumbnail_prompt: prompt, thumbnail_status: "failed" };
-    }
-
-    return (updated?.[0] as Music) ?? {
-      ...music,
-      thumbnail_prompt: prompt,
-      thumbnail_status: "failed",
-    };
-  }
 }
 
 function buildPromptForMusic(music: Music) {
