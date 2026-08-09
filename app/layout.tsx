@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     description: "La musica는 AI로 음악을 생성하는 웹페이지입니다.",
     url: "https://la-musica.vercel.app",
     siteName: "La musica",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "La musica" }],
+    images: [{ url: "/og-image.png", width: 1731, height: 909, alt: "La musica" }],
     locale: "ko_KR",
     type: "website",
   },

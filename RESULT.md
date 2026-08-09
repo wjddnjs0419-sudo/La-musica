@@ -1,14 +1,13 @@
-# RESULT: Mobile Full-Screen Player Isolation - 2026-08-10
+# RESULT: Mobile CTA Background Image - 2026-08-10
 
 ## Background
 
-The mobile full-screen player used a translucent surface, so the workspace header and mini player could show through. Its desktop-oriented content also became an unconstrained vertical stack on mobile, allowing art, metadata, and lyrics to compete for the same space.
+On narrow screens, the landscape CTA image was center-cropped to its dark middle region, making the section appear almost black.
 
 ## Implementation
 
-- Added an opaque near-black base to the portal root. The blurred cover remains visible as the player background, but underlying workspace UI can no longer bleed through.
-- Reworked the mobile main region into a bounded vertical flex layout: compact square artwork, track metadata, and a remaining-space lyric region with its own scroll boundary.
-- Preserved the desktop two-column layout, full audio-control interface, portal behavior, and existing close/previous/next callbacks.
+- Moved the supplied 1080×1350 image to `public/images/cta-studio-mobile.png`.
+- Use the new portrait image below the `md` breakpoint and retain the existing landscape CTA image at `md` and above.
 
 ## Verification
 
@@ -20,4 +19,4 @@ The mobile full-screen player used a translucent surface, so the workspace heade
 
 ## Lessons
 
-- A full-screen overlay must be opaque at its root; opacity belongs only to decoration that is already inside the overlay.
+- Responsive source selection prevents a landscape image's dark central crop from becoming the whole mobile CTA background.

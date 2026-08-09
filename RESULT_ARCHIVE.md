@@ -2304,3 +2304,49 @@ Phase 0~4 완료 후 남은 Follow-up 3개 처리: Vercel Cron 연결, `generati
 - 미배포(로컬 개발 단계). git 커밋·푸시는 사용자 요청 시.
 
 (아직 보관된 과거 세션 없음)
+# RESULT: Mobile Full-Screen Player Isolation - 2026-08-10
+
+## Background
+
+The mobile full-screen player used a translucent surface, so the workspace header and mini player could show through. Its desktop-oriented content also became an unconstrained vertical stack on mobile, allowing art, metadata, and lyrics to compete for the same space.
+
+## Implementation
+
+- Added an opaque near-black base to the portal root. The blurred cover remains visible as the player background, but underlying workspace UI can no longer bleed through.
+- Reworked the mobile main region into a bounded vertical flex layout: compact square artwork, track metadata, and a remaining-space lyric region with its own scroll boundary.
+- Preserved the desktop two-column layout, full audio-control interface, portal behavior, and existing close/previous/next callbacks.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- A full-screen overlay must be opaque at its root; opacity belongs only to decoration that is already inside the overlay.
+# RESULT: Open Graph Image Replacement - 2026-08-10
+
+## Background
+
+Replace the existing social-share image with the supplied La Musica brand image while keeping the established OG and Twitter image URLs stable.
+
+## Implementation
+
+- Replaced `public/og-image.png` with the supplied 1731×909 PNG.
+- Kept Open Graph and Twitter metadata on the existing `/og-image.png` URL.
+- Updated the Open Graph image dimensions to match the new asset.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- Replacing a stable public asset path preserves all existing social metadata references while changing the share preview.
