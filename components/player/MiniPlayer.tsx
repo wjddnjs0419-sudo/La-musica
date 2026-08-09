@@ -52,10 +52,15 @@ export default function MiniPlayer({
   return (
     <section
       aria-label="Now playing"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0b0b0c]/[0.96] shadow-[0_-18px_40px_rgba(0,0,0,0.3)] backdrop-blur-xl"
+      className="mt-3 overflow-hidden rounded-[22px] border border-white/15 bg-[#303030] shadow-sm"
     >
-      {/* Mobile: compact bar with an accessible full-player entry point. */}
-      <div className="flex items-center gap-2 px-3 py-2.5 lg:hidden">
+      <PlayerProgressBar
+        currentTime={currentTime}
+        duration={resolvedDuration}
+        onSeek={onSeek}
+      />
+
+      <div className="flex items-center gap-2 px-3 py-2 lg:hidden">
         <button
           type="button"
           onClick={onOpenFullscreen}
@@ -65,7 +70,7 @@ export default function MiniPlayer({
         >
           <MusicThumbnail
             track={track}
-            className="h-10 w-10 rounded-none"
+            className="h-10 w-10"
             showTitle={Boolean(track.thumbnail_url)}
           />
         </button>
@@ -93,8 +98,7 @@ export default function MiniPlayer({
         </button>
       </div>
 
-      {/* Desktop: track · transport · progress and utilities. */}
-      <div className="hidden h-[76px] items-center gap-5 px-6 lg:grid lg:grid-cols-[minmax(210px,1fr)_minmax(220px,0.8fr)_minmax(300px,1fr)] xl:px-10">
+      <div className="hidden min-h-16 items-center gap-3 px-3 py-2 lg:grid lg:grid-cols-[minmax(220px,1fr)_minmax(260px,1.2fr)_minmax(180px,0.8fr)]">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
@@ -105,12 +109,12 @@ export default function MiniPlayer({
           >
             <MusicThumbnail
               track={track}
-              className="h-12 w-12 rounded-none"
+              className="h-11 w-11"
               showTitle={Boolean(track.thumbnail_url)}
             />
           </button>
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-[#f4f1ea]">
+            <p className="truncate text-sm font-semibold text-white/90">
               {track.title}
             </p>
             <p className="mt-0.5 text-[11px] text-white/40">AI Generated</p>
@@ -126,14 +130,7 @@ export default function MiniPlayer({
           />
         </div>
 
-        <div className="flex min-w-0 items-center justify-end gap-3">
-          <div className="min-w-[170px] flex-1">
-            <PlayerProgressBar
-              currentTime={currentTime}
-              duration={resolvedDuration}
-              onSeek={onSeek}
-            />
-          </div>
+        <div className="flex min-w-0 items-center justify-end gap-2">
           <VolumeControl volume={volume} onVolumeChange={onVolumeChange} />
           <button
             type="button"

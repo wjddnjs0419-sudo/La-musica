@@ -556,7 +556,7 @@ export default function WorkspaceShell({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div
         ref={scrollRef}
-        className={`custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain ${activeTrack?.audio_url ? "pb-20" : ""}`}
+        className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
         <div className="mx-auto flex w-full max-w-none flex-col px-6 py-20 sm:px-10 lg:px-12">
           <div className="mb-20 flex items-end justify-between gap-5">
@@ -634,7 +634,7 @@ export default function WorkspaceShell({
         </div>
       </div>
 
-      <div className={`w-full shrink-0 px-3 py-4 sm:px-4 sm:pb-6 ${activeTrack?.audio_url ? "pb-20" : ""}`}>
+      <div className="w-full shrink-0 px-3 py-4 sm:px-4 sm:pb-6">
         <MusicComposer
           disabled={genPhase === "generating"}
           onOpen={() => {
@@ -642,28 +642,27 @@ export default function WorkspaceShell({
             setCreateModalOpen(true);
           }}
         />
+        {activeTrack?.audio_url && (
+          <MiniPlayer
+            track={activeTrack}
+            playing={playing}
+            currentTime={currentTime}
+            duration={duration}
+            volume={volume}
+            onTogglePlay={handleTogglePlayerPlayback}
+            onSeek={handleSeek}
+            onVolumeChange={setVolume}
+            onClose={handleClosePlayer}
+            onOpenFullscreen={() => setFullscreenOpen(true)}
+            onPrev={activeCompletedIndex > 0 ? handlePrevTrack : undefined}
+            onNext={
+              activeCompletedIndex < completedTracks.length - 1
+                ? handleNextTrack
+                : undefined
+            }
+          />
+        )}
       </div>
-
-      {activeTrack?.audio_url && (
-        <MiniPlayer
-          track={activeTrack}
-          playing={playing}
-          currentTime={currentTime}
-          duration={duration}
-          volume={volume}
-          onTogglePlay={handleTogglePlayerPlayback}
-          onSeek={handleSeek}
-          onVolumeChange={setVolume}
-          onClose={handleClosePlayer}
-          onOpenFullscreen={() => setFullscreenOpen(true)}
-          onPrev={activeCompletedIndex > 0 ? handlePrevTrack : undefined}
-          onNext={
-            activeCompletedIndex < completedTracks.length - 1
-              ? handleNextTrack
-              : undefined
-          }
-        />
-      )}
 
       <CreateSongModal
         open={createModalOpen}
