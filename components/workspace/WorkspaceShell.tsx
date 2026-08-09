@@ -634,15 +634,8 @@ export default function WorkspaceShell({
         </div>
       </div>
 
-      <div className="w-full shrink-0 px-3 py-4 sm:px-4 sm:pb-6">
-        <MusicComposer
-          disabled={genPhase === "generating"}
-          onOpen={() => {
-            setError(null);
-            setCreateModalOpen(true);
-          }}
-        />
-        {activeTrack?.audio_url && (
+      {activeTrack?.audio_url && (
+        <div className="w-full shrink-0 px-3 py-4 sm:px-4 sm:pb-6">
           <MiniPlayer
             track={activeTrack}
             playing={playing}
@@ -661,8 +654,8 @@ export default function WorkspaceShell({
                 : undefined
             }
           />
-        )}
-      </div>
+        </div>
+      )}
 
       <CreateSongModal
         open={createModalOpen}

@@ -9,7 +9,7 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 (none)
 
 ## Done
-- [Done] Workspace shell fidelity correction (2026-08-10) — 목표 시안 기준의 90px 헤더·Credits/프로필 메뉴·Library 검색/폭·축소된 Credits 모달을 구현하고, 하단 Create Song/mini player는 기존 카드 구조를 검정 배경 대비로 유지. 실제 checkout·coupon·오디오·Create Song 로직 보존. build/lint 오류 0개 통과. See RESULT.md.
+- [Done] Workspace shell fidelity correction (2026-08-10) — 목표 시안 기준의 90px 헤더·Credits/프로필 메뉴·Library 검색/폭·축소된 Credits 모달을 구현하고, 하단 Create Song 프롬프트는 제거하며 mini player는 기존 카드 구조로 유지. 실제 checkout·coupon·오디오·Create Song 로직 보존. build/lint 오류 0개 통과. See RESULT.md.
 - [Done] Workspace Library + Music Player 리뉴얼 (2026-08-10) — 기존 `/workspace`의 실제 검색·곡 관리·오디오·생성 상태를 유지하며 행 기반 Library, 하단 고정 mini player, 앨범아트+가사 2열 전체화면 player 및 모바일 세로 player를 구현. 139 tests/build/lint 오류 0개 통과. See RESULT.md.
 - [Done] Desktop Create Song 모달 레이아웃 교정 (2026-08-10) — 모달 높이를 단계와 무관하게 고정하고, 좌측 Lyrics/Sound/Create 버튼의 폭·높이를 균일화하며 우측 콘텐츠만 스크롤하도록 변경. build/lint/test 통과. See RESULT.md.
 - [Done] Create Song Lyrics/Sound 프로토타입 상호작용 보완 (2026-08-10) — Step 1의 직접 작성/대화형 AI 작사 탭과 Step 2의 Simple/Advanced 모드를 복원하고, AI 가사 적용·실제 GenerateRequest 상태를 보존. build/lint/test 통과. See RESULT.md.
