@@ -556,9 +556,31 @@ export default function WorkspaceShell({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div
         ref={scrollRef}
-        className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        className={`custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain ${
+          activeTrack?.audio_url ? "pb-20 lg:pb-24" : ""
+        }`}
       >
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-3 py-4 sm:px-4 md:py-8">
+        <div className="mx-auto flex w-full max-w-6xl flex-col px-5 py-8 sm:px-8 md:py-12">
+          <div className="mb-9 flex items-end justify-between gap-5">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
+                Library
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] text-[#f4f1ea] sm:text-4xl">
+                My music
+              </h1>
+            </div>
+            <div className="w-auto shrink-0">
+              <MusicComposer
+                compact
+                disabled={genPhase === "generating"}
+                onOpen={() => {
+                  setError(null);
+                  setCreateModalOpen(true);
+                }}
+              />
+            </div>
+          </div>
           {initialLoading ? (
             <TrackListSkeleton />
           ) : tracks.length === 0 ? (
@@ -599,37 +621,26 @@ export default function WorkspaceShell({
         </div>
       </div>
 
-      <div className="w-full shrink-0 px-3 pb-4 sm:px-4 sm:pb-6">
-        <MusicComposer
-          disabled={genPhase === "generating"}
-          onOpen={() => {
-            setError(null);
-            setCreateModalOpen(true);
-          }}
+      {activeTrack?.audio_url && (
+        <MiniPlayer
+          track={activeTrack}
+          playing={playing}
+          currentTime={currentTime}
+          duration={duration}
+          volume={volume}
+          onTogglePlay={handleTogglePlayerPlayback}
+          onSeek={handleSeek}
+          onVolumeChange={setVolume}
+          onClose={handleClosePlayer}
+          onOpenFullscreen={() => setFullscreenOpen(true)}
+          onPrev={activeCompletedIndex > 0 ? handlePrevTrack : undefined}
+          onNext={
+            activeCompletedIndex < completedTracks.length - 1
+              ? handleNextTrack
+              : undefined
+          }
         />
-        {activeTrack?.audio_url && (
-          <div className="w-full">
-            <MiniPlayer
-              track={activeTrack}
-              playing={playing}
-              currentTime={currentTime}
-              duration={duration}
-              volume={volume}
-              onTogglePlay={handleTogglePlayerPlayback}
-              onSeek={handleSeek}
-              onVolumeChange={setVolume}
-              onClose={handleClosePlayer}
-              onOpenFullscreen={() => setFullscreenOpen(true)}
-              onPrev={activeCompletedIndex > 0 ? handlePrevTrack : undefined}
-              onNext={
-                activeCompletedIndex < completedTracks.length - 1
-                  ? handleNextTrack
-                  : undefined
-              }
-            />
-          </div>
-        )}
-      </div>
+      )}
 
       <CreateSongModal
         open={createModalOpen}
@@ -669,8 +680,10 @@ export default function WorkspaceShell({
           playing={playing}
           currentTime={currentTime}
           duration={duration}
+          volume={volume}
           onTogglePlay={handleTogglePlayerPlayback}
           onSeek={handleSeek}
+          onVolumeChange={setVolume}
           onClose={() => setFullscreenOpen(false)}
           onPrev={activeCompletedIndex > 0 ? handlePrevTrack : undefined}
           onNext={

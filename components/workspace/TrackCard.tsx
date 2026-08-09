@@ -134,8 +134,8 @@ export default function TrackCard({
   return (
     <div
       className={cn(
-        "group relative grid min-h-20 grid-cols-[38px_42px_minmax(0,1fr)_32px] items-center gap-2 rounded-lg border border-white/7 bg-[#171a20]/92 px-3 py-3 shadow-[0_12px_34px_rgba(0,0,0,0.2)] transition sm:grid-cols-[42px_44px_minmax(0,1fr)_36px] sm:gap-3 sm:px-4",
-        active && "border-emerald-300/35 bg-[#18201f]/95",
+        "group relative grid min-h-[82px] grid-cols-[36px_48px_minmax(0,1fr)_32px] items-center gap-3 border-b border-white/10 px-1 py-3 transition sm:grid-cols-[40px_56px_minmax(0,1fr)_100px_68px_32px] sm:gap-4 sm:px-2",
+        active && "bg-white/[0.055]",
         busy && "pointer-events-none opacity-60",
       )}
     >
@@ -147,9 +147,9 @@ export default function TrackCard({
           playable ? (playing ? "Pause" : "Play") : statusTooltip(track.status)
         }
         className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-lg border border-white/8 bg-white/[0.06] text-white/70 transition",
-          playable && "hover:bg-white/[0.12] hover:text-white",
-          active && "border-emerald-300/30 bg-emerald-300/10 text-emerald-100",
+          "flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70 transition",
+          playable && "hover:border-white/45 hover:text-white",
+          active && "border-white/50 bg-white text-black",
           pending && "text-amber-300",
         )}
       >
@@ -162,7 +162,7 @@ export default function TrackCard({
         )}
       </button>
 
-      <MusicThumbnail track={track} className="h-10 w-10 sm:h-11 sm:w-11" />
+      <MusicThumbnail track={track} className="h-12 w-12 rounded-none sm:h-14 sm:w-14" />
 
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
@@ -179,13 +179,13 @@ export default function TrackCard({
               className="min-w-0 flex-1 rounded-md border border-emerald-300/40 bg-black/30 px-2 py-1 text-sm font-semibold text-white outline-none"
             />
           ) : (
-            <p className="truncate text-sm font-semibold text-white/88">
+            <p className="truncate text-sm font-medium text-[#f4f1ea]">
               {track.title}
             </p>
           )}
         </div>
         {showMetadata && (
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-white/35">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-white/40 sm:hidden">
             {track.status === "failed" ? (
               <span className="text-red-400/70">
                 Generation failed — credit returned.
@@ -199,6 +199,15 @@ export default function TrackCard({
           </div>
         )}
       </div>
+
+      <p className="hidden text-xs text-white/40 sm:block">
+        {track.status === "failed" ? "Failed" : formatDate(track.created_at)}
+      </p>
+      <p className="hidden text-right text-xs tabular-nums text-white/40 sm:block">
+        {showMetadata && track.status !== "failed"
+          ? formatDuration(track.duration_seconds)
+          : "—"}
+      </p>
 
       <div className="flex items-center justify-end gap-2">
         <button
@@ -216,7 +225,7 @@ export default function TrackCard({
       </div>
 
       {menuOpen && (
-        <div ref={menuRef} className="absolute right-3 top-14 z-20 w-40 overflow-hidden rounded-lg border border-white/10 bg-[#22252c] p-1 shadow-2xl sm:right-4">
+        <div ref={menuRef} className="absolute right-1 top-[72px] z-20 w-40 overflow-hidden rounded-lg border border-white/10 bg-[#22252c] p-1 shadow-2xl sm:right-2">
           <button
             type="button"
             onClick={onStartRename}

@@ -42,19 +42,21 @@ export function TrackListSkeleton() {
   return (
     <div
       aria-label="Loading tracks"
-      className="mx-auto flex w-full max-w-3xl flex-col gap-2"
+      className="mx-auto flex w-full flex-col"
     >
       {Array.from({ length: 6 }).map((_, index) => (
         <div
           key={index}
-          className="grid min-h-20 animate-pulse grid-cols-[38px_42px_minmax(0,1fr)_32px] items-center gap-2 rounded-lg border border-white/7 bg-[#171a20]/80 px-3 py-3 shadow-[0_12px_34px_rgba(0,0,0,0.16)] sm:grid-cols-[42px_44px_minmax(0,1fr)_36px] sm:gap-3 sm:px-4"
+          className="grid min-h-[82px] animate-pulse grid-cols-[36px_48px_minmax(0,1fr)_32px] items-center gap-3 border-b border-white/10 px-1 py-3 sm:grid-cols-[40px_56px_minmax(0,1fr)_100px_68px_32px] sm:gap-4 sm:px-2"
         >
           <div className="h-9 w-9 rounded-lg bg-white/[0.08]" />
-          <div className="h-10 w-10 rounded-md bg-white/[0.08] sm:h-11 sm:w-11" />
+          <div className="h-12 w-12 bg-white/[0.08] sm:h-14 sm:w-14" />
           <div className="min-w-0">
             <div className="h-3.5 w-2/3 rounded bg-white/[0.1]" />
             <div className="mt-2 h-2.5 w-32 rounded bg-white/[0.06]" />
           </div>
+          <div className="hidden h-3 w-16 rounded bg-white/[0.06] sm:block" />
+          <div className="hidden h-3 w-10 rounded bg-white/[0.06] sm:block" />
           <div className="h-8 w-8 rounded-lg bg-white/[0.06]" />
         </div>
       ))}
@@ -108,7 +110,7 @@ export default function TrackList({
   onCancelDelete,
 }: TrackListProps) {
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
+    <div className="mx-auto flex w-full flex-col border-t border-white/10">
       {tracks.map((track) => (
         <TrackCard
           key={track.id}

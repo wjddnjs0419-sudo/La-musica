@@ -4,6 +4,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import LyricsView from "@/components/lyrics/LyricsView";
 import PlayerProgressBar from "@/components/player/PlayerProgressBar";
+import VolumeControl from "@/components/player/VolumeControl";
 import { parseMusicLyrics } from "@/lib/player/lyrics";
 import type { Music } from "@/lib/music";
 
@@ -36,8 +37,10 @@ export type FullScreenPlayerProps = {
   playing: boolean;
   currentTime: number;
   duration: number;
+  volume: number;
   onTogglePlay: () => void;
   onSeek: (seconds: number) => void;
+  onVolumeChange: (volume: number) => void;
   onClose: () => void;
   onPrev?: () => void;
   onNext?: () => void;
@@ -48,8 +51,10 @@ export default function FullScreenPlayer({
   playing,
   currentTime,
   duration,
+  volume,
   onTogglePlay,
   onSeek,
+  onVolumeChange,
   onClose,
   onPrev,
   onNext,
@@ -59,10 +64,11 @@ export default function FullScreenPlayer({
   // return [] and the lyrics view to show "No lyrics available".
   const resolvedDuration = duration || track.duration_seconds || 0;
   const lyricLines = React.useMemo(
-    () => parseMusicLyrics(track.metadata, resolvedDuration),
+    () => parseMusicLyrics(track.metadata, resolvedDuration) ?? [],
     [track, resolvedDuration],
   );
   const isInstrumental = Boolean(track.metadata?.instrumental);
+  const hasLyrics = !isInstrumental && lyricLines.length > 0;
 
   // Lock scroll while fullscreen is mounted.
   // Chrome shifts scroll responsibility from body to html when body gets overflow:hidden,
@@ -100,14 +106,14 @@ export default function FullScreenPlayer({
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-violet-950/80 via-indigo-950/80 to-sky-950/80" />
       )}
-      <div className="absolute inset-0 bg-[#0a0b0e]/65" />
+      <div className="absolute inset-0 bg-[#090909]/75" />
 
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-5 pt-5 pb-2">
+        <header className="flex items-center justify-between px-5 pt-5 sm:px-8 sm:pt-7 lg:px-12">
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-white/50 hover:text-white"
+            className="flex h-9 items-center gap-2 text-sm text-white/50 transition hover:text-white"
             aria-label="Close full player"
           >
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
@@ -118,36 +124,69 @@ export default function FullScreenPlayer({
                 strokeLinecap="round"
               />
             </svg>
+            <span className="hidden sm:inline">Back to My music</span>
           </button>
           <p className="text-[10px] font-medium uppercase tracking-widest text-white/30">
             Now Playing
           </p>
           <div className="h-9 w-9" aria-hidden />
-        </div>
+        </header>
 
-        <div className="px-6 pb-2 pt-1 text-center">
-          <p className="text-base font-bold text-white/95">{track.title}</p>
-          <p className="mt-0.5 text-[11px] text-white/40">AI Generated</p>
-        </div>
+        <main
+          className={`mx-auto grid min-h-0 w-full max-w-7xl flex-1 gap-8 overflow-y-auto px-6 py-7 sm:px-10 lg:grid-cols-[minmax(380px,0.95fr)_minmax(300px,0.75fr)] lg:items-center lg:gap-20 lg:overflow-hidden lg:px-12 ${
+            hasLyrics ? "" : "lg:max-w-3xl lg:grid-cols-1"
+          }`}
+        >
+          <section className={`min-h-0 ${hasLyrics ? "" : "mx-auto w-full max-w-[570px]"}`}>
+            <div className="aspect-square w-full overflow-hidden bg-white/[0.06] shadow-2xl shadow-black/45">
+              {track.thumbnail_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={track.thumbnail_url}
+                  alt={`${track.title} artwork`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="h-full w-full bg-gradient-to-br from-violet-500 via-indigo-600 to-sky-500" />
+              )}
+            </div>
+            <div className="pt-5 sm:pt-6">
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
+                {isInstrumental ? "Instrumental" : "La Musica AI"}
+              </p>
+              <h1 className="mt-2 truncate text-2xl font-semibold tracking-[-0.045em] text-[#f4f1ea] sm:text-4xl">
+                {track.title}
+              </h1>
+              <p className="mt-2 text-sm text-white/45">
+                {resolvedDuration ? `${Math.floor(resolvedDuration / 60)} min ${Math.round(resolvedDuration % 60)} sec` : "AI generated music"}
+              </p>
+            </div>
+          </section>
 
-        {/* Lyrics fill the space the album cover used to occupy. LyricsView
-            itself shows the instrumental/no-lyrics placeholder. */}
-        <div className="min-h-0 flex-1">
-          <LyricsView
-            lines={lyricLines ?? []}
-            currentTimeMs={currentTime * 1000}
-            instrumental={isInstrumental}
-          />
-        </div>
+          {hasLyrics && (
+            <section className="flex min-h-[18rem] flex-col overflow-hidden lg:h-full lg:min-h-0 lg:max-h-[min(620px,calc(100dvh-250px))]">
+              <p className="mb-4 shrink-0 text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
+                Lyrics
+              </p>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <LyricsView
+                  lines={lyricLines}
+                  currentTimeMs={currentTime * 1000}
+                  instrumental={false}
+                />
+              </div>
+            </section>
+          )}
+        </main>
 
-        <div className="px-6 pb-8 pt-2">
-          <PlayerProgressBar
-            currentTime={currentTime}
-            duration={resolvedDuration}
-            onSeek={onSeek}
-          />
-
-          <div className="mt-5 flex items-center justify-center gap-8">
+        <footer className="shrink-0 border-t border-white/10 px-6 pb-6 pt-3 sm:px-10 sm:pb-8 lg:px-12">
+          <div className="mx-auto max-w-7xl">
+            <PlayerProgressBar
+              currentTime={currentTime}
+              duration={resolvedDuration}
+              onSeek={onSeek}
+            />
+            <div className="relative mt-3 flex items-center justify-center gap-7 sm:mt-4 sm:gap-10">
             <button
               type="button"
               onClick={onPrev}
@@ -161,7 +200,7 @@ export default function FullScreenPlayer({
             <button
               type="button"
               onClick={onTogglePlay}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f4f1ea] text-black hover:bg-white focus:outline-none focus:ring-2 focus:ring-white/30 sm:h-16 sm:w-16"
               aria-label={playing ? "Pause" : "Play"}
             >
               {playing ? (
@@ -180,8 +219,12 @@ export default function FullScreenPlayer({
             >
               <NextIcon className={`h-6 w-6 ${!onNext ? "opacity-30" : ""}`} />
             </button>
+              <div className="absolute right-6 hidden lg:block">
+                <VolumeControl volume={volume} onVolumeChange={onVolumeChange} />
+              </div>
           </div>
-        </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

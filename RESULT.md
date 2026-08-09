@@ -1,30 +1,28 @@
-# RESULT: Workspace Create Song 3단계 모달 + 생성 경험 리뉴얼 - 2026-08-10
+# RESULT: Workspace Library + Music Player 리뉴얼 - 2026-08-10
 
 ## Background
 
-`workspace_renew`의 Create Song 시안은 실제 서비스와 분리된 Vite 프로토타입이며, mock 곡·크레딧·진행 타이머를 사용했다. 이를 새 라우트로 연결하지 않고, 현재 Workspace의 실제 생성·크레딧·폴링·오디오 흐름에 반영해야 했다.
+`workspace_renew`은 카드 대신 넓은 음악 목록과 하단 재생 바, 몰입형 전체화면 플레이어를 제시했지만 기존 `/workspace`는 좁은 카드 목록과 문서 흐름 안의 재생 카드를 사용했다.
 
 ## Implementation
 
-- `CreateSongModal`을 추가해 Lyrics → Sound → Create 단계를 구현했다. 데스크톱은 좌측 세로 내비게이션, 모바일은 좌→우 가로 내비게이션을 제공하며 기능을 축소하지 않는다.
-- Lyrics는 `Write my own lyrics`와 `Generate with AI` 탭으로 나눴다. AI 탭의 주제 입력은 기존 대화형 작사 API를 즉시 시작하고, Apply lyrics 결과를 동일 탭의 편집 가능한 가사 영역으로 돌려준다. 대화 모달도 Create Song과 같은 다크 에디토리얼 UI로 정리했다.
-- Sound는 프로토타입과 같이 `Simple`(필수 sound direction)과 `Advanced`(구조화된 Genre/Mood/Vocal/Duration 및 고급 설정) 모드로 나눴으며, 두 모드의 입력 상태는 유지된다.
-- 데스크톱 모달은 단계별 콘텐츠 높이에 흔들리지 않는 고정 캔버스로 만들고, 좌측 단계 버튼은 모두 동일한 폭·높이로 고정했다. 콘텐츠가 긴 경우 우측 편집 영역만 스크롤된다.
-- 기존 장르·무드·보컬·길이·언어·용도·프리셋을 실제 `GenerateRequest`로 변환했다. Mood는 최대 3개로 제한하고 Instrumental 전환에도 가사 초안을 보존한다.
-- 프로토타입 영상을 서비스 정적 자산으로 옮기고, 기존 폴링의 실제 상태에 맞춰 모달 안에서 추정 진행·완료·환불 실패 UI를 표시한다. 모달을 닫아도 생성과 optimistic row 폴링은 계속된다.
-- 완료 곡은 자동 재생하지 않고 `Listen now`를 눌렀을 때만 기존 audio 상태에 연결한다. 시안의 mock track·credit·타이머·선택 곡은 사용하지 않는다.
-- 독립 Vite 프로토타입은 자체 TypeScript/ESLint 구성을 가지므로, 루트 Next.js build/lint 대상에서 제외했다.
+- Library를 `Library / My music` 헤더, 생성 버튼, 넓은 행 기반 곡 목록으로 교체했다. 데스크톱 행은 재생·56px 앨범아트·제목·생성일·길이·메뉴를, 모바일 행은 핵심 정보와 상태만 표시한다.
+- pending/processing, failed, rename, download, delete, optimistic track, 검색, 페이지네이션을 기존 콜백과 상태 그대로 보존했다.
+- mini player를 화면 하단 고정 바로 옮기고, 목록의 하단 여백을 동적으로 확보했다. 데스크톱은 곡 정보/운송 컨트롤/진행·볼륨·닫기의 3영역, 모바일은 컴팩트 바다.
+- full-screen player는 현재 커버 기반의 어두운 블러 배경을 유지하며, 데스크톱에서 앨범아트·곡 정보와 스크롤 가사를 두 열로 표시한다. 가사 없는 instrumental은 빈 가사 열 없이 큰 아트워크 중심으로 렌더링한다.
+- 전체화면의 볼륨도 기존 Workspace 상태와 연결해 mini/full-screen 사이에서 같은 오디오 엘리먼트를 제어한다. 재생 위치·재생 상태·이전/다음·seek·close는 모두 기존 흐름을 재사용한다.
 
 ## Verification Matrix
 
 | Change | Checks | Result |
 |---|---|---|
-| Create-song form rules | `npm test -- lib/workspace/create-song.test.ts` | 5 passed |
-| Production build | `npm run build` | Passed |
-| Lint | `npm run lint` | 0 errors; 기존 `FullScreenPlayer` `<img>` warning 1개 |
+| Existing automated suite | `npm test` | 21 files, 139 passed |
+| Production build + types | `npm run build` | Passed |
+| Lint | `npm run lint` | 0 errors; 기존 배경용 `<img>` warning 1개 |
 | Diff hygiene | `git diff --check` | Passed |
+| Visual screenshot gate | Browser/Playwright availability | Skipped: neither tool available; local dev server not running |
 
 ## Lessons
 
-- 디자인 프로토타입의 화면 구조는 유용하지만, 상태·가격·데이터는 반드시 서비스의 실제 원천으로 재연결해야 한다.
-- 반응형 모달은 단순 축소가 아니라 단계 내비게이션의 방향과 편집 영역의 우선순위를 별도로 설계해야 한다.
+- 플레이어를 고정 레이어로 옮길 때는 스크롤 콘텐츠의 하단 여백을 상태에 따라 함께 조정해야 마지막 목록 행이 가려지지 않는다.
+- 전체화면의 컨트롤을 새로 만들기보다, 기존 오디오 상태를 그대로 전달하면 mini player와 full-screen 사이의 재생 연속성을 보장할 수 있다.
