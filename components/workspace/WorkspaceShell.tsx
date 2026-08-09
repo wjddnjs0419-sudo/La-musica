@@ -556,7 +556,7 @@ export default function WorkspaceShell({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div
         ref={scrollRef}
-        className={`custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain ${activeTrack?.audio_url ? "pb-[170px]" : "pb-[94px]"}`}
+        className={`custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain ${activeTrack?.audio_url ? "pb-20" : ""}`}
       >
         <div className="mx-auto flex w-full max-w-none flex-col px-6 py-20 sm:px-10 lg:px-12">
           <div className="mb-20 flex items-end justify-between gap-5">
@@ -634,6 +634,16 @@ export default function WorkspaceShell({
         </div>
       </div>
 
+      <div className={`w-full shrink-0 px-3 py-4 sm:px-4 sm:pb-6 ${activeTrack?.audio_url ? "pb-20" : ""}`}>
+        <MusicComposer
+          disabled={genPhase === "generating"}
+          onOpen={() => {
+            setError(null);
+            setCreateModalOpen(true);
+          }}
+        />
+      </div>
+
       {activeTrack?.audio_url && (
         <MiniPlayer
           track={activeTrack}
@@ -654,16 +664,6 @@ export default function WorkspaceShell({
           }
         />
       )}
-
-      <MusicComposer
-        bar
-        bottomOffset={Boolean(activeTrack?.audio_url)}
-        disabled={genPhase === "generating"}
-        onOpen={() => {
-          setError(null);
-          setCreateModalOpen(true);
-        }}
-      />
 
       <CreateSongModal
         open={createModalOpen}

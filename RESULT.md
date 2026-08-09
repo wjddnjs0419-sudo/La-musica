@@ -8,8 +8,8 @@
 
 - Workspace 바탕을 순수 near-black으로 전환하고, 헤더를 90px 얇은 보더 바 형태로 바꿨다. 라이브 잔액을 포함한 Credits 버튼과 프로토타입 계층의 Account/Upgrade/Sign out 메뉴를 제공한다.
 - 검색을 헤더에서 Library의 `generated tracks` 행으로 옮기고, 실제 `query` 상태를 직접 갱신한다. 콘텐츠는 시안처럼 넓은 데스크톱 폭과 큰 수직 여백을 사용한다.
-- 상단 Create song과 별도로 Composer bar를 복원했다. Composer는 active player가 있으면 player bar 위에, 없으면 화면 하단에 고정된다. Create Song 모달을 여는 기존 로직을 계속 사용한다.
-- Credit modal은 현재 잔액, 3개의 실제 checkout 플랜, 베타 코드 redeem 입력을 시안의 대형 사각 패널·monochrome button hierarchy로 재구성했다. checkout과 coupon API는 변경하지 않았다.
+- Workspace 하단의 Create Song은 새 입력 바로 대체하지 않고, 기존 `Create song / Describe your music, lyrics, and sound.` 프롬프트를 그대로 유지했다. 검정 배경에서의 대비만 유지한다.
+- Credit modal은 현재 잔액, 3개의 실제 checkout 플랜, 베타 코드 redeem 입력을 시안의 사각 패널·monochrome button hierarchy로 재구성했다. 플랜 패널은 참조 크기로 축소하고 modal 폭은 980px로 제한했다. checkout과 coupon API는 변경하지 않았다.
 
 ## Verification Matrix
 

@@ -49,17 +49,17 @@ function CreditPlanCard({
   return (
     <button
       type="button"
-      className="flex min-h-[29rem] flex-col border border-white/15 bg-[#0b0b0c] p-7 text-left transition hover:border-white/35 focus:outline-none focus:ring-2 focus:ring-white/15 disabled:cursor-wait disabled:opacity-65"
+      className="flex min-h-64 flex-col border border-white/15 bg-[#0b0b0c] p-6 text-left transition hover:border-white/35 focus:outline-none focus:ring-2 focus:ring-white/15 disabled:cursor-wait disabled:opacity-65"
       disabled={loading}
       onClick={() => onCheckout(id)}
     >
       <div>
-        {id === "creator" ? <p className="mb-10 text-[11px] font-medium uppercase tracking-[0.15em] text-white/40">Popular</p> : null}
-        <p className="text-2xl font-medium text-[#f4f1ea]">{name}</p>
-        <p className="mt-9 text-5xl font-medium tracking-[-0.05em] text-[#f4f1ea]">{price}</p>
-        <p className="mt-4 text-lg text-white/45">{credits} songs</p>
+        {id === "creator" ? <p className="mb-5 text-[11px] font-medium uppercase tracking-[0.15em] text-white/40">Popular</p> : null}
+        <p className="text-lg font-medium text-[#f4f1ea]">{name}</p>
+        <p className="mt-5 text-3xl font-medium tracking-[-0.04em] text-[#f4f1ea]">{price}</p>
+        <p className="mt-2 text-sm text-white/45">{credits} songs</p>
       </div>
-      <span className="rounded-full bg-[#f4f1ea] px-5 py-4 text-center text-lg font-medium text-black">{loading ? "Opening..." : "Get credits"}</span>
+      <span className="rounded-full bg-[#f4f1ea] px-5 py-2.5 text-center text-sm font-medium text-black">{loading ? "Opening..." : "Get credits"}</span>
     </button>
   );
 }
@@ -215,7 +215,7 @@ export default function CreditModal({
         aria-labelledby="credit-modal-title"
         aria-modal="true"
         role="dialog"
-        className="custom-scrollbar relative max-h-[calc(100dvh-2rem)] w-full max-w-[1120px] overflow-y-auto overscroll-contain border border-white/15 bg-[#0b0b0c] px-6 py-8 shadow-2xl shadow-black/50 sm:max-h-[calc(100dvh-4rem)] sm:px-10 sm:py-9"
+        className="custom-scrollbar relative max-h-[calc(100dvh-2rem)] w-full max-w-[980px] overflow-y-auto overscroll-contain border border-white/15 bg-[#0b0b0c] px-6 py-8 shadow-2xl shadow-black/50 sm:max-h-[calc(100dvh-4rem)] sm:px-10 sm:py-9"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
