@@ -4,6 +4,7 @@ import * as React from "react";
 
 import GetStartedBadge from "@/components/get-started-badge";
 import { useAuthModal } from "@/components/auth-context";
+import type { LandingAuthStatus } from "@/lib/landing-auth";
 
 let authStatusPromise: Promise<boolean> | null = null;
 
@@ -21,6 +22,24 @@ function readAuthStatus() {
   return authStatusPromise;
 }
 
+export function useLandingAuthStatus(): LandingAuthStatus {
+  const [status, setStatus] = React.useState<LandingAuthStatus>("loading");
+
+  React.useEffect(() => {
+    let cancelled = false;
+    readAuthStatus().then((authenticated) => {
+      if (!cancelled) {
+        setStatus(authenticated ? "authenticated" : "anonymous");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return status;
+}
+
 type AuthAwareGetStartedBadgeProps = {
   className?: string;
   label?: string;
@@ -31,21 +50,9 @@ export default function AuthAwareGetStartedBadge({
   label,
 }: AuthAwareGetStartedBadgeProps) {
   const { openAuth } = useAuthModal();
-  const [authenticated, setAuthenticated] = React.useState<boolean | null>(null);
+  const status = useLandingAuthStatus();
 
-  React.useEffect(() => {
-    let cancelled = false;
-
-    readAuthStatus().then((authenticated) => {
-        if (!cancelled) setAuthenticated(authenticated);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (authenticated) {
+  if (status === "authenticated") {
     return <GetStartedBadge href="/workspace?create=1" className={className} label={label} />;
   }
 

@@ -1,16 +1,17 @@
-# RESULT: Privacy + Terms UI Refresh - 2026-08-10
+# RESULT: Landing Header Auth-State Correction - 2026-08-10
 
 ## Implementation
 
-- Updated the shared `LegalPage` used by `/privacy` and `/terms` to the current La Musica near-black editorial system.
-- Added a 90px logo/header with `Back to home`, a `LEGAL` eyebrow, warm-white type hierarchy, readable 760px article column, restrained dividers, and accessible link/list styling.
-- Kept the pages Footer-free as requested.
-- Preserved all legal text, metadata, email links, routes, and semantic document elements.
+- Added a pure `resolveLandingHeaderActions` contract for `loading`, `anonymous`, and `authenticated` states.
+- Reused the existing `/api/auth/status` request in an exported landing auth-status hook.
+- Anonymous visitors see `Sign in` and `Create`; authenticated visitors see `Workspace` and `Create`. During initial status resolution, auth actions are hidden to avoid an incorrect Sign in flash.
+- Existing OAuth endpoints, cookies, session refresh, and Create Song deep link remain unchanged.
 
 ## Verification
 
 | Check | Result |
 |---|---|
-| `npm run build` | Passed; `/privacy` and `/terms` included |
+| `npm test -- lib/landing-auth.test.ts` | 3 passed |
+| `npm run build` | Passed |
 | `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
 | `git diff --check` | Passed |

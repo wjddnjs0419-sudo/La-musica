@@ -4,6 +4,20 @@
 
 ---
 
+# RESULT: Privacy + Terms UI Refresh - 2026-08-10
+
+## Implementation
+
+- Updated shared `LegalPage` with the current near-black La Musica header, a Footer-free legal reading column, warm-white typography, dividers, and accessible link/list styling.
+- Preserved all legal text, metadata, routes, and email links.
+
+## Verification
+
+- `npm run build`: passed; `/privacy` and `/terms` included.
+- `npm run lint`: 0 errors; existing FullScreenPlayer image warning remains.
+
+---
+
 # RESULT: Workspace Shell Fidelity Correction - 2026-08-10
 
 ## Implementation
