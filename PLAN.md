@@ -9,7 +9,7 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 (none)
 
 ## Done
-- [Done] Landing Header 인증 상태 분기 (2026-08-10) — loading/anonymous/authenticated 공통 상태 계약으로 로그인 사용자의 Sign in을 Workspace/Create로 교체하고, 인증 확인 중 action 깜빡임 제거. 3 tests/build/lint 오류 0개 통과. See RESULT.md.
+- [Done] CTA 배경 이미지 리뉴얼 (2026-08-10) — 제공한 studio 이미지로 CTA 전체 배경을 교체하고 decorative Next Image·가독성 오버레이를 추가. 기존 CTA 문구·인증 분기 보존. build/lint 오류 0개 통과. See RESULT.md.
 - [Done] Privacy/Terms UI 리뉴얼 (2026-08-10) — shared LegalPage를 current La Musica near-black header·legal reading column으로 교체하고 Footer 없이 문서·metadata·링크를 보존. build/lint 오류 0개 통과. See RESULT.md.
 - [Done] Workspace shell fidelity correction (2026-08-10) — 목표 시안 기준의 90px 헤더·Credits/프로필 메뉴·Library 검색/폭·축소된 Credits 모달을 구현하고, 하단 Create Song 프롬프트는 제거하며 mini player는 기존 카드 구조로 유지. 실제 checkout·coupon·오디오·Create Song 로직 보존. build/lint 오류 0개 통과. See RESULT.md.
 - [Done] Workspace Library + Music Player 리뉴얼 (2026-08-10) — 기존 `/workspace`의 실제 검색·곡 관리·오디오·생성 상태를 유지하며 행 기반 Library, 하단 고정 mini player, 앨범아트+가사 2열 전체화면 player 및 모바일 세로 player를 구현. 139 tests/build/lint 오류 0개 통과. See RESULT.md.
