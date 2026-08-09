@@ -4,6 +4,29 @@
 
 ---
 
+# RESULT: Workspace Library + Music Player 리뉴얼 - 2026-08-10
+
+## Background
+
+`workspace_renew`은 카드 대신 넓은 음악 목록과 하단 재생 바, 몰입형 전체화면 플레이어를 제시했지만 기존 `/workspace`는 좁은 카드 목록과 문서 흐름 안의 재생 카드를 사용했다.
+
+## Implementation
+
+- Library를 행 기반 곡 목록으로 교체하고 pending/processing, failed, rename, download, delete, optimistic track, 검색, 페이지네이션을 기존 상태 그대로 보존했다.
+- mini player를 화면 하단 고정 바로 옮기고, full-screen player는 데스크톱 앨범아트·가사 2열 및 instrumental 아트워크 중심 구성을 제공한다.
+- 전체화면의 볼륨도 기존 Workspace 상태와 연결해 mini/full-screen 사이에서 같은 오디오 엘리먼트를 제어한다.
+
+## Verification Matrix
+
+| Change | Checks | Result |
+|---|---|---|
+| Existing automated suite | `npm test` | 21 files, 139 passed |
+| Production build + types | `npm run build` | Passed |
+| Lint | `npm run lint` | 0 errors; 기존 배경용 `<img>` warning 1개 |
+| Diff hygiene | `git diff --check` | Passed |
+
+---
+
 # RESULT: Workspace Create Song 3단계 모달 + 생성 경험 리뉴얼 - 2026-08-10
 
 ## Background

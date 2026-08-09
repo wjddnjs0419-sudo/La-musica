@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import Logo from "@/components/logo";
 
@@ -13,6 +13,7 @@ type WorkspaceNavbarUser = {
 
 type WorkspaceNavbarProps = {
   user?: WorkspaceNavbarUser | null;
+  remainingCredit?: number;
   onOpenCreditModal?: () => void;
 };
 
@@ -42,6 +43,7 @@ function MusicNoteIcon() {
 
 export default function WorkspaceNavbar({
   user,
+  remainingCredit = 0,
   onOpenCreditModal,
 }: WorkspaceNavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -70,77 +72,45 @@ export default function WorkspaceNavbar({
     };
   }, [menuOpen]);
 
-  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    window.dispatchEvent(
-      new CustomEvent("workspace-search", {
-        detail: event.target.value,
-      }),
-    );
-  };
-
   return (
-    <header className="sticky top-0 z-50 w-full px-3 pt-3 sm:px-6 sm:pt-4 lg:px-8">
-      <div className="relative flex flex-wrap items-center gap-3 px-1 py-3 sm:flex-nowrap sm:gap-4 sm:px-2">
+    <header className="z-50 h-[90px] shrink-0 border-b border-white/10">
+      <div className="relative flex h-full items-center gap-8 px-6 sm:px-10 lg:px-12">
         <Link
           href="/"
           aria-label="La Musica"
-          className="relative order-1 shrink-0 text-white transition-colors hover:text-white/80 sm:order-none"
+          className="shrink-0 text-[#f4f1ea] transition-colors hover:text-white"
         >
-          <Logo className="h-7 w-auto sm:h-8" />
+          <Logo className="h-7 w-auto" />
         </Link>
-
-        <div className="relative order-3 flex w-full justify-center sm:order-none sm:flex-1">
-          <div className="relative w-full sm:max-w-md">
-            <svg
-              aria-hidden
-              viewBox="0 0 24 24"
-              fill="none"
-              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40"
-            >
-              <circle
-                cx="11"
-                cy="11"
-                r="7"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="m20 20-3-3"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-            <input
-              type="text"
-              aria-label="Search"
-              placeholder="Search..."
-              onChange={handleSearchChange}
-              className="h-10 w-full rounded-full border border-white/12 bg-white/[0.05] pl-10 pr-4 text-sm text-white placeholder:text-white/35 transition-colors focus:border-white/25 focus:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-white/10"
-            />
-          </div>
-        </div>
+        <p className="hidden text-sm text-white/45 sm:block">Your generated music</p>
 
         <div
           ref={menuRef}
-          className="relative order-2 ml-auto shrink-0 sm:order-none sm:ml-0"
+          className="relative ml-auto flex items-center gap-4"
         >
+          <button
+            type="button"
+            onClick={onOpenCreditModal}
+            className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-white/75 transition hover:border-white/35 hover:text-white"
+          >
+            Credits <span className="ml-2 border-l border-white/15 pl-2 tabular-nums text-white">{remainingCredit}</span>
+          </button>
           <button
             type="button"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
-            className="flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-white/20"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-[#111113] transition hover:border-white focus:outline-none focus:ring-2 focus:ring-white/20"
           >
             {user?.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={user.avatarUrl}
                 alt=""
-                className="h-9 w-9 rounded-full object-cover"
+                className="h-8 w-8 rounded-full object-cover"
               />
             ) : (
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium text-white/85">
                 {getInitial(user)}
               </span>
             )}
@@ -148,39 +118,39 @@ export default function WorkspaceNavbar({
 
           <div
             role="menu"
-            className={`fixed right-3 top-[7.25rem] w-44 pt-2 transition-all duration-150 sm:absolute sm:right-0 sm:top-full ${
+            className={`absolute right-0 top-[calc(100%+10px)] w-56 transition-all duration-150 ${
               menuOpen
                 ? "pointer-events-auto translate-y-0 opacity-100"
                 : "pointer-events-none -translate-y-1 opacity-0"
             }`}
           >
-            <div className="relative overflow-hidden rounded-xl border border-white/15 bg-white/[0.08] p-1.5 backdrop-blur-xl backdrop-saturate-150">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent"
-              />
+            <div className="overflow-hidden rounded-2xl border border-white/15 bg-[#111113] p-2 shadow-2xl">
+              <div className="border-b border-white/10 px-3 pb-3 pt-2">
+                <p className="text-[11px] uppercase tracking-[0.13em] text-white/35">Account</p>
               {user?.email ? (
-                <p className="truncate px-3 py-1.5 text-xs text-white/40">
+                <p className="mt-1 truncate text-sm text-white/70">
                   {user.email}
                 </p>
               ) : null}
+              </div>
+              <div className="pt-2">
               <button
                 type="button"
                 role="menuitem"
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm text-[#f4f1ea] transition hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-white/15"
                 onClick={() => {
                   onOpenCreditModal?.();
                   setMenuOpen(false);
                 }}
               >
-                <MusicNoteIcon />
-                Upgrade
+                <span className="flex items-center gap-2"><MusicNoteIcon />Upgrade</span>
+                <span aria-hidden className="text-white/35">→</span>
               </button>
               <form action="/api/auth/signout" method="post">
                 <button
                   type="submit"
                   role="menuitem"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-white/55 transition hover:bg-white/[0.06] hover:text-white"
                 >
                   <svg
                     aria-hidden
@@ -199,6 +169,7 @@ export default function WorkspaceNavbar({
                   Sign out
                 </button>
               </form>
+              </div>
             </div>
           </div>
         </div>

@@ -35,6 +35,7 @@ export default function WorkspaceShell({
     <>
       <WorkspaceNavbar
         user={currentUser}
+        remainingCredit={remainingCredit}
         onOpenCreditModal={() => setCreditModalOpen(true)}
       />
       <MusicWorkspace
@@ -48,6 +49,7 @@ export default function WorkspaceShell({
       <CreditModal
         open={creditModalOpen}
         onClose={() => setCreditModalOpen(false)}
+        creditBalance={remainingCredit}
         onCreditRedeemed={setRemainingCredit}
       />
     </>

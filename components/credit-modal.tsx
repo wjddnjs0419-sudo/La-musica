@@ -8,6 +8,7 @@ import { CREDIT_PLANS, type CreditPlanId } from "@/lib/credits";
 type CreditModalProps = {
   open: boolean;
   onClose: () => void;
+  creditBalance?: number;
   onCreditRedeemed?: (creditBalance: number) => void;
 };
 
@@ -48,21 +49,17 @@ function CreditPlanCard({
   return (
     <button
       type="button"
-      className="flex min-h-44 flex-col justify-between rounded-lg border border-white/12 bg-white/[0.06] p-5 text-left transition-colors hover:border-white/25 hover:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-white/15 disabled:cursor-wait disabled:opacity-65"
+      className="flex min-h-[29rem] flex-col border border-white/15 bg-[#0b0b0c] p-7 text-left transition hover:border-white/35 focus:outline-none focus:ring-2 focus:ring-white/15 disabled:cursor-wait disabled:opacity-65"
       disabled={loading}
       onClick={() => onCheckout(id)}
     >
       <div>
-        <p className="text-sm font-medium text-white/55">{name}</p>
-        <p className="mt-3 text-3xl font-semibold text-white">{price}</p>
+        {id === "creator" ? <p className="mb-10 text-[11px] font-medium uppercase tracking-[0.15em] text-white/40">Popular</p> : null}
+        <p className="text-2xl font-medium text-[#f4f1ea]">{name}</p>
+        <p className="mt-9 text-5xl font-medium tracking-[-0.05em] text-[#f4f1ea]">{price}</p>
+        <p className="mt-4 text-lg text-white/45">{credits} songs</p>
       </div>
-      <div className="mt-6 border-t border-white/10 pt-4">
-        <p className="text-sm text-white/45">Credits</p>
-        <p className="mt-1 text-lg font-medium text-white">{credits} songs</p>
-        <p className="mt-4 text-sm font-medium text-white/70">
-          {loading ? "Opening..." : "Checkout"}
-        </p>
-      </div>
+      <span className="rounded-full bg-[#f4f1ea] px-5 py-4 text-center text-lg font-medium text-black">{loading ? "Opening..." : "Get credits"}</span>
     </button>
   );
 }
@@ -83,6 +80,7 @@ function CloseIcon() {
 export default function CreditModal({
   open,
   onClose,
+  creditBalance = 0,
   onCreditRedeemed,
 }: CreditModalProps) {
   const [loadingPlanId, setLoadingPlanId] = useState<CreditPlanId | null>(null);
@@ -209,7 +207,7 @@ export default function CreditModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex h-[100dvh] items-center justify-center overflow-hidden overscroll-contain bg-black/70 px-4 py-4 backdrop-blur-sm sm:py-8"
+      className="fixed inset-0 z-[100] flex h-[100dvh] items-center justify-center overflow-hidden overscroll-contain bg-black/80 px-4 py-4 backdrop-blur-sm sm:px-8 sm:py-8"
       role="presentation"
       onClick={handleClose}
     >
@@ -217,34 +215,32 @@ export default function CreditModal({
         aria-labelledby="credit-modal-title"
         aria-modal="true"
         role="dialog"
-        className="custom-scrollbar relative max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto overscroll-contain rounded-xl border border-white/15 bg-zinc-950 p-5 shadow-2xl shadow-black/50 sm:max-h-[calc(100dvh-4rem)] sm:p-6"
+        className="custom-scrollbar relative max-h-[calc(100dvh-2rem)] w-full max-w-[1120px] overflow-y-auto overscroll-contain border border-white/15 bg-[#0b0b0c] px-6 py-8 shadow-2xl shadow-black/50 sm:max-h-[calc(100dvh-4rem)] sm:px-10 sm:py-9"
         onClick={(event) => event.stopPropagation()}
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent"
-        />
         <div className="flex items-start justify-between gap-4">
           <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-white/40">La Musica credits</p>
             <h2
               id="credit-modal-title"
-              className="text-xl font-semibold text-white"
+              className="mt-2 text-4xl font-medium tracking-[-0.04em] text-[#f4f1ea]"
             >
               Upgrade
             </h2>
-            <p className="mt-1 text-sm text-white/45">Choose song credits.</p>
+            <p className="mt-2 text-lg text-white/55">Choose the credits you need.</p>
           </div>
           <button
             type="button"
             aria-label="Close credit modal"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/[0.05] text-white/70 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15"
+            className="absolute right-6 top-6 text-white/45 transition hover:text-white sm:right-8 sm:top-8"
             onClick={handleClose}
           >
             <CloseIcon />
           </button>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="mt-8 flex items-center justify-end border-b border-white/10 pb-7 text-sm text-white/45">Current balance: {creditBalance} credits</div>
+        <div className="mt-8 grid gap-3 sm:grid-cols-3">
           {CREDIT_PLANS.map((plan) => (
             <CreditPlanCard
               key={plan.id}
@@ -257,11 +253,11 @@ export default function CreditModal({
 
         <form
           onSubmit={handleCouponSubmit}
-          className="mt-5 border-t border-white/10 pt-5"
+          className="mt-8 border-t border-white/10 pt-8"
         >
           <label
             htmlFor="beta-code"
-            className="text-sm font-medium text-white/70"
+            className="text-lg font-medium text-[#f4f1ea]"
           >
             Have a beta code?
           </label>
@@ -277,12 +273,12 @@ export default function CreditModal({
               }}
               placeholder="Enter beta code"
               autoComplete="off"
-              className="h-11 min-w-0 flex-1 rounded-lg border border-white/12 bg-white/[0.05] px-3 text-sm text-white placeholder:text-white/35 transition-colors focus:border-white/25 focus:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-white/10"
+              className="h-12 min-w-0 max-w-md flex-1 border border-white/15 bg-[#111113] px-4 text-lg text-white placeholder:text-white/35 transition focus:border-white/45 focus:outline-none"
             />
             <button
               type="submit"
               disabled={couponLoading || !couponCode.trim()}
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-white/18 bg-white/[0.08] px-5 text-sm font-semibold text-white transition-colors hover:bg-white/[0.13] focus:outline-none focus:ring-2 focus:ring-white/20 disabled:cursor-not-allowed disabled:opacity-55"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-white/25 px-5 text-lg font-medium text-white transition hover:border-white/50 focus:outline-none focus:ring-2 focus:ring-white/20 disabled:cursor-not-allowed disabled:opacity-55"
             >
               {couponLoading ? "Redeeming..." : "Redeem code"}
             </button>

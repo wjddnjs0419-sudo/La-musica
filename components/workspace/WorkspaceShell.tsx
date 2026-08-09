@@ -556,12 +556,10 @@ export default function WorkspaceShell({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div
         ref={scrollRef}
-        className={`custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain ${
-          activeTrack?.audio_url ? "pb-20 lg:pb-24" : ""
-        }`}
+        className={`custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain ${activeTrack?.audio_url ? "pb-[170px]" : "pb-[94px]"}`}
       >
-        <div className="mx-auto flex w-full max-w-6xl flex-col px-5 py-8 sm:px-8 md:py-12">
-          <div className="mb-9 flex items-end justify-between gap-5">
+        <div className="mx-auto flex w-full max-w-none flex-col px-6 py-20 sm:px-10 lg:px-12">
+          <div className="mb-20 flex items-end justify-between gap-5">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
                 Library
@@ -580,6 +578,21 @@ export default function WorkspaceShell({
                 }}
               />
             </div>
+          </div>
+          <div className="mb-9 flex items-end justify-between gap-5 border-b border-white/10 pb-9">
+            <p className="text-lg text-white/45">
+              {filteredTracks.length} generated {filteredTracks.length === 1 ? "track" : "tracks"}
+            </p>
+            <label className="flex w-full max-w-[465px] items-center gap-3 border-b border-white/20 pb-3 text-white/45 focus-within:border-white/55">
+              <svg aria-hidden viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0"><circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="2" /><path d="m16 16 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                aria-label="Search library"
+                placeholder="Search library"
+                className="min-w-0 flex-1 bg-transparent text-lg text-[#f4f1ea] outline-none placeholder:text-white/40"
+              />
+            </label>
           </div>
           {initialLoading ? (
             <TrackListSkeleton />
@@ -641,6 +654,16 @@ export default function WorkspaceShell({
           }
         />
       )}
+
+      <MusicComposer
+        bar
+        bottomOffset={Boolean(activeTrack?.audio_url)}
+        disabled={genPhase === "generating"}
+        onOpen={() => {
+          setError(null);
+          setCreateModalOpen(true);
+        }}
+      />
 
       <CreateSongModal
         open={createModalOpen}
