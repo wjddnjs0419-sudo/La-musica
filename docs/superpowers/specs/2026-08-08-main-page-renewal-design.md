@@ -18,7 +18,7 @@ Replace the current generic AI landing page with a dark, editorial music-brand h
 ## Experience structure
 
 1. **Sticky header** — logo, Pricing anchor, Sign in, and Create. On mobile, preserve Create within the menu/compact header. Both auth-aware CTAs retain current destination logic.
-2. **Hero** — approved headline, supporting copy, CTA, and a dark product-flow composition: lyrics → generating → finished track/player. It uses fixed presentation content and does not invoke generation.
+2. **Hero** — approved headline, supporting copy, CTA, and a dark product-flow composition: lyrics → creating → finished track/player. A recording-studio image anchors the left side of the section, while the three-stage flow is interactive presentation content only: it never invokes music generation.
 3. **Featured Creations** — four existing samples in a responsive card layout. Artwork is dominant; title, prompt-derived description, duration, and explicit play/pause are secondary. A single audio element ensures one active track.
 4. **How It Works** — the three approved steps, with concise copy and no technical-model explanation.
 5. **Product proof** — two static frames. The first communicates input-to-track output; the second mirrors supported generation controls only.
@@ -29,7 +29,7 @@ Replace the current generic AI landing page with a dark, editorial music-brand h
 
 | Area | Desktop (>=1024px) | Mobile (<1024px) |
 |---|---|---|
-| Hero | copy and visual flow in two columns | copy then vertical three-step flow |
+| Hero | recording-studio backdrop, copy, and visual flow compose in two columns | copy then vertical three-step flow; the backdrop is cropped above the content |
 | Samples | four-card grid | horizontal snap rail with one substantial card visible |
 | How it works | three columns with dividers | vertical numbered list |
 | Product proof | asymmetric text/frame pairs, alternating sides | copy followed by its frame |
@@ -40,7 +40,9 @@ Replace the current generic AI landing page with a dark, editorial music-brand h
 
 - Buttons and playback controls have visible focus states and descriptive accessible labels.
 - Play/pause state has an icon and text/ARIA state; no autoplay.
-- Motion is limited to hover/press feedback, artwork scale/glow, and short entrance transitions; it is disabled or reduced under `prefers-reduced-motion`.
+- The Hero flow types fixed lyric copy, advances through a short generation progress state, then exposes a playable finished-track card. Visitors can choose any stage by hover, keyboard focus, or click; the flow restarts from the selected stage where applicable.
+- The finished-track card uses one fixed demo audio URL, reflects loaded duration and playback progress, and never autoplays audio.
+- Motion is limited to Hero typing/progress feedback, hover/press feedback, artwork scale/glow, and short state transitions; it is disabled or reduced under `prefers-reduced-motion`.
 - Interactive elements meet a 44px minimum mobile target where practical.
 
 ## Non-goals
