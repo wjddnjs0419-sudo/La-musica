@@ -6,7 +6,7 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 (none)
 
 ## In Progress
-(none)
+- [ ] Workspace Create Song 3단계 모달 + 생성 진행/완료 경험 리뉴얼 — 기존 `/workspace`의 실제 생성 API·크레딧·폴링·오디오 상태를 보존하며, `workspace_renew` 프로토타입의 UI만 흡수.
 
 ## Done
 - [Done] 모달 기반 Google 인증 전환 (2026-08-10) — 랜딩/가격/보호 워크스페이스 흐름의 `/auth` 이탈을 모달로 통일하고, OAuth returnTo 복원·Create Song 자동 오픈·기존 세션/Google 처리 보존. 5 tests/build 통과, lint 오류 0개. See RESULT.md.
