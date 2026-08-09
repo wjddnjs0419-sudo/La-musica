@@ -135,7 +135,7 @@ export default function FullScreenPlayer({
         </header>
 
         <main
-          className={`relative mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-5 overflow-hidden px-5 pb-5 pt-2 sm:px-10 sm:py-7 lg:grid lg:gap-20 lg:overflow-hidden lg:px-12 lg:[grid-template-columns:minmax(380px,0.95fr)_minmax(300px,0.75fr)] lg:items-center ${
+          className={`relative mx-auto flex min-h-0 w-full max-w-7xl ${hasLyrics ? "flex-1" : "flex-none"} flex-col gap-5 overflow-hidden px-5 pb-5 pt-2 sm:px-10 sm:py-7 lg:flex-1 lg:grid lg:gap-20 lg:overflow-hidden lg:px-12 lg:[grid-template-columns:minmax(380px,0.95fr)_minmax(300px,0.75fr)] lg:items-center ${
             hasLyrics ? "" : "lg:max-w-3xl lg:grid-cols-1"
           }`}
         >
@@ -168,7 +168,7 @@ export default function FullScreenPlayer({
                   onClick={() => setLyricsSheetTrackId(track.id)}
                   aria-expanded={lyricsSheetOpen}
                   aria-label="Open lyrics"
-                  className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-4 py-2 text-xs font-medium text-white/75 backdrop-blur-sm transition hover:border-white/35 hover:text-white lg:hidden"
+                  className="mx-auto mt-5 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-4 py-2 text-xs font-medium text-white/75 backdrop-blur-sm transition hover:border-white/35 hover:text-white lg:hidden"
                 >
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden className="h-4 w-4"><path d="m6 14 6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   Lyrics
