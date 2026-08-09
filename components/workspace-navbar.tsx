@@ -73,25 +73,25 @@ export default function WorkspaceNavbar({
   }, [menuOpen]);
 
   return (
-    <header className="z-50 h-[90px] shrink-0 border-b border-white/10">
-      <div className="relative flex h-full items-center gap-8 px-6 sm:px-10 lg:px-12">
+    <header className="z-50 h-16 shrink-0 border-b border-white/10 sm:h-[90px]">
+      <div className="relative flex h-full items-center gap-3 px-4 sm:gap-8 sm:px-10 lg:px-12">
         <Link
           href="/"
           aria-label="La Musica"
           className="shrink-0 text-[#f4f1ea] transition-colors hover:text-white"
         >
-          <Logo className="h-7 w-auto" />
+          <Logo className="h-6 w-auto sm:h-7" />
         </Link>
         <p className="hidden text-sm text-white/45 sm:block">Your generated music</p>
 
         <div
           ref={menuRef}
-          className="relative ml-auto flex items-center gap-4"
+          className="relative ml-auto flex items-center gap-2 sm:gap-4"
         >
           <button
             type="button"
             onClick={onOpenCreditModal}
-            className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-white/75 transition hover:border-white/35 hover:text-white"
+            className="rounded-full border border-white/15 px-2.5 py-1.5 text-xs font-medium text-white/75 transition hover:border-white/35 hover:text-white sm:px-3"
           >
             Credits <span className="ml-2 border-l border-white/15 pl-2 tabular-nums text-white">{remainingCredit}</span>
           </button>

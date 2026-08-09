@@ -52,7 +52,7 @@ export default function MiniPlayer({
   return (
     <section
       aria-label="Now playing"
-      className="mt-3 overflow-hidden rounded-[22px] border border-white/15 bg-[#303030] shadow-sm"
+      className="mt-0 overflow-hidden rounded-xl border border-white/15 bg-[#303030] shadow-sm sm:mt-3 sm:rounded-[22px]"
     >
       <PlayerProgressBar
         currentTime={currentTime}
@@ -60,7 +60,7 @@ export default function MiniPlayer({
         onSeek={onSeek}
       />
 
-      <div className="flex items-center gap-2 px-3 py-2 lg:hidden">
+      <div className="flex items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 lg:hidden">
         <button
           type="button"
           onClick={onOpenFullscreen}
@@ -70,7 +70,7 @@ export default function MiniPlayer({
         >
           <MusicThumbnail
             track={track}
-            className="h-10 w-10"
+            className="h-9 w-9 sm:h-10 sm:w-10"
             showTitle={Boolean(track.thumbnail_url)}
           />
         </button>

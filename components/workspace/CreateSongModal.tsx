@@ -117,7 +117,7 @@ export default function CreateSongModal({
         aria-label="Create song"
         aria-modal="true"
         role="dialog"
-        className="relative flex max-h-[100dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#101011] text-[#f4f1ea] shadow-2xl shadow-black/60 sm:h-[min(860px,calc(100dvh-6rem))] sm:max-h-[90dvh] sm:rounded-2xl"
+        className="relative flex h-[min(760px,calc(100dvh-1rem))] max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#101011] text-[#f4f1ea] shadow-2xl shadow-black/60 sm:h-[min(860px,calc(100dvh-6rem))] sm:max-h-[90dvh] sm:rounded-2xl"
       >
         {phase === "generating" ? (
           <GeneratingState progress={progress} onClose={onClose} />
@@ -156,8 +156,9 @@ export default function CreateSongModal({
             </header>
             <div className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[190px_minmax(0,1fr)]">
               <StepNavigation step={step} onStepChange={setStep} />
-              <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-7 sm:py-8">
-                {step === 1 && (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-7 sm:py-8">
+                  {step === 1 && (
                   <LyricsStep
                     form={form}
                     updateForm={updateForm}
@@ -168,7 +169,7 @@ export default function CreateSongModal({
                     onOpenAssistant={() => setLyricsAssistantOpen(true)}
                   />
                 )}
-                {step === 2 && (
+                  {step === 2 && (
                   <SoundStep
                     form={form}
                     updateForm={updateForm}
@@ -178,15 +179,16 @@ export default function CreateSongModal({
                     onModeChange={setSoundMode}
                   />
                 )}
-                {step === 3 && (
+                  {step === 3 && (
                   <CreateStep remainingCredits={remainingCredits} />
                 )}
-                {error && (
+                  {error && (
                   <p className="mt-5 rounded-lg border border-red-400/20 bg-red-400/[.08] px-3 py-2 text-sm text-red-200">
                     {error}
                   </p>
                 )}
-                <footer className="mt-9 flex items-center justify-between border-t border-white/10 pt-5">
+                </div>
+                <footer className="flex shrink-0 items-center justify-between border-t border-white/10 px-5 py-4 sm:px-7 sm:py-5">
                   <button
                     type="button"
                     onClick={() =>

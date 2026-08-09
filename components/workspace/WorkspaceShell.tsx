@@ -558,13 +558,13 @@ export default function WorkspaceShell({
         ref={scrollRef}
         className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
-        <div className="mx-auto flex w-full max-w-none flex-col px-6 py-6 sm:px-10 sm:py-7 lg:px-12">
-          <div className="mb-5 flex items-end justify-between gap-5">
+        <div className="mx-auto flex w-full max-w-none flex-col px-4 py-4 sm:px-10 sm:py-7 lg:px-12">
+          <div className="mb-4 flex items-end justify-between gap-3 sm:mb-5 sm:gap-5">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
                 Library
               </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] text-[#f4f1ea] sm:text-4xl">
+              <h1 className="mt-1 text-[2rem] font-semibold tracking-[-0.045em] text-[#f4f1ea] sm:mt-2 sm:text-4xl">
                 My music
               </h1>
             </div>
@@ -579,18 +579,18 @@ export default function WorkspaceShell({
               />
             </div>
           </div>
-          <div className="mb-5 flex items-end justify-between gap-5 border-b border-white/10 pb-5">
-            <p className="text-lg text-white/45">
+          <div className="mb-4 flex flex-col gap-3 border-b border-white/10 pb-4 sm:mb-5 sm:flex-row sm:items-end sm:justify-between sm:gap-5 sm:pb-5">
+            <p className="text-base text-white/45 sm:text-lg">
               {filteredTracks.length} generated {filteredTracks.length === 1 ? "track" : "tracks"}
             </p>
-            <label className="flex w-full max-w-[465px] items-center gap-3 border-b border-white/20 pb-3 text-white/45 focus-within:border-white/55">
+            <label className="flex w-full items-center gap-3 border-b border-white/20 pb-2 text-white/45 focus-within:border-white/55 sm:max-w-[465px] sm:pb-3">
               <svg aria-hidden viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0"><circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="2" /><path d="m16 16 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 aria-label="Search library"
                 placeholder="Search library"
-                className="min-w-0 flex-1 bg-transparent text-lg text-[#f4f1ea] outline-none placeholder:text-white/40"
+                className="min-w-0 flex-1 bg-transparent text-base text-[#f4f1ea] outline-none placeholder:text-white/40 sm:text-lg"
               />
             </label>
           </div>
@@ -635,7 +635,7 @@ export default function WorkspaceShell({
       </div>
 
       {activeTrack?.audio_url && (
-        <div className="w-full shrink-0 px-3 py-4 sm:px-4 sm:pb-6">
+        <div className="w-full shrink-0 px-2 py-2 sm:px-4 sm:py-4 sm:pb-6">
           <MiniPlayer
             track={activeTrack}
             playing={playing}

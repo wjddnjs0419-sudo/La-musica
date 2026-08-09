@@ -134,7 +134,7 @@ export default function TrackCard({
   return (
     <div
       className={cn(
-        "group relative grid min-h-[82px] grid-cols-[36px_48px_minmax(0,1fr)_32px] items-center gap-3 border-b border-white/10 px-1 py-3 transition sm:grid-cols-[40px_56px_minmax(0,1fr)_100px_68px_32px] sm:gap-4 sm:px-2",
+        "group relative grid min-h-[74px] grid-cols-[36px_44px_minmax(0,1fr)_32px] items-center gap-2 border-b border-white/10 px-1 py-2.5 transition sm:min-h-[82px] sm:grid-cols-[40px_56px_minmax(0,1fr)_100px_68px_32px] sm:gap-4 sm:px-2 sm:py-3",
         active && "bg-white/[0.055]",
         busy && "pointer-events-none opacity-60",
       )}
@@ -162,7 +162,7 @@ export default function TrackCard({
         )}
       </button>
 
-      <MusicThumbnail track={track} className="h-12 w-12 rounded-none sm:h-14 sm:w-14" />
+      <MusicThumbnail track={track} className="h-11 w-11 rounded-none sm:h-14 sm:w-14" />
 
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
