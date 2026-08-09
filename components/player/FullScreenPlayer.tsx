@@ -69,6 +69,8 @@ export default function FullScreenPlayer({
   );
   const isInstrumental = Boolean(track.metadata?.instrumental);
   const hasLyrics = !isInstrumental && lyricLines.length > 0;
+  const [lyricsSheetTrackId, setLyricsSheetTrackId] = React.useState<string | null>(null);
+  const lyricsSheetOpen = lyricsSheetTrackId === track.id;
 
   // Lock scroll while fullscreen is mounted.
   // Chrome shifts scroll responsibility from body to html when body gets overflow:hidden,
@@ -133,7 +135,7 @@ export default function FullScreenPlayer({
         </header>
 
         <main
-          className={`mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-5 overflow-hidden px-5 pb-5 pt-2 sm:px-10 sm:py-7 lg:grid lg:gap-20 lg:overflow-hidden lg:px-12 lg:[grid-template-columns:minmax(380px,0.95fr)_minmax(300px,0.75fr)] lg:items-center ${
+          className={`relative mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-5 overflow-hidden px-5 pb-5 pt-2 sm:px-10 sm:py-7 lg:grid lg:gap-20 lg:overflow-hidden lg:px-12 lg:[grid-template-columns:minmax(380px,0.95fr)_minmax(300px,0.75fr)] lg:items-center ${
             hasLyrics ? "" : "lg:max-w-3xl lg:grid-cols-1"
           }`}
         >
@@ -164,7 +166,7 @@ export default function FullScreenPlayer({
           </section>
 
           {hasLyrics && (
-            <section className="flex min-h-0 flex-1 flex-col overflow-hidden lg:h-full lg:max-h-[min(620px,calc(100dvh-250px))]">
+            <section className="hidden min-h-0 flex-1 flex-col overflow-hidden lg:flex lg:h-full lg:max-h-[min(620px,calc(100dvh-250px))]">
               <p className="mb-4 shrink-0 text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
                 Lyrics
               </p>
@@ -176,6 +178,43 @@ export default function FullScreenPlayer({
                 />
               </div>
             </section>
+          )}
+
+          {hasLyrics && (
+            <>
+              <button
+                type="button"
+                onClick={() => setLyricsSheetTrackId(track.id)}
+                aria-expanded={lyricsSheetOpen}
+                aria-label="Open lyrics"
+                className="absolute bottom-3 left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-4 py-2 text-xs font-medium text-white/75 backdrop-blur-sm transition hover:border-white/35 hover:text-white lg:hidden"
+              >
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden className="h-4 w-4"><path d="m6 14 6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                Lyrics
+              </button>
+
+              {lyricsSheetOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Close lyrics"
+                    onClick={() => setLyricsSheetTrackId(null)}
+                    className="absolute inset-0 z-10 bg-black/25 lg:hidden"
+                  />
+                  <section aria-label="Lyrics" className="absolute inset-x-0 bottom-0 z-20 flex h-[88%] flex-col overflow-hidden rounded-t-3xl border-t border-white/15 bg-[#101011] shadow-2xl lg:hidden">
+                    <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4">
+                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/55">Lyrics</p>
+                      <button type="button" onClick={() => setLyricsSheetTrackId(null)} className="flex h-8 w-8 items-center justify-center rounded-full text-white/65 transition hover:bg-white/[0.08] hover:text-white" aria-label="Close lyrics">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden className="h-5 w-5"><path d="m6 10 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      </button>
+                    </header>
+                    <div className="min-h-0 flex-1 overflow-hidden">
+                      <LyricsView lines={lyricLines} currentTimeMs={currentTime * 1000} instrumental={false} />
+                    </div>
+                  </section>
+                </>
+              )}
+            </>
           )}
         </main>
 
