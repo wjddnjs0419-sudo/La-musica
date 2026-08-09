@@ -1,30 +1,27 @@
+import Image from "next/image";
+
 type LogoProps = {
   className?: string;
   title?: string;
   variant?: "icon" | "horizontal";
 };
 
-const SOURCES = {
-  icon: "/logo-icon-dark.svg",
-  horizontal: "/logo-horizontal-dark.svg",
-};
+const ICON_SOURCE = "/logo icon.png";
+const WORDMARK_SOURCE = "/wordmark.png";
 
-/**
- * La Musica brand mark. All current usages sit on dark backgrounds, so this
- * always renders the dark-UI variant (gradient symbol, white wordmark).
- */
 export default function Logo({
   className,
   title = "La Musica",
   variant = "icon",
 }: LogoProps) {
+  if (variant === "icon") {
+    return <Image src={ICON_SOURCE} alt={title} width={303} height={168} className={className} />;
+  }
+
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- static brand asset, no need for optimization
-    <img
-      src={SOURCES[variant]}
-      alt={title}
-      className={className}
-      style={{ display: "block" }}
-    />
+    <span role="img" aria-label={title} className={`inline-flex items-center gap-1.5 ${className ?? ""}`}>
+      <Image src={ICON_SOURCE} alt="" width={303} height={168} className="h-full w-auto" />
+      <Image src={WORDMARK_SOURCE} alt="" width={702} height={262} className="h-full w-auto" />
+    </span>
   );
 }

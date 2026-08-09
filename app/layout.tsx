@@ -17,11 +17,8 @@ export const metadata: Metadata = {
   title: "La musica",
   description: "La musica는 AI로 음악을 생성하는 웹페이지입니다.",
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
-    ],
-    apple: [{ url: "/apple-touch-icon.png" }],
+    icon: [{ url: "/logo icon.png", type: "image/png" }],
+    apple: [{ url: "/logo icon.png", type: "image/png" }],
   },
   openGraph: {
     title: "La musica",

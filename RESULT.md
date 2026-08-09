@@ -1,14 +1,15 @@
-# RESULT: CTA Background Refresh - 2026-08-10
+# RESULT: Brand Asset Replacement - 2026-08-10
 
 ## Background
 
-The landing CTA had a plain near-black surface despite the renewed studio photography elsewhere in the product. The supplied blue-and-amber image has a dark center that can support the existing CTA copy without changing its interaction model.
+The application still used legacy SVG identity assets while the supplied La Musica wordmark and wave icon establish the current brand treatment.
 
 ## Implementation
 
-- Added the supplied 1672×941 studio image as a local public asset.
-- Changed `CtaSection` into a layered, overflow-hidden surface using decorative `next/image` fill rendering, a centered cover crop, and a subtle black contrast overlay.
-- Preserved the existing CTA copy, spacing, button styling, and authenticated/anonymous CTA behavior.
+- Reworked the shared `Logo` component to render the supplied wave icon alone for icon-only use and wave icon plus wordmark for horizontal use.
+- Existing headers, workspace navigation, legal/contact pages, footer, and loading UI now inherit the new visual assets through the shared component.
+- Replaced the sign-in modal's handwritten note-and-text lockup with the shared full logo.
+- Updated browser and Apple metadata icons to the supplied icon PNG while keeping textual service-name content unchanged.
 
 ## Verification
 
@@ -20,4 +21,4 @@ The landing CTA had a plain near-black surface despite the renewed studio photog
 
 ## Lessons
 
-- A decorative image should stay out of the accessibility tree and use an overlay only as strong as text contrast requires.
+- Centralizing visual identity in a single component keeps brand-asset replacements complete without duplicating per-page layout logic.

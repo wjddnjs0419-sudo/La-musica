@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Logo from "@/components/logo";
 
 export type AuthIntent = "signin" | "create";
 
@@ -106,10 +107,7 @@ function AuthModal({ request, onClose }: { request: AuthRequest; onClose: () => 
         className="relative w-full max-w-[500px] rounded-2xl border border-white/[.14] bg-[#0a0a0a] px-7 py-8 text-center shadow-2xl shadow-black/60 sm:px-10 sm:py-10"
       >
         <button type="button" aria-label="Close sign in" onClick={onClose} className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-xl text-white/55 transition hover:bg-white/[.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/25">×</button>
-        <div className="mx-auto flex items-center justify-center gap-2.5 text-white">
-          <span aria-hidden className="flex h-8 w-8 items-center justify-center rounded-full border border-white/65 text-lg leading-none">♪</span>
-          <span className="text-lg font-semibold tracking-[-.04em]">La Musica</span>
-        </div>
+        <div className="mx-auto flex items-center justify-center text-white"><Logo variant="horizontal" className="h-8 w-auto" /></div>
         <h1 id="auth-modal-title" className="mt-9 font-serif text-3xl leading-tight text-[#f8f4ec] sm:text-[2rem]">Your ideas deserve a soundtrack.</h1>
         <form action="/api/auth/google" method="post" className="mt-9">
           <input type="hidden" name="returnTo" value={request.returnTo ?? "/workspace"} />
