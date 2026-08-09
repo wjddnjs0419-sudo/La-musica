@@ -2,16 +2,18 @@ import Replicate, { type FileOutput } from "replicate";
 
 export const THUMBNAIL_MODEL = "black-forest-labs/flux-schnell";
 
-export async function generateThumbnail(prompt: string): Promise<Blob> {
-  const replicate = new Replicate();
-  const output = await replicate.run(THUMBNAIL_MODEL, {
+export function createThumbnailPrediction(replicate: Replicate, prompt: string) {
+  return replicate.predictions.create({
+    model: THUMBNAIL_MODEL,
     input: {
       prompt,
       aspect_ratio: "1:1",
       output_format: "webp",
     },
   });
+}
 
+export async function downloadThumbnailOutput(output: unknown): Promise<Blob> {
   const firstOutput = Array.isArray(output) ? output[0] : output;
   return outputToBlob(firstOutput);
 }

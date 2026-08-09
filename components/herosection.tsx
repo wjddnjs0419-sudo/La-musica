@@ -1,64 +1,41 @@
 "use client";
 
-import { LiquidMetal, liquidMetalPresets } from "@paper-design/shaders-react";
+import { useEffect, useRef, useState } from "react";
 import AuthAwareGetStartedBadge from "@/components/auth-aware-get-started-badge";
 import GetStartedBadge from "@/components/get-started-badge";
 
-type HeroSectionProps = {
-  ctaHref?: string;
-  authAwareCta?: boolean;
-};
+type HeroSectionProps = { ctaHref?: string; authAwareCta?: boolean; demoAudioSrc?: string };
+const LYRICS = "In the quiet of the morning,\nI find myself alone,\nChasing all my shadows,\nThrough the streets I call my home.";
 
-export default function HeroSection({
-  ctaHref,
-  authAwareCta = false,
-}: HeroSectionProps) {
-  return (
-    <section className="relative isolate overflow-hidden px-4 pb-10 pt-3 sm:px-8 lg:px-12 lg:pb-14 lg:pt-4">
-      <div className="mx-auto grid max-w-7xl gap-8 lg:min-h-[calc(100vh-7rem)] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.9fr)] lg:gap-12">
-        <div className="relative order-2 min-h-[13rem] sm:min-h-[18rem] lg:order-1 lg:min-h-[34rem]">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 h-[20rem] w-[20rem] -translate-x-1/2 -translate-y-1/2 sm:h-[28rem] sm:w-[28rem] lg:left-[-10%] lg:h-[40rem] lg:w-[40rem] lg:translate-x-0"
-            style={{
-              WebkitMaskImage:
-                "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 72%, rgba(0,0,0,0) 100%)",
-              maskImage:
-                "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 72%, rgba(0,0,0,0) 100%)",
-            }}
-          >
-          <LiquidMetal
-            {...liquidMetalPresets[2]}
-            colorBack="rgba(0, 0, 0, 0)"
-            colorTint="#ffffff"
-            webGlContextAttributes={{ alpha: true, premultipliedAlpha: true }}
-            aria-hidden
-            className="absolute inset-0 h-full w-full scale-[1.18] opacity-100 mix-blend-screen"
-            style={{ minHeight: "100%" }}
-          />
-          </div>
-        </div>
+function PlayIcon() { return <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden><path d="M8 5v14l11-7z" /></svg>; }
+function PauseIcon() { return <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden><path d="M7 5h4v14H7zm6 0h4v14h-4z" /></svg>; }
+function formatTime(seconds: number) { if (!Number.isFinite(seconds) || seconds <= 0) return "0:00"; return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`; }
 
-        <div className="order-1 flex items-center pt-6 sm:pt-8 lg:order-2 lg:pl-[20px] lg:pt-0">
-          <div className="max-w-4xl">
-            <h1 className="text-4xl font-semibold leading-[0.96] text-white sm:text-6xl lg:text-7xl xl:text-8xl">
-              Show your Creativity by Musica
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
-              Turn your ideas into complete, ready-to-share music with the power
-              of AI. From a simple concept, melody, or mood, create polished
-              tracks faster and more effortlessly than ever.
-            </p>
-            <div className="mt-6">
-              {authAwareCta ? (
-                <AuthAwareGetStartedBadge />
-              ) : (
-                <GetStartedBadge href={ctaHref} />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+function HeroFlow({ demoAudioSrc }: { demoAudioSrc?: string }) {
+  const [phase, setPhase] = useState<1 | 2 | 3>(1);
+  const [typed, setTyped] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const activate = (next: 1 | 2 | 3) => { setPhase(next); if (next === 1) { setTyped(""); setProgress(0); } if (next === 2) setProgress(0); };
+  useEffect(() => { if (phase !== 1) return; if (typed.length >= LYRICS.length) { const timer = window.setTimeout(() => setPhase(2), 650); return () => window.clearTimeout(timer); } const timer = window.setTimeout(() => setTyped(LYRICS.slice(0, typed.length + 1)), 26); return () => window.clearTimeout(timer); }, [phase, typed]);
+  useEffect(() => { if (phase !== 2) return; if (progress >= 100) { const timer = window.setTimeout(() => setPhase(3), 500); return () => window.clearTimeout(timer); } const timer = window.setTimeout(() => setProgress((value) => value + 1), 32); return () => window.clearTimeout(timer); }, [phase, progress]);
+  const stages = [[1, "Write lyrics"], [2, "Create"], [3, "Your song"]] as const;
+  const toggle = async () => { const audio = audioRef.current; if (!audio) return; if (playing) { audio.pause(); return; } await audio.play(); setPlaying(true); };
+  return <div className="mx-auto w-full max-w-[34rem] space-y-3"><div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.16em] sm:text-xs">{stages.map(([number, label], index) => <div key={number} className="contents"><button type="button" onMouseEnter={() => activate(number)} onFocus={() => activate(number)} onClick={() => activate(number)} aria-pressed={phase === number} className={`flex items-center gap-2 whitespace-nowrap transition focus:outline-none ${phase === number ? "text-white" : "text-white/40 hover:text-white/75"}`}><span className={`flex h-7 w-7 items-center justify-center rounded-full border ${phase === number ? "border-white bg-white text-black" : "border-white/20"}`}>{number}</span><span className="hidden sm:inline">{label}</span></button>{index < 2 ? <span className="h-px flex-1 bg-white/15" /> : null}</div>)}</div><div className={`rounded-2xl border p-5 transition-all duration-300 ${phase === 1 ? "border-white/35 bg-[#111113] shadow-[0_0_0_1px_rgba(255,255,255,.08)]" : "border-white/10 bg-[#0b0b0c] opacity-55"}`}><p className="text-[11px] font-semibold uppercase tracking-[.14em] text-white/45">Your lyrics</p><p className="mt-3 min-h-28 whitespace-pre-line text-sm leading-7 text-white/80">{phase === 1 ? typed : LYRICS}<span className={phase === 1 && typed.length < LYRICS.length ? "ml-0.5 inline-block h-4 w-px animate-pulse bg-white" : ""} /></p><div className="mt-4 rounded-lg border border-white/10 bg-white/[.035] px-3 py-2 text-xs text-white/35">Continue writing...</div></div><div className={`flex items-center gap-3 rounded-2xl border p-4 transition-all duration-300 ${phase === 2 ? "border-white/35 bg-[#111113] shadow-[0_0_0_1px_rgba(255,255,255,.08)]" : "border-white/10 bg-white/[.03] opacity-55"}`}><span className={`h-7 w-7 shrink-0 rounded-full border-2 border-white/20 border-t-white ${phase === 2 ? "animate-spin" : ""}`} /><div className="min-w-0 flex-1"><p className="text-sm text-white/80">Creating your song...</p><div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10"><div style={{ width: `${phase === 2 ? progress : phase === 3 ? 100 : 0}%` }} className="h-full rounded-full bg-white transition-[width] duration-75" /></div></div><span className="text-xs tabular-nums text-white/45">{phase === 2 ? progress : phase === 3 ? 100 : 0}%</span></div><div className={`overflow-hidden rounded-2xl border bg-[#111113] transition-all duration-300 ${phase === 3 ? "border-white/35 shadow-[0_0_0_1px_rgba(255,255,255,.08)]" : "border-white/10 opacity-55"}`}><div className="relative aspect-[16/7] bg-[radial-gradient(circle_at_74%_20%,rgba(240,142,107,.58),transparent_28%),radial-gradient(circle_at_24%_80%,rgba(89,121,210,.58),transparent_34%),linear-gradient(135deg,#1a1826,#16120f)]"><span className="absolute bottom-4 left-5 font-serif text-4xl italic text-white/90">Morning<br />Shadows</span></div><div className="flex items-center justify-between p-5"><div><h2 className="font-serif text-2xl text-white">Morning Shadows</h2><p className="mt-1 text-sm text-white/50">Indie Folk · {formatTime(currentTime)} / {formatTime(duration)}</p></div><button type="button" onClick={() => void toggle()} aria-label={playing ? "Pause Morning Shadows" : "Play Morning Shadows"} className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-black">{playing ? <PauseIcon /> : <PlayIcon />}</button></div><div className="mx-5 mb-5 h-1 overflow-hidden rounded-full bg-white/10"><div style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }} className="h-full bg-white" /></div></div><audio ref={audioRef} src={demoAudioSrc} onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setCurrentTime(0); }} /></div>;
+}
+
+export default function HeroSection({ ctaHref, authAwareCta = false, demoAudioSrc }: HeroSectionProps) {
+  const cta = authAwareCta ? <AuthAwareGetStartedBadge label="Create your first song" className="!rounded-full !border-white !bg-white !px-6 !py-3 !font-semibold !text-black hover:!bg-white/85" /> : <GetStartedBadge href={ctaHref} label="Create your first song" className="!rounded-full !border-white !bg-white !px-6 !py-3 !font-semibold !text-black hover:!bg-white/85" />;
+  return <section className="relative isolate overflow-hidden px-5 pb-20 pt-16 sm:px-8 sm:pb-28 lg:px-12 lg:pt-24">
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[34rem] w-full opacity-60 sm:inset-y-0 sm:h-auto sm:opacity-65 lg:w-[55%]">
+      <div className="absolute inset-0 bg-[url('/images/recording-studio-microphone.jpg')] bg-cover bg-left-top bg-no-repeat" />
+      <div className="absolute inset-0 bg-[rgba(5,5,5,0.48)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,5,5,0.22)_0%,rgba(5,5,5,0.52)_45%,rgba(5,5,5,0.90)_78%,#050505_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0)_20%,rgba(5,5,5,0.35)_62%,#050505_100%)] sm:hidden" />
+    </div>
+    <div className="relative z-10 mx-auto grid max-w-[90rem] items-center gap-14 lg:grid-cols-[minmax(0,.9fr)_minmax(32rem,1.1fr)] lg:gap-20"><div><p className="inline-flex rounded-full border border-white/15 px-3 py-1 text-xs font-medium tracking-wide text-white/65">AI Music Studio</p><h1 className="mt-7 max-w-3xl text-5xl font-semibold leading-[.96] tracking-[-.06em] text-white sm:text-7xl lg:text-[clamp(4rem,6vw,6.6rem)]">Who says you can&apos;t make <span className="font-serif font-normal italic tracking-[-.045em]">music?</span></h1><p className="mt-7 max-w-xl text-base leading-7 text-white/62 sm:text-lg">Turn your lyrics into a complete song with AI. No experience. No equipment. Just ideas.</p><div className="mt-9 flex flex-wrap items-center gap-4">{cta}<p className="text-sm text-white/45">First song free · No subscription</p></div></div><HeroFlow demoAudioSrc={demoAudioSrc} /></div>
+  </section>;
 }

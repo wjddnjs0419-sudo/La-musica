@@ -1,52 +1,9 @@
 import AuthAwareGetStartedBadge from "@/components/auth-aware-get-started-badge";
 import GetStartedBadge from "@/components/get-started-badge";
-import LineWaves from "@/components/LineWaves";
 
-type CtaSectionProps = {
-  ctaHref?: string;
-  authAwareCta?: boolean;
-};
+type CtaSectionProps = { ctaHref?: string; authAwareCta?: boolean };
 
-export default function CtaSection({
-  ctaHref,
-  authAwareCta = false,
-}: CtaSectionProps) {
-  return (
-    <section className="relative isolate overflow-hidden px-4 py-16 sm:px-8 sm:py-32 lg:px-12">
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-        <LineWaves
-          speed={0.3}
-          innerLineCount={32}
-          outerLineCount={36}
-          warpIntensity={1}
-          rotation={-45}
-          edgeFadeWidth={0}
-          colorCycleSpeed={1}
-          brightness={0.2}
-          color1="#00296a"
-          color2="#a4aab2"
-          color3="#6c7d98"
-          enableMouseInteraction
-          mouseInfluence={2}
-        />
-      </div>
-
-      <div className="pointer-events-none mx-auto flex max-w-3xl flex-col items-center text-center">
-        <h2 className="text-3xl font-semibold text-white sm:text-5xl lg:text-6xl">
-          Your next track starts here.
-        </h2>
-        <p className="mt-5 max-w-xl text-base leading-7 text-white/70 sm:text-lg">
-          Describe a mood, a melody, or a moment. Musica turns it into a
-          finished song in seconds.
-        </p>
-        <div className="pointer-events-auto mt-8">
-          {authAwareCta ? (
-            <AuthAwareGetStartedBadge />
-          ) : (
-            <GetStartedBadge href={ctaHref} />
-          )}
-        </div>
-      </div>
-    </section>
-  );
+export default function CtaSection({ ctaHref, authAwareCta = false }: CtaSectionProps) {
+  const cta = authAwareCta ? <AuthAwareGetStartedBadge label="Create your first song" className="!rounded-full !border-white !bg-white !px-6 !py-3 !font-semibold !text-black hover:!bg-white/85" /> : <GetStartedBadge href={ctaHref} label="Create your first song" className="!rounded-full !border-white !bg-white !px-6 !py-3 !font-semibold !text-black hover:!bg-white/85" />;
+  return <section className="border-t border-white/[.07] px-5 py-24 text-center sm:px-8 sm:py-32 lg:px-12"><div className="mx-auto max-w-3xl"><p className="text-xs font-semibold uppercase tracking-[.16em] text-white/40">La Musica</p><h2 className="mt-6 text-5xl font-semibold tracking-[-.06em] text-white sm:text-7xl">Your song is waiting.</h2><p className="mt-5 text-lg text-white/55">All you need is an idea.</p><div className="mt-9">{cta}</div></div></section>;
 }

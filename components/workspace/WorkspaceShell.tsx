@@ -15,11 +15,6 @@ import {
   type Music,
 } from "@/lib/music";
 import type { GenerationPhase } from "@/lib/generation/progress";
-import {
-  resolveLyricsPollStart,
-  shouldContinueLyricsPolling,
-  shouldStopLyricsPolling,
-} from "@/lib/lyrics/sync";
 
 const POLL_INTERVAL = 3000;
 const PAGE_SIZE = 7;
@@ -80,7 +75,6 @@ export default function WorkspaceShell({
 
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const polling = React.useRef<Map<string, number>>(new Map());
-  const lyricsPolling = React.useRef<Map<string, number>>(new Map());
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const genMusicIdRef = React.useRef<string | null>(null);
   const genCallbackRef = React.useRef<(music: Music) => void>(() => {});
@@ -193,23 +187,8 @@ export default function WorkspaceShell({
               json.music.status === "failed";
             const thumbnailSettled =
               json.music.thumbnail_status !== "pending";
-            const lyricsPollStart = resolveLyricsPollStart(
-              lyricsPolling.current.get(id),
-              json.music.metadata,
-              Date.now(),
-            );
-            if (lyricsPollStart != null) {
-              lyricsPolling.current.set(id, lyricsPollStart);
-            } else {
-              lyricsPolling.current.delete(id);
-            }
-            const lyricsSettled =
-              !shouldContinueLyricsPolling(json.music.metadata) ||
-              (lyricsPollStart != null &&
-                shouldStopLyricsPolling(lyricsPollStart, Date.now()));
-            if (done && thumbnailSettled && lyricsSettled) {
+            if (done && thumbnailSettled) {
               polling.current.delete(id);
-              lyricsPolling.current.delete(id);
               return;
             }
           }
@@ -231,10 +210,7 @@ export default function WorkspaceShell({
         track.status === "pending" || track.status === "processing";
       const needsThumbnailPoll =
         track.status === "completed" && track.thumbnail_status === "pending";
-      const needsLyricsPoll =
-        track.status === "completed" &&
-        shouldContinueLyricsPolling(track.metadata);
-      if (needsGenPoll || needsThumbnailPoll || needsLyricsPoll) {
+      if (needsGenPoll || needsThumbnailPoll) {
         poll(track.id);
       }
     });

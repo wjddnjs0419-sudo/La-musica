@@ -34,25 +34,6 @@ const PRICING_COPY: Record<
   },
 };
 
-function CheckIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      fill="none"
-      className="mt-0.5 h-4 w-4 shrink-0 text-sky-300"
-    >
-      <path
-        d="M5 13l4 4L19 7"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
 function PricingCard({
   plan,
   loading,
@@ -69,14 +50,14 @@ function PricingCard({
     <article
       className={`flex flex-col rounded-lg border p-5 text-left transition-colors sm:p-6 ${
         highlight
-          ? "border-sky-400/40 bg-white/[0.08] hover:border-sky-300/60"
-          : "border-white/12 bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.07]"
+          ? "border-white/30 bg-white/[0.10] hover:border-white/45"
+          : "border-white/10 bg-white/[0.035] hover:border-white/25 hover:bg-white/[0.06]"
       }`}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-white/55">{name}</p>
         {highlight ? (
-          <span className="shrink-0 rounded-full border border-sky-400/40 bg-sky-400/10 px-2.5 py-0.5 text-xs font-medium text-sky-200">
+          <span className="shrink-0 rounded-full border border-white/20 bg-white/[.08] px-2.5 py-0.5 text-xs font-medium text-white/75">
             Most popular
           </span>
         ) : null}
@@ -91,7 +72,6 @@ function PricingCard({
             key={feature}
             className="flex gap-2.5 text-sm leading-6 text-white/70"
           >
-            <CheckIcon />
             <span>{feature}</span>
           </li>
         ))}
@@ -103,7 +83,7 @@ function PricingCard({
         onClick={() => onSelect(id)}
         className={`mt-8 inline-flex h-11 items-center justify-center rounded-full px-6 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-white/25 ${
           highlight
-            ? "bg-sky-400 text-slate-950 hover:bg-sky-300"
+            ? "bg-white text-black hover:bg-white/85"
             : "border border-white/20 bg-white/[0.06] text-white hover:bg-white/[0.12]"
         }`}
       >
@@ -152,20 +132,20 @@ export default function PricingSection() {
   return (
     <section
       id="pricing"
-      className="relative isolate scroll-mt-24 px-4 py-16 sm:px-8 sm:py-28 lg:px-12"
+      className="relative isolate scroll-mt-24 px-5 py-20 sm:px-8 sm:py-28 lg:px-12"
     >
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-[90rem]">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-2xl font-semibold text-white sm:text-4xl lg:text-5xl">
-            Simple, pay-as-you-go pricing.
+          <p className="text-xs font-semibold uppercase tracking-[.16em] text-white/45">Pricing</p>
+          <h2 className="mt-5 text-4xl font-semibold tracking-[-.045em] text-white sm:text-5xl lg:text-6xl">
+            Pay as you go.
           </h2>
           <p className="mt-4 text-base leading-7 text-white/65 sm:text-lg">
-            No subscriptions. Buy the song credits you need and start creating
-            right away.
+            No subscription. No renewal. Just the song credits you need.
           </p>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:mt-14 md:grid-cols-3">
+        <div className="mt-10 grid gap-4 sm:mt-14 md:grid-cols-3">
           {CREDIT_PLANS.map((plan) => (
             <PricingCard
               key={plan.id}

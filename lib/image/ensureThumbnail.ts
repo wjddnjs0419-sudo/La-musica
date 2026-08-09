@@ -1,35 +1,36 @@
-import { after } from "next/server";
 import type { createServerClient } from "@insforge/sdk/ssr";
 import { MUSICS_BUCKET, type Music } from "../music";
-import { generateThumbnail } from "./generateThumbnail";
+import { downloadThumbnailOutput } from "./generateThumbnail";
 
 type ServerClient = ReturnType<typeof createServerClient>;
+type ThumbnailPrediction = {
+  status: string;
+  output?: unknown;
+  error?: unknown;
+};
 
-// Schedules cover-art generation via `after()` so the serverless function
-// stays alive until upload + DB persist finish, instead of racing the
-// response and sometimes leaving thumbnail_status stuck at "pending"
-// forever (the function can be frozen the instant the response is sent).
-export function scheduleThumbnailGeneration(
+// Persist the result of an already-created Replicate prediction. Keeping this
+// bounded to download + storage + DB work means a slow image model never holds
+// a serverless invocation open.
+export async function reconcileThumbnailPrediction(
   client: ServerClient,
   userId: string,
   music: Music,
-  prompt: string,
-): void {
-  after(() =>
-    generateAndPersistThumbnail(client, userId, music, prompt).catch((err) =>
-      console.error("bg thumbnail failed", { musicId: music.id, err }),
-    ),
-  );
-}
-
-async function generateAndPersistThumbnail(
-  client: ServerClient,
-  userId: string,
-  music: Music,
-  prompt: string,
+  prediction: ThumbnailPrediction,
 ): Promise<Music> {
+  if (prediction.status !== "succeeded") {
+    if (prediction.status === "failed" || prediction.status === "canceled") {
+      return markThumbnailFailed(
+        client,
+        music,
+        prediction.error ? String(prediction.error) : "thumbnail_prediction_failed",
+      );
+    }
+    return music;
+  }
+
   try {
-    const blob = await generateThumbnail(prompt);
+    const blob = await downloadThumbnailOutput(prediction.output);
     const file = new File([blob], `${music.id}.webp`, { type: "image/webp" });
     const uploadKey = `${userId}/${music.id}-thumbnail-${Date.now()}.webp`;
     const { data: uploaded, error: uploadError } = await client.storage
@@ -45,8 +46,8 @@ async function generateAndPersistThumbnail(
       .update({
         thumbnail_url: uploaded.url,
         thumbnail_key: uploaded.key,
-        thumbnail_prompt: prompt,
         thumbnail_status: "succeeded",
+        metadata: withoutThumbnailError(music.metadata),
       })
       .eq("id", music.id)
       .select();
@@ -57,32 +58,54 @@ async function generateAndPersistThumbnail(
 
     return updated[0] as Music;
   } catch (err) {
-    console.error("thumbnail generation failed", { musicId: music.id, err });
-    const { data: updated, error } = await client.database
-      .from("musics")
-      .update({
-        thumbnail_url: null,
-        thumbnail_key: null,
-        thumbnail_prompt: prompt,
-        thumbnail_status: "failed",
-      })
-      .eq("id", music.id)
-      .select();
-
-    if (error) {
-      console.error("thumbnail failure status update failed", {
-        musicId: music.id,
-        error,
-      });
-      return { ...music, thumbnail_prompt: prompt, thumbnail_status: "failed" };
-    }
-
-    return (
-      (updated?.[0] as Music) ?? {
-        ...music,
-        thumbnail_prompt: prompt,
-        thumbnail_status: "failed",
-      }
-    );
+    return markThumbnailFailed(client, music, errorMessage(err));
   }
+}
+
+async function markThumbnailFailed(
+  client: ServerClient,
+  music: Music,
+  reason: string,
+): Promise<Music> {
+  const { data: updated, error } = await client.database
+    .from("musics")
+    .update({
+      thumbnail_url: null,
+      thumbnail_key: null,
+      thumbnail_status: "failed",
+      metadata: { ...music.metadata, thumbnail_error: reason },
+    })
+    .eq("id", music.id)
+    .select();
+
+  if (error) {
+    console.error("thumbnail failure status update failed", {
+      musicId: music.id,
+      error,
+    });
+    return {
+      ...music,
+      thumbnail_status: "failed",
+      metadata: { ...music.metadata, thumbnail_error: reason },
+    };
+  }
+
+  return (
+    (updated?.[0] as Music) ?? {
+      ...music,
+      thumbnail_status: "failed",
+      metadata: { ...music.metadata, thumbnail_error: reason },
+    }
+  );
+}
+
+function withoutThumbnailError(metadata: Record<string, unknown>) {
+  const nextMetadata = { ...metadata };
+  delete nextMetadata.thumbnail_error;
+  return nextMetadata;
+}
+
+function errorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.slice(0, 500);
 }

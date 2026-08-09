@@ -22,10 +22,12 @@ function readAuthStatus() {
 
 type AuthAwareGetStartedBadgeProps = {
   className?: string;
+  label?: string;
 };
 
 export default function AuthAwareGetStartedBadge({
   className,
+  label,
 }: AuthAwareGetStartedBadgeProps) {
   const [href, setHref] = React.useState("/auth");
 
@@ -41,5 +43,5 @@ export default function AuthAwareGetStartedBadge({
     };
   }, []);
 
-  return <GetStartedBadge href={href} className={className} />;
+  return <GetStartedBadge href={href} className={className} label={label} />;
 }

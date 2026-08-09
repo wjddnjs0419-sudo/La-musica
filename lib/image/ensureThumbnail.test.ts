@@ -1,27 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Music } from "../music";
 
-// `after()` is fire-and-forget by design, so scheduleThumbnailGeneration never
-// awaits it. Tests that need to observe the scheduled work's outcome must
-// explicitly wait for it via `waitForAfter()` below.
-let pendingAfter: Promise<unknown> = Promise.resolve();
-const afterSpy = vi.fn((cb: () => unknown) => {
-  pendingAfter = Promise.resolve().then(cb);
-});
-vi.mock("next/server", () => ({
-  after: (cb: () => unknown) => afterSpy(cb),
-}));
-
-async function waitForAfter() {
-  await pendingAfter;
-}
-
-const generateThumbnailMock = vi.fn();
+const downloadThumbnailOutputMock = vi.fn();
 vi.mock("./generateThumbnail", () => ({
-  generateThumbnail: (...args: unknown[]) => generateThumbnailMock(...args),
+  downloadThumbnailOutput: (...args: unknown[]) => downloadThumbnailOutputMock(...args),
 }));
 
-const { scheduleThumbnailGeneration } = await import("./ensureThumbnail");
+const { reconcileThumbnailPrediction } = await import("./ensureThumbnail");
 
 function makeMusic(overrides: Partial<Music> = {}): Music {
   return {
@@ -76,30 +61,21 @@ function makeClientStub(uploadResult: { data: unknown; error: unknown }) {
 }
 
 beforeEach(() => {
-  afterSpy.mockClear();
-  generateThumbnailMock.mockReset();
+  downloadThumbnailOutputMock.mockReset();
 });
 
-describe("scheduleThumbnailGeneration", () => {
-  it("schedules the work via after() instead of running it inline", () => {
-    const { client } = makeClientStub({ data: { url: "u", key: "k" }, error: null });
-    generateThumbnailMock.mockResolvedValue(new Blob());
-
-    scheduleThumbnailGeneration(client as never, "user-1", makeMusic(), "a prompt");
-
-    expect(afterSpy).toHaveBeenCalledTimes(1);
-    expect(generateThumbnailMock).not.toHaveBeenCalled();
-  });
-
-  it("persists thumbnail_url/key and succeeded status once the scheduled work completes", async () => {
+describe("reconcileThumbnailPrediction", () => {
+  it("persists thumbnail_url/key when the already-started prediction succeeds", async () => {
     const { client, updateCalls, uploadCalls } = makeClientStub({
       data: { url: "https://x/cover.webp", key: "u1/m1-thumbnail-1.webp" },
       error: null,
     });
-    generateThumbnailMock.mockResolvedValue(new Blob());
+    downloadThumbnailOutputMock.mockResolvedValue(new Blob());
 
-    scheduleThumbnailGeneration(client as never, "user-1", makeMusic(), "a prompt");
-    await waitForAfter();
+    await reconcileThumbnailPrediction(client as never, "user-1", makeMusic(), {
+      status: "succeeded",
+      output: "https://replicate/cover.webp",
+    });
 
     expect(uploadCalls).toHaveLength(1);
     expect(updateCalls[0].payload).toMatchObject({
@@ -110,17 +86,34 @@ describe("scheduleThumbnailGeneration", () => {
     expect(updateCalls[0].id).toBe("music-1");
   });
 
-  it("marks thumbnail_status failed when generation throws, instead of leaving it pending", async () => {
+  it("marks thumbnail_status failed and persists the provider error", async () => {
     const { client, updateCalls } = makeClientStub({ data: null, error: null });
-    generateThumbnailMock.mockRejectedValue(new Error("replicate_failed"));
 
-    scheduleThumbnailGeneration(client as never, "user-1", makeMusic(), "a prompt");
-    await waitForAfter();
+    await reconcileThumbnailPrediction(client as never, "user-1", makeMusic(), {
+      status: "failed",
+      error: "replicate_failed",
+    });
 
     expect(updateCalls[0].payload).toMatchObject({
       thumbnail_url: null,
       thumbnail_key: null,
       thumbnail_status: "failed",
+      metadata: { thumbnail_error: "replicate_failed" },
     });
+  });
+
+  it("leaves an in-progress prediction untouched", async () => {
+    const { client, updateCalls, uploadCalls } = makeClientStub({
+      data: { url: "https://x/cover.webp", key: "u1/m1-thumbnail-1.webp" },
+      error: null,
+    });
+
+    const result = await reconcileThumbnailPrediction(client as never, "user-1", makeMusic(), {
+      status: "processing",
+    });
+
+    expect(result.thumbnail_status).toBe("pending");
+    expect(updateCalls).toHaveLength(0);
+    expect(uploadCalls).toHaveLength(0);
   });
 });

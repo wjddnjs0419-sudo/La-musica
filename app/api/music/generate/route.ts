@@ -8,6 +8,7 @@ import {
 import Replicate from "replicate";
 
 import { createInsforgeAdminClient } from "@/lib/insforge-admin";
+import { createThumbnailPrediction } from "@/lib/image/generateThumbnail";
 import {
   ACE_STEP_MODEL,
   ACE_STEP_VERSION,
@@ -19,8 +20,8 @@ import { compileMusicPrompt, buildLyricsPayload } from "@/lib/music-prompt";
 import { translateToEnglish } from "@/lib/translatePrompt";
 import { refineStylePrompt } from "@/lib/refineStylePrompt";
 import { buildFallbackMusicTitle } from "@/lib/musicTitle";
+import { buildThumbnailPrompt } from "@/lib/prompts/buildThumbnailPrompt";
 import { generateAutoLyricsForSong } from "@/lib/lyrics-assistant/generateAutoLyrics";
-import { buildInitialLyricsSyncMetadata } from "@/lib/lyrics/sync";
 import { buildCostLogRow } from "@/lib/cost-logging";
 import type {
   MusicGenre,
@@ -162,11 +163,15 @@ export async function POST(request: NextRequest) {
     genre,
     moods,
   });
+  const thumbnailPrompt = buildThumbnailPrompt({ title: generatedTitle });
 
   // Refine the compiled "comma soup" into a coherent ACE-Step style prompt via
   // a separate Gemini pass (presets stay as guardrails). Falls back to the
   // compiled prompt on any failure, so this never blocks generation.
-  const refinedPrompt = await refineStylePrompt(compiled.prompt, compiled.instrumental);
+  const refinedPromptPromise = refineStylePrompt(
+    compiled.prompt,
+    compiled.instrumental,
+  );
 
   // For vocal songs, resolve the lyrics payload for ACE-Step. Both paths run
   // through buildLyricsPayload so section tags are canonical and the payload
@@ -183,7 +188,7 @@ export async function POST(request: NextRequest) {
           compiled.metadata.vocal_mode,
         );
 
-  const initialMetadata = buildInitialLyricsSyncMetadata({
+  const initialMetadata = {
     instrumental: compiled.instrumental,
     // lyrics = effective lyrics used for generation (regardless of source)
     ...(finalLyrics ? { lyrics: finalLyrics } : {}),
@@ -194,10 +199,11 @@ export async function POST(request: NextRequest) {
     // Persist both prompts: the pre-refine template output and the prompt that
     // was actually sent to ACE-Step (overrides compiled.metadata.final_music_prompt).
     compiled_music_prompt: compiled.prompt,
-    final_music_prompt: refinedPrompt,
+    // Replaced with the refined prompt when prediction IDs are attached below.
+    final_music_prompt: compiled.prompt,
     ...(aceLyricsPayload ? { lyrics_payload: aceLyricsPayload } : {}),
     lyrics_source: lyricsSource,
-  });
+  };
 
   const { data: reserved, error: reserveError } = await admin.database.rpc(
     "create_music_with_credit",
@@ -231,20 +237,33 @@ export async function POST(request: NextRequest) {
   const music = reserved as Music;
   const replicate = new Replicate(); // reads REPLICATE_API_TOKEN
 
-  let predictionId: string;
-  try {
-    const prediction = await replicate.predictions.create({
-      version: ACE_STEP_VERSION,
-      input: buildAceStepInput({
-        prompt: refinedPrompt,
-        lyrics: aceLyricsPayload,
-        instrumental: compiled.instrumental,
-        duration,
+  // The title is already final at this point. Start the cover immediately
+  // after the credit reservation, while style refinement continues.
+  const thumbnailPredictionPromise = createThumbnailPrediction(
+    replicate,
+    thumbnailPrompt,
+  );
+  const refinedPrompt = await refinedPromptPromise;
+
+  // The cover prediction began as soon as the credit reservation permitted it.
+  // Await only its creation response alongside the audio prediction creation;
+  // neither waits for GPU generation to finish.
+  const [musicPredictionResult, thumbnailPredictionResult] =
+    await Promise.allSettled([
+      replicate.predictions.create({
+        version: ACE_STEP_VERSION,
+        input: buildAceStepInput({
+          prompt: refinedPrompt,
+          lyrics: aceLyricsPayload,
+          instrumental: compiled.instrumental,
+          duration,
+        }),
       }),
-    });
-    predictionId = prediction.id;
-  } catch (err) {
-    console.error("replicate create failed", err);
+      thumbnailPredictionPromise,
+    ]);
+
+  if (musicPredictionResult.status === "rejected") {
+    console.error("music prediction create failed", musicPredictionResult.reason);
     await admin.database.rpc("refund_failed_music_credit", {
       p_user_id: user.id,
       p_music_id: music.id,
@@ -257,13 +276,27 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const predictionId = musicPredictionResult.value.id;
+  const thumbnailStarted = thumbnailPredictionResult.status === "fulfilled";
+  const thumbnailMetadata = thumbnailStarted
+    ? { thumbnail_prediction_id: thumbnailPredictionResult.value.id }
+    : { thumbnail_error: errorMessage(thumbnailPredictionResult.reason) };
+
+  if (!thumbnailStarted) {
+    console.error("thumbnail prediction create was unavailable", thumbnailPredictionResult.reason);
+  }
+
   const { data: rows, error } = await client.database
     .from("musics")
     .update({
       status: "processing",
+      thumbnail_prompt: thumbnailPrompt,
+      thumbnail_status: thumbnailStarted ? "pending" : "failed",
       metadata: {
         ...music.metadata,
         prediction_id: predictionId,
+        final_music_prompt: refinedPrompt,
+        ...thumbnailMetadata,
       },
     })
     .eq("id", music.id)
@@ -305,6 +338,11 @@ export async function POST(request: NextRequest) {
     undefined,
     refreshedTokens,
   );
+}
+
+function errorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.slice(0, 500);
 }
 
 async function getAuthenticatedClient(request: NextRequest) {

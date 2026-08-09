@@ -12,6 +12,7 @@
   --muted-foreground: #9ca3af;
   --border: #3f3f46;
   --ring: #38bdf8;
+  --landing-bg: #050505;
 }
 
 @theme inline {
@@ -53,27 +54,17 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   min-height: 100vh;
   margin: 0;
-  background-image:
-    radial-gradient(circle at top, rgba(255, 207, 102, 0.09), transparent 30%),
-    radial-gradient(circle at bottom left, rgba(56, 189, 248, 0.08), transparent 26%);
-  background-attachment: fixed;
+  background-image: none;
 }
 
 .landing-surface {
-  background-color: var(--background);
+  background-color: var(--landing-bg);
 }
 
-.landing-ambient {
-  background-image:
-    radial-gradient(circle at 18% 88%, rgba(56, 189, 248, 0.12), transparent 30%),
-    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.06), transparent 26%),
-    radial-gradient(circle at 84% 8%, rgba(255, 209, 102, 0.08), transparent 24%);
-}
-
-@media (max-width: 767px) {
-  .landing-ambient {
-    background-image:
-      radial-gradient(circle at 12% 86%, rgba(56, 189, 248, 0.1), transparent 32%),
-      radial-gradient(circle at 52% 12%, rgba(255, 255, 255, 0.045), transparent 28%);
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }

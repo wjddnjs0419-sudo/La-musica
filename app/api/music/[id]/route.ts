@@ -2,18 +2,9 @@ import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@insforge/sdk/ssr";
 import Replicate from "replicate";
-import { scheduleThumbnailGeneration } from "@/lib/image/ensureThumbnail";
+import { reconcileThumbnailPrediction } from "@/lib/image/ensureThumbnail";
 import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import { MUSICS_BUCKET, type Music } from "@/lib/music";
-import { buildInitialLyricsSyncMetadata } from "@/lib/lyrics/sync";
-import { ensureLyricsSyncStarted } from "@/lib/lyrics/ensureLyricsSync";
-import { formatGenreLabel, formatMoodLabel } from "@/lib/musicTitle";
-import { buildThumbnailPrompt } from "@/lib/prompts/buildThumbnailPrompt";
-
-// Gemini audio upload (~20s timeout) + alignment (~60s timeout) can run
-// inside after() after this route's response is sent; give the function
-// enough budget to actually finish instead of being frozen mid-flight.
-export const maxDuration = 90;
 
 // Poll endpoint: resolves a `processing` row by checking the Replicate
 // prediction, copying the finished mp3 into Storage, and finalizing the row.
@@ -48,32 +39,37 @@ export async function GET(
 
   const music = row as Music;
 
-  // Terminal states need no further music-generation work. Thumbnail generation
-  // runs in the background (started when music first completes) — the client
-  // shows a placeholder while thumbnail_status is "pending" and polls until
-  // thumbnail_status becomes "succeeded" or "failed".
+  const replicate = new Replicate();
+  const thumbnailResolution = resolveThumbnailPrediction(
+    client,
+    user.id,
+    music,
+    replicate,
+  );
+
+  // A cover prediction is independent from the audio prediction. Resolve it
+  // on every poll so the workspace can show the cover as soon as it is ready,
+  // including before the song itself has finished.
   if (music.status === "completed") {
-    const ensured = await ensureLyricsSyncStarted(createInsforgeAdminClient(), music);
-    return NextResponse.json({ music: ensured });
+    return NextResponse.json({ music: await thumbnailResolution });
   }
 
   if (music.status === "failed") {
-    return NextResponse.json({ music });
+    return NextResponse.json({ music: await thumbnailResolution });
   }
 
   const predictionId = music.metadata?.prediction_id as string | undefined;
   if (!predictionId) {
     const failed = await refundAndMarkFailed(user.id, id, "missing prediction id");
-    return NextResponse.json({ music: failed ?? music });
+    return NextResponse.json({ music: withThumbnailResult(failed ?? music, await thumbnailResolution) });
   }
 
-  const replicate = new Replicate();
   let prediction;
   try {
     prediction = await replicate.predictions.get(predictionId);
   } catch (err) {
     console.error("replicate get failed", err);
-    return NextResponse.json({ music }); // transient; let client retry
+    return NextResponse.json({ music: await thumbnailResolution }); // transient; let client retry
   }
 
   if (prediction.status === "failed" || prediction.status === "canceled") {
@@ -82,11 +78,11 @@ export async function GET(
       id,
       prediction.error ? String(prediction.error) : "generation failed",
     );
-    return NextResponse.json({ music: failed ?? music });
+    return NextResponse.json({ music: withThumbnailResult(failed ?? music, await thumbnailResolution) });
   }
 
   if (prediction.status !== "succeeded") {
-    return NextResponse.json({ music }); // still starting/processing
+    return NextResponse.json({ music: await thumbnailResolution }); // still starting/processing
   }
 
   // Succeeded: extract audio URL from prediction output.
@@ -96,7 +92,7 @@ export async function GET(
 
   if (!audioUrl) {
     const failed = await refundAndMarkFailed(user.id, id, "empty output");
-    return NextResponse.json({ music: failed ?? music });
+    return NextResponse.json({ music: withThumbnailResult(failed ?? music, await thumbnailResolution) });
   }
 
   // Idempotency: if a previous poll already uploaded the audio (audio_key set)
@@ -126,20 +122,16 @@ export async function GET(
     } catch (err) {
       console.error("audio persist failed", err);
       const failed = await refundAndMarkFailed(user.id, id, "could not store audio");
-      return NextResponse.json({ music: failed ?? music });
+      return NextResponse.json({ music: withThumbnailResult(failed ?? music, await thumbnailResolution) });
     }
   }
 
-  const thumbnailPrompt = buildPromptForMusic(music);
   const { data: updated, error: updateError } = await client.database
     .from("musics")
     .update({
       status: "completed",
       audio_url: url,
       audio_key: key,
-      thumbnail_prompt: thumbnailPrompt,
-      thumbnail_status: "pending",
-      metadata: buildInitialLyricsSyncMetadata(music.metadata),
     })
     .eq("id", id)
     .eq("status", "processing") // guard against double-write (parity with reconcile-music)
@@ -147,18 +139,12 @@ export async function GET(
 
   if (updateError || !updated?.[0]) {
     console.error("music finalize failed", updateError);
-    return NextResponse.json({ music }); // audio is stored; client can retry
+    return NextResponse.json({ music: await thumbnailResolution }); // audio is stored; client can retry
   }
 
-  // Kick off thumbnail generation in the background — scheduled via after()
-  // so the client receives the completed music immediately (without waiting
-  // for the Replicate image model) while the function stays alive long
-  // enough to actually finish the upload + DB write. thumbnail_status starts
-  // as "pending" and the next poll will observe the updated value.
-  scheduleThumbnailGeneration(client, user.id, updated[0] as Music, thumbnailPrompt);
-
-  const ensured = await ensureLyricsSyncStarted(createInsforgeAdminClient(), updated[0] as Music);
-  return NextResponse.json({ music: ensured });
+  return NextResponse.json({
+    music: withThumbnailResult(updated[0] as Music, await thumbnailResolution),
+  });
 }
 
 export async function PATCH(
@@ -312,29 +298,35 @@ async function refundAndMarkFailed(
   return music ?? null;
 }
 
-function buildPromptForMusic(music: Music) {
-  const genre = formatGenreLabel(metadataString(music.metadata, "genre"));
-  const mood = metadataStringArray(music.metadata, "moods")
-    .map(formatMoodLabel)
-    .filter(Boolean)
-    .join(", ");
+async function resolveThumbnailPrediction(
+  client: ReturnType<typeof createServerClient>,
+  userId: string,
+  music: Music,
+  replicate: Replicate,
+): Promise<Music> {
+  const predictionId = music.metadata?.thumbnail_prediction_id;
+  if (music.thumbnail_status !== "pending" || typeof predictionId !== "string") {
+    return music;
+  }
 
-  return buildThumbnailPrompt({
-    title: music.title,
-    genre,
-    mood,
-    lyrics: metadataString(music.metadata, "lyrics"),
-  });
+  try {
+    const prediction = await replicate.predictions.get(predictionId);
+    return reconcileThumbnailPrediction(client, userId, music, prediction);
+  } catch (error) {
+    // A transient Replicate read failure must not turn a healthy in-progress
+    // cover into a permanent failure. The next workspace poll retries it.
+    console.error("thumbnail prediction get failed", { musicId: music.id, error });
+    return music;
+  }
 }
 
-function metadataString(metadata: Record<string, unknown>, key: string) {
-  const value = metadata[key];
-  return typeof value === "string" ? value : null;
-}
-
-function metadataStringArray(metadata: Record<string, unknown>, key: string) {
-  const value = metadata[key];
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : [];
+function withThumbnailResult(music: Music, thumbnailMusic: Music): Music {
+  return {
+    ...music,
+    thumbnail_url: thumbnailMusic.thumbnail_url,
+    thumbnail_key: thumbnailMusic.thumbnail_key,
+    thumbnail_prompt: thumbnailMusic.thumbnail_prompt,
+    thumbnail_status: thumbnailMusic.thumbnail_status,
+    metadata: thumbnailMusic.metadata,
+  };
 }

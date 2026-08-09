@@ -1,146 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type SVGProps } from "react";
+import { useState } from "react";
 import AuthAwareGetStartedBadge from "@/components/auth-aware-get-started-badge";
 import GetStartedBadge from "@/components/get-started-badge";
 import Logo from "@/components/logo";
 
-const navItems = [
-  { label: "Features", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Contact", href: "/contact" },
-];
+type HeaderSectionProps = { ctaHref?: string; authAwareCta?: boolean };
+const navItems = [{ label: "Pricing", href: "#pricing" }];
 
-type HeaderSectionProps = {
-  ctaHref?: string;
-  authAwareCta?: boolean;
-};
-
-function MenuIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
-      <path
-        d="M4 7h16M4 12h16M4 17h16"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-function CloseIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
-      <path
-        d="m6 6 12 12M18 6 6 18"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-export default function HeaderSection({
-  ctaHref,
-  authAwareCta = false,
-}: HeaderSectionProps) {
+export default function HeaderSection({ ctaHref, authAwareCta = false }: HeaderSectionProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const cta = authAwareCta ? (
-    <AuthAwareGetStartedBadge />
-  ) : (
-    <GetStartedBadge href={ctaHref} />
-  );
-
-  return (
-    <header className="sticky top-0 z-50 w-full">
-      <div className="flex w-full items-center justify-between px-4 py-4 sm:px-6 md:py-5 lg:px-20">
-        <Link href="/" aria-label="La Musica" className="text-white">
-          <Logo variant="horizontal" className="h-8 w-auto sm:h-10" />
-        </Link>
-
-        <div className="hidden items-center gap-4 md:flex lg:gap-6">
-          <nav aria-label="Primary" className="flex items-center gap-6 sm:gap-8">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="text-sm font-medium text-white/75 transition-colors hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          {cta}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          aria-label="Open menu"
-          aria-expanded={menuOpen}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.06] text-white transition hover:bg-white/[0.12] focus:outline-none focus:ring-2 focus:ring-white/20 md:hidden"
-        >
-          <MenuIcon className="h-5 w-5" />
-        </button>
-      </div>
-
-      <div
-        aria-hidden={!menuOpen}
-        className={`fixed inset-0 z-50 md:hidden ${
-          menuOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
-      >
-        <button
-          type="button"
-          aria-label="Close menu"
-          onClick={() => setMenuOpen(false)}
-          className={`absolute inset-0 bg-black/55 transition-opacity ${
-            menuOpen ? "opacity-100" : "opacity-0"
-          }`}
-        />
-        <aside
-          className={`absolute right-0 top-0 flex h-full w-[min(20rem,86vw)] flex-col border-l border-white/12 bg-slate-950/96 px-5 py-5 shadow-2xl shadow-black/40 backdrop-blur-xl transition-transform duration-200 ${
-            menuOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <Logo variant="horizontal" className="h-8 w-auto text-white" />
-            <button
-              type="button"
-              onClick={() => setMenuOpen(false)}
-              aria-label="Close menu"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.06] text-white transition hover:bg-white/[0.12] focus:outline-none focus:ring-2 focus:ring-white/20"
-            >
-              <CloseIcon className="h-5 w-5" />
-            </button>
-          </div>
-
-          <nav aria-label="Mobile primary" className="mt-10 flex flex-col gap-2">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                onClick={() => setMenuOpen(false)}
-                className="rounded-xl px-3 py-3 text-base font-medium text-white/78 transition hover:bg-white/[0.07] hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="mt-auto pb-2 pt-8">
-            {authAwareCta ? (
-              <AuthAwareGetStartedBadge />
-            ) : (
-              <GetStartedBadge href={ctaHref} />
-            )}
-          </div>
-        </aside>
-      </div>
-    </header>
-  );
+  const create = authAwareCta ? <AuthAwareGetStartedBadge label="Create" className="!rounded-full !border-white !bg-white !px-4 !py-2 !text-black hover:!bg-white/85" /> : <GetStartedBadge href={ctaHref} label="Create" className="!rounded-full !border-white !bg-white !px-4 !py-2 !text-black hover:!bg-white/85" />;
+  return <header className="sticky top-0 z-50 border-b border-white/[.07] bg-[#050505]/80 backdrop-blur-xl"><div className="mx-auto flex h-[68px] max-w-[90rem] items-center justify-between px-5 sm:px-8 lg:px-12"><Link href="/" aria-label="La Musica home"><Logo variant="horizontal" className="h-7 w-auto sm:h-8" /></Link><nav className="hidden items-center gap-7 md:flex"><Link href="#pricing" className="text-sm text-white/60 transition hover:text-white">Pricing</Link><Link href="/auth" className="text-sm text-white/60 transition hover:text-white">Sign in</Link>{create}</nav><button type="button" onClick={() => setMenuOpen((open) => !open)} aria-expanded={menuOpen} aria-label="Toggle navigation" className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-white md:hidden"><span className="text-lg leading-none">{menuOpen ? "×" : "≡"}</span></button></div>{menuOpen ? <div className="border-t border-white/[.07] bg-[#0b0b0c] px-5 py-5 md:hidden"><nav className="flex flex-col gap-2" aria-label="Mobile navigation">{navItems.map((item) => <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="rounded-xl px-3 py-3 text-white/70 hover:bg-white/[.06]">{item.label}</Link>)}<Link href="/auth" onClick={() => setMenuOpen(false)} className="rounded-xl px-3 py-3 text-white/70 hover:bg-white/[.06]">Sign in</Link><div className="mt-2" onClick={() => setMenuOpen(false)}>{create}</div></nav></div> : null}</header>;
 }

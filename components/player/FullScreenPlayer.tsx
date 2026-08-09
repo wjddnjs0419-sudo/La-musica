@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import MusicThumbnail from "@/components/music-thumbnail";
 import LyricsView from "@/components/lyrics/LyricsView";
 import PlayerProgressBar from "@/components/player/PlayerProgressBar";
 import { parseMusicLyrics } from "@/lib/player/lyrics";
@@ -64,7 +63,6 @@ export default function FullScreenPlayer({
     [track, resolvedDuration],
   );
   const isInstrumental = Boolean(track.metadata?.instrumental);
-  const hasLyrics = Boolean(lyricLines?.length);
 
   // Lock scroll while fullscreen is mounted.
   // Chrome shifts scroll responsibility from body to html when body gets overflow:hidden,
@@ -127,38 +125,20 @@ export default function FullScreenPlayer({
           <div className="h-9 w-9" aria-hidden />
         </div>
 
-        {/* Album art + title — grows to fill space when there are no lyrics */}
-        <div
-          className={`flex flex-col items-center gap-3 px-8 py-4 ${
-            hasLyrics ? "" : "flex-1 justify-center"
-          }`}
-        >
-          <MusicThumbnail
-            track={track}
-            className="h-40 w-40 rounded-xl shadow-2xl sm:h-48 sm:w-48"
-            showTitle={false}
-          />
-          <div className="text-center">
-            <p className="text-lg font-bold text-white/95">{track.title}</p>
-            <p className="mt-0.5 text-xs text-white/40">AI Generated</p>
-          </div>
-          {!hasLyrics && (
-            <p className="mt-2 text-sm text-white/30">
-              {isInstrumental ? "Instrumental track" : "No lyrics available"}
-            </p>
-          )}
+        <div className="px-6 pb-2 pt-1 text-center">
+          <p className="text-base font-bold text-white/95">{track.title}</p>
+          <p className="mt-0.5 text-[11px] text-white/40">AI Generated</p>
         </div>
 
-        {/* Lyrics — only rendered when there are timed lines */}
-        {hasLyrics && (
-          <div className="min-h-0 flex-1">
-            <LyricsView
-              lines={lyricLines!}
-              currentTimeMs={currentTime * 1000}
-              instrumental={false}
-            />
-          </div>
-        )}
+        {/* Lyrics fill the space the album cover used to occupy. LyricsView
+            itself shows the instrumental/no-lyrics placeholder. */}
+        <div className="min-h-0 flex-1">
+          <LyricsView
+            lines={lyricLines ?? []}
+            currentTimeMs={currentTime * 1000}
+            instrumental={isInstrumental}
+          />
+        </div>
 
         <div className="px-6 pb-8 pt-2">
           <PlayerProgressBar

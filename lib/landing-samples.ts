@@ -7,6 +7,13 @@ export const LANDING_SAMPLE_MUSIC_IDS = [
   "58285232-41b1-4261-8644-3853bda59de6",
 ] as const;
 
+const EDITORIAL_TRACK_TITLES: Record<string, string> = {
+  "56b487e1-bfc9-4a95-aae2-dc3c4f02f73e": "After Midnight",
+  "0b2bcccd-ab58-44ba-8166-40b47f1e4e79": "Neon Hearts",
+  "cfbdd033-ac2c-4649-96aa-49fbe7a646d0": "Open Fields",
+  "58285232-41b1-4261-8644-3853bda59de6": "Northern Lights",
+};
+
 export type LandingSampleTrack = {
   id: string;
   title: string;
@@ -45,7 +52,7 @@ export async function getLandingSampleTracks(): Promise<LandingSampleTrack[]> {
       .filter((row): row is MusicSampleRow => Boolean(row?.audio_url))
       .map((row) => ({
         id: row.id,
-        title: row.title,
+        title: EDITORIAL_TRACK_TITLES[row.id] ?? row.title,
         description: describePrompt(row.prompt),
         duration: formatDuration(row.duration_seconds),
         audioSrc: row.audio_url ?? "",
