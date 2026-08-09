@@ -94,7 +94,7 @@ export default function FullScreenPlayer({
   const content = (
     <div
       style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 0, zIndex: 9999, overscrollBehavior: "none" }}
-      className="flex flex-col overflow-hidden touch-none"
+      className="isolate flex flex-col overflow-hidden bg-[#090909] touch-none"
     >
       {track.thumbnail_url ? (
         <img
@@ -106,7 +106,7 @@ export default function FullScreenPlayer({
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-violet-950/80 via-indigo-950/80 to-sky-950/80" />
       )}
-      <div className="absolute inset-0 bg-[#090909]/75" />
+      <div className="absolute inset-0 bg-[#090909]/55" />
 
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
         <header className="flex items-center justify-between px-5 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:px-12">
@@ -133,12 +133,12 @@ export default function FullScreenPlayer({
         </header>
 
         <main
-          className={`mx-auto grid min-h-0 w-full max-w-7xl flex-1 gap-8 overflow-y-auto px-6 py-7 sm:px-10 lg:grid-cols-[minmax(380px,0.95fr)_minmax(300px,0.75fr)] lg:items-center lg:gap-20 lg:overflow-hidden lg:px-12 ${
+          className={`mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-5 overflow-hidden px-5 pb-5 pt-2 sm:px-10 sm:py-7 lg:grid lg:gap-20 lg:overflow-hidden lg:px-12 lg:[grid-template-columns:minmax(380px,0.95fr)_minmax(300px,0.75fr)] lg:items-center ${
             hasLyrics ? "" : "lg:max-w-3xl lg:grid-cols-1"
           }`}
         >
-          <section className={`min-h-0 ${hasLyrics ? "" : "mx-auto w-full max-w-[570px]"}`}>
-            <div className="aspect-square w-full overflow-hidden bg-white/[0.06] shadow-2xl shadow-black/45 lg:max-h-[calc(100dvh-420px)] lg:max-w-[calc(100dvh-420px)]">
+          <section className={`shrink-0 ${hasLyrics ? "" : "mx-auto w-full max-w-[570px]"}`}>
+            <div className="mx-auto aspect-square w-full max-w-[min(68vw,320px)] overflow-hidden bg-white/[0.06] shadow-2xl shadow-black/45 lg:mx-0 lg:max-h-[calc(100dvh-420px)] lg:max-w-[calc(100dvh-420px)]">
               {track.thumbnail_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -150,7 +150,7 @@ export default function FullScreenPlayer({
                 <div className="h-full w-full bg-gradient-to-br from-violet-500 via-indigo-600 to-sky-500" />
               )}
             </div>
-            <div className="pt-5 sm:pt-6">
+            <div className="pt-4 sm:pt-6">
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
                 {isInstrumental ? "Instrumental" : "La Musica AI"}
               </p>
@@ -164,7 +164,7 @@ export default function FullScreenPlayer({
           </section>
 
           {hasLyrics && (
-            <section className="flex min-h-[18rem] flex-col overflow-hidden lg:h-full lg:min-h-0 lg:max-h-[min(620px,calc(100dvh-250px))]">
+            <section className="flex min-h-0 flex-1 flex-col overflow-hidden lg:h-full lg:max-h-[min(620px,calc(100dvh-250px))]">
               <p className="mb-4 shrink-0 text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
                 Lyrics
               </p>

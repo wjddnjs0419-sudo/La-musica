@@ -1,15 +1,14 @@
-# RESULT: Brand Asset Replacement - 2026-08-10
+# RESULT: Mobile Full-Screen Player Isolation - 2026-08-10
 
 ## Background
 
-The application still used legacy SVG identity assets while the supplied La Musica wordmark and wave icon establish the current brand treatment.
+The mobile full-screen player used a translucent surface, so the workspace header and mini player could show through. Its desktop-oriented content also became an unconstrained vertical stack on mobile, allowing art, metadata, and lyrics to compete for the same space.
 
 ## Implementation
 
-- Reworked the shared `Logo` component to render the supplied wave icon alone for icon-only use and wave icon plus wordmark for horizontal use.
-- Existing headers, workspace navigation, legal/contact pages, footer, and loading UI now inherit the new visual assets through the shared component.
-- Replaced the sign-in modal's handwritten note-and-text lockup with the shared full logo.
-- Updated browser and Apple metadata icons to the supplied icon PNG while keeping textual service-name content unchanged.
+- Added an opaque near-black base to the portal root. The blurred cover remains visible as the player background, but underlying workspace UI can no longer bleed through.
+- Reworked the mobile main region into a bounded vertical flex layout: compact square artwork, track metadata, and a remaining-space lyric region with its own scroll boundary.
+- Preserved the desktop two-column layout, full audio-control interface, portal behavior, and existing close/previous/next callbacks.
 
 ## Verification
 
@@ -21,4 +20,4 @@ The application still used legacy SVG identity assets while the supplied La Musi
 
 ## Lessons
 
-- Centralizing visual identity in a single component keeps brand-asset replacements complete without duplicating per-page layout logic.
+- A full-screen overlay must be opaque at its root; opacity belongs only to decoration that is already inside the overlay.
