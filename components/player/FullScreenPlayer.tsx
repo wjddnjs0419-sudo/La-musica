@@ -163,16 +163,18 @@ export default function FullScreenPlayer({
                 {resolvedDuration ? `${Math.floor(resolvedDuration / 60)} min ${Math.round(resolvedDuration % 60)} sec` : "AI generated music"}
               </p>
               {hasLyrics && (
-                <button
-                  type="button"
-                  onClick={() => setLyricsSheetTrackId(track.id)}
-                  aria-expanded={lyricsSheetOpen}
-                  aria-label="Open lyrics"
-                  className="mx-auto mt-5 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-4 py-2 text-xs font-medium text-white/75 backdrop-blur-sm transition hover:border-white/35 hover:text-white lg:hidden"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" aria-hidden className="h-4 w-4"><path d="m6 14 6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  Lyrics
-                </button>
+                <div className="mt-5 flex justify-center lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setLyricsSheetTrackId(track.id)}
+                    aria-expanded={lyricsSheetOpen}
+                    aria-label="Open lyrics"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-4 py-2 text-xs font-medium text-white/75 backdrop-blur-sm transition hover:border-white/35 hover:text-white"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden className="h-4 w-4"><path d="m6 14 6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    Lyrics
+                  </button>
+                </div>
               )}
             </div>
           </section>
