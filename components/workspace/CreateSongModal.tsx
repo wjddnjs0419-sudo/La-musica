@@ -117,7 +117,7 @@ export default function CreateSongModal({
         aria-label="Create song"
         aria-modal="true"
         role="dialog"
-        className="relative flex max-h-[100dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#101011] text-[#f4f1ea] shadow-2xl shadow-black/60 sm:max-h-[90dvh] sm:rounded-2xl"
+        className="relative flex max-h-[100dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#101011] text-[#f4f1ea] shadow-2xl shadow-black/60 sm:h-[min(860px,calc(100dvh-6rem))] sm:max-h-[90dvh] sm:rounded-2xl"
       >
         {phase === "generating" ? (
           <GeneratingState progress={progress} onClose={onClose} />
@@ -261,7 +261,7 @@ function StepNavigation({
   return (
     <nav
       aria-label="Create song steps"
-      className="flex shrink-0 border-b border-white/10 px-3 py-3 md:flex-col md:border-b-0 md:border-r md:px-5 md:py-6"
+      className="flex shrink-0 border-b border-white/10 px-3 py-3 md:flex-col md:justify-start md:gap-2 md:border-b-0 md:border-r md:px-5 md:py-6"
     >
       {STEPS.map((label, index) => {
         const number = index + 1;
@@ -273,7 +273,7 @@ function StepNavigation({
             onClick={() => onStepChange(number)}
             aria-current={active ? "step" : undefined}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-sm transition md:justify-start md:px-3",
+              "flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-sm transition md:min-h-12 md:w-full md:flex-none md:justify-start md:px-3",
               active
                 ? "bg-white text-black"
                 : "text-white/45 hover:bg-white/[.06] hover:text-white",
