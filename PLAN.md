@@ -6,9 +6,10 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 (none)
 
 ## In Progress
-- [ ] Workspace Create Song 3단계 모달 + 생성 진행/완료 경험 리뉴얼 — 기존 `/workspace`의 실제 생성 API·크레딧·폴링·오디오 상태를 보존하며, `workspace_renew` 프로토타입의 UI만 흡수.
+(none)
 
 ## Done
+- [Done] Workspace Create Song 3단계 모달 + 생성 진행/완료 경험 리뉴얼 (2026-08-10) — 기존 `/workspace` 안에서 실제 API·크레딧·폴링·오디오 상태를 보존한 채 Lyrics→Sound→Create 모달, 모바일 가로/데스크톱 세로 단계, 영상 기반 진행·완료·환불 실패 상태를 구현. 단위 테스트/build/lint 통과. See RESULT.md.
 - [Done] 모달 기반 Google 인증 전환 (2026-08-10) — 랜딩/가격/보호 워크스페이스 흐름의 `/auth` 이탈을 모달로 통일하고, OAuth returnTo 복원·Create Song 자동 오픈·기존 세션/Google 처리 보존. 5 tests/build 통과, lint 오류 0개. See RESULT.md.
 - [Done] 메인페이지 리뉴얼 디자인 명세 갱신 (2026-08-10) — Hero의 녹음실 배경, 가사→생성→완성 트랙 3단계 인터랙티브 데모, 단계 선택·실제 데모 오디오 재생·모션/접근성 규칙을 구현과 일치하도록 문서화. build/lint 통과. See RESULT.md.
 - [Done] 메인페이지 UI 리뉴얼 (2026-08-08) — 다크 에디토리얼 랜딩으로 Hero·실제 샘플 4곡·How It Works·실제 옵션 기반 Product proof·가격·CTA·Footer를 재구성. `/auth`→`/workspace`, `CREDIT_PLANS`, checkout, 단일 샘플 재생은 보존. 1440px/390px 반응형 구성, build 통과·lint 오류 0개. See RESULT.md.
@@ -19,7 +20,6 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 - [Done] Synced-lyrics 배포 전 리뷰 findings 7건 수정 (2026-07-12) — code-review 스킬로 synced-lyrics 기능 전체 검토 후 7건 TDD 수정: 서버리스 background sync `after()` 적용, pending→syncing CAS 가드(cron/client 중복 Gemini 호출 방지), 두 라우트에 중복돼 있던 sync 오케스트레이션을 `lib/lyrics/ensureLyricsSync.ts`로 통합, 클라이언트 무한 폴링 cutoff, 소괄호 가사 삭제 버그 수정, 기존 카탈로그 20곡 백필 마이그레이션. 141 tests/build/lint 통과. (이후 세션에서 기능 자체가 삭제됨.) See RESULT_ARCHIVE.md.
 - [Done] Auto-generate LRC after audio completion Phase 2 (2026-07-11) — completed mp3 기준 Gemini audio alignment로 `metadata.lyrics_lrc` 자동 생성. `lyrics_sync_status`(`pending`/`syncing`/`synced`/`failed`/`skipped`) 저장, user/auto lyrics 공통 처리, workspace polling 및 cron reconcile 경로까지 sync 종료 반영. 관련 단위 테스트/lint/build 통과. (이후 세션에서 기능 자체가 삭제됨.)
 - [Done] LRC parser + unified timed playback fallback Phase 1 (2026-07-11) — `metadata.lyrics_lrc` 및 `lyrics_payload`/`lyrics` 내 LRC timestamp를 우선 파싱해 user/auto lyrics 모두 동일한 `LyricLine[]` 경로 사용. LRC 없으면 저장 없이 기존 approximate timestamp를 런타임 계산. 실제 자동 LRC 생성은 Phase 2로 남김. 관련 단위 테스트 통과.
-- [Done] Workspace fast entry auth deblocking (2026-07-11) — `/workspace` 서버 auth/proxy session 대기 제거로 정적 shell 즉시 렌더, bootstrap에서 user/tracks/credit 후속 로드, OAuth callback 중복 auth 조회 제거, `musics(user_id, created_at DESC)` 마이그레이션 추가 및 DB 적용 완료. lint/build 통과. See RESULT_ARCHIVE.md.
 
 ## Future / Later
 - 언어 선택 UI 드롭다운 추가 — prompt-box에 Language 선택 컨트롤 추가해 `GenerateRequest.language` 를 실제로 전송. 컴파일러는 이미 vocal 모드에서 `sung in {language}` 주입을 지원함(현재 UI는 `language: undefined` 하드코딩 상태). 한국어/스페인어/프랑스어/영어 등 옵션 + Auto.

@@ -4,6 +4,7 @@ export type ProgressStep = {
 };
 
 export type GenerationPhase = "idle" | "generating" | "success" | "failed";
+export type RefundStatus = "not_required" | "pending" | "refunded" | "failed";
 
 export function calcGenerationProgress(elapsedMs: number): ProgressStep {
   const s = elapsedMs / 1000;

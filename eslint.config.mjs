@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Design-reference export; this nested app is not part of the deployable source tree.
     "AI Music Creation Landing Page/**",
+    "workspace_renew/**",
   ]),
 ]);
 

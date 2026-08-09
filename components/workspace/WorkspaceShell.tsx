@@ -3,18 +3,15 @@
 import * as React from "react";
 import TrackList, { TrackListSkeleton } from "@/components/workspace/TrackList";
 import MusicComposer from "@/components/workspace/MusicComposer";
+import CreateSongModal from "@/components/workspace/CreateSongModal";
 import MiniPlayer from "@/components/player/MiniPlayer";
 import FullScreenPlayer from "@/components/player/FullScreenPlayer";
-import GenerationProgressScreen from "@/components/generation/GenerationProgressScreen";
-import GenerationFailureDialog, {
-  type RefundStatus,
-} from "@/components/generation/GenerationFailureDialog";
 import {
   resolveRenameTitle,
   type GenerateRequest,
   type Music,
 } from "@/lib/music";
-import type { GenerationPhase } from "@/lib/generation/progress";
+import type { GenerationPhase, RefundStatus } from "@/lib/generation/progress";
 
 const POLL_INTERVAL = 3000;
 const PAGE_SIZE = 7;
@@ -72,14 +69,14 @@ export default function WorkspaceShell({
   const [genRefundStatus, setGenRefundStatus] =
     React.useState<RefundStatus>("pending");
   const [fullscreenOpen, setFullscreenOpen] = React.useState(false);
-  const [createComposerOpen, setCreateComposerOpen] = React.useState(false);
+  const [createModalOpen, setCreateModalOpen] = React.useState(false);
+  const [readyMusic, setReadyMusic] = React.useState<Music | null>(null);
 
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const polling = React.useRef<Map<string, number>>(new Map());
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const genMusicIdRef = React.useRef<string | null>(null);
   const genCallbackRef = React.useRef<(music: Music) => void>(() => {});
-  const composerRef = React.useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => {
     if (!loadInitialData) return;
@@ -117,7 +114,7 @@ export default function WorkspaceShell({
         }
         setError(null);
         if (new URLSearchParams(window.location.search).get("create") === "1") {
-          setCreateComposerOpen(true);
+          setCreateModalOpen(true);
           window.history.replaceState({}, "", "/workspace");
         }
       } catch (err) {
@@ -136,19 +133,14 @@ export default function WorkspaceShell({
     };
   }, [loadInitialData, onRemainingCreditChange, onUserChange]);
 
-  React.useEffect(() => {
-    if (!createComposerOpen || initialLoading) return;
-    const timer = window.setTimeout(() => composerRef.current?.focus(), 0);
-    return () => window.clearTimeout(timer);
-  }, [createComposerOpen, initialLoading]);
-
   const activeTrack = React.useMemo(
     () => tracks.find((t) => t.id === activeTrackId) ?? null,
     [activeTrackId, tracks],
   );
 
   const completedTracks = React.useMemo(
-    () => tracks.filter((t) => t.status === "completed" && Boolean(t.audio_url)),
+    () =>
+      tracks.filter((t) => t.status === "completed" && Boolean(t.audio_url)),
     [tracks],
   );
 
@@ -170,9 +162,7 @@ export default function WorkspaceShell({
     (placeholderId: string, music: Music) => {
       setTracks((prev) => [
         music,
-        ...prev.filter(
-          (t) => t.id !== placeholderId && t.id !== music.id,
-        ),
+        ...prev.filter((t) => t.id !== placeholderId && t.id !== music.id),
       ]);
     },
     [],
@@ -197,8 +187,7 @@ export default function WorkspaceShell({
             const done =
               json.music.status === "completed" ||
               json.music.status === "failed";
-            const thumbnailSettled =
-              json.music.thumbnail_status !== "pending";
+            const thumbnailSettled = json.music.thumbnail_status !== "pending";
             if (done && thumbnailSettled) {
               polling.current.delete(id);
               return;
@@ -320,11 +309,8 @@ export default function WorkspaceShell({
       if (music.id !== genMusicIdRef.current) return;
       if (music.status === "completed") {
         genMusicIdRef.current = null;
+        setReadyMusic(music);
         setGenPhase("success");
-        window.setTimeout(() => {
-          setGenPhase("idle");
-          void loadAndPlayTrack(music);
-        }, 1200);
       } else if (music.status === "failed") {
         genMusicIdRef.current = null;
         const refundStatus =
@@ -615,10 +601,11 @@ export default function WorkspaceShell({
 
       <div className="w-full shrink-0 px-3 pb-4 sm:px-4 sm:pb-6">
         <MusicComposer
-          inputRef={composerRef}
-          remainingCredits={remainingCredit}
-          error={error}
-          onSend={handleSend}
+          disabled={genPhase === "generating"}
+          onOpen={() => {
+            setError(null);
+            setCreateModalOpen(true);
+          }}
         />
         {activeTrack?.audio_url && (
           <div className="w-full">
@@ -644,47 +631,37 @@ export default function WorkspaceShell({
         )}
       </div>
 
-      {(genPhase === "generating" || genPhase === "success") && (
-        <GenerationProgressScreen
-          startMs={genStartMs}
-          phase={genPhase}
-          onClose={() => setGenPhase("idle")}
-        />
-      )}
-      {createComposerOpen ? (
-        <div
-          aria-hidden="true"
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/65 px-3 pb-5 backdrop-blur-sm sm:items-center sm:px-6 sm:pb-6"
-          onPointerDown={(event) => {
-            if (event.target === event.currentTarget) setCreateComposerOpen(false);
-          }}
-        >
-          <section aria-label="Create song" aria-modal="true" role="dialog" className="relative w-full max-w-3xl rounded-2xl border border-white/15 bg-[#101011] p-3 shadow-2xl shadow-black/60 sm:p-5">
-            <div className="mb-4 flex items-center justify-between px-1">
-              <h2 className="font-serif text-2xl text-white">Create your song</h2>
-              <button type="button" aria-label="Close create song" onClick={() => setCreateComposerOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-white/60 transition hover:bg-white/[.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/25">×</button>
-            </div>
-            <MusicComposer
-              inputRef={composerRef}
-              remainingCredits={remainingCredit}
-              error={error}
-              onSend={(payload) => {
-                setCreateComposerOpen(false);
-                handleSend(payload);
-              }}
-            />
-          </section>
-        </div>
-      ) : null}
-
-      {genPhase === "failed" && (
-        <GenerationFailureDialog
-          refundStatus={genRefundStatus}
-          onTryAgain={() => setGenPhase("idle")}
-          onEditPrompt={() => setGenPhase("idle")}
-          onClose={() => setGenPhase("idle")}
-        />
-      )}
+      <CreateSongModal
+        open={createModalOpen}
+        phase={genPhase}
+        readyMusic={readyMusic}
+        refundStatus={genRefundStatus}
+        remainingCredits={remainingCredit}
+        generationStartMs={genStartMs}
+        error={error}
+        onSubmit={(payload) => {
+          setReadyMusic(null);
+          void handleSend(payload);
+        }}
+        onClose={() => {
+          if (genPhase !== "generating") {
+            setGenPhase("idle");
+            setReadyMusic(null);
+          }
+          setCreateModalOpen(false);
+        }}
+        onOpenCreditModal={onOpenCreditModal ?? (() => {})}
+        onListenNow={(music) => {
+          void loadAndPlayTrack(music);
+          setReadyMusic(null);
+          setGenPhase("idle");
+          setCreateModalOpen(false);
+        }}
+        onReturnToEditor={() => {
+          setError(null);
+          setGenPhase("idle");
+        }}
+      />
 
       {fullscreenOpen && activeTrack && (
         <FullScreenPlayer
