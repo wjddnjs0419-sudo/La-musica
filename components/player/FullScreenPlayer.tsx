@@ -140,7 +140,7 @@ export default function FullScreenPlayer({
           }`}
         >
           <section className={`shrink-0 ${hasLyrics ? "" : "mx-auto w-full max-w-[570px]"}`}>
-            <div className="mx-auto aspect-square w-full max-w-[min(68vw,320px)] overflow-hidden bg-white/[0.06] shadow-2xl shadow-black/45 lg:mx-0 lg:max-h-[calc(100dvh-420px)] lg:max-w-[calc(100dvh-420px)]">
+            <div className="mx-auto aspect-square w-full max-w-[min(84vw,440px)] overflow-hidden bg-white/[0.06] shadow-2xl shadow-black/45 lg:mx-0 lg:max-h-[calc(100dvh-420px)] lg:max-w-[calc(100dvh-420px)]">
               {track.thumbnail_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -162,6 +162,18 @@ export default function FullScreenPlayer({
               <p className="mt-2 text-sm text-white/45">
                 {resolvedDuration ? `${Math.floor(resolvedDuration / 60)} min ${Math.round(resolvedDuration % 60)} sec` : "AI generated music"}
               </p>
+              {hasLyrics && (
+                <button
+                  type="button"
+                  onClick={() => setLyricsSheetTrackId(track.id)}
+                  aria-expanded={lyricsSheetOpen}
+                  aria-label="Open lyrics"
+                  className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-4 py-2 text-xs font-medium text-white/75 backdrop-blur-sm transition hover:border-white/35 hover:text-white lg:hidden"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden className="h-4 w-4"><path d="m6 14 6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  Lyrics
+                </button>
+              )}
             </div>
           </section>
 
@@ -182,17 +194,6 @@ export default function FullScreenPlayer({
 
           {hasLyrics && (
             <>
-              <button
-                type="button"
-                onClick={() => setLyricsSheetTrackId(track.id)}
-                aria-expanded={lyricsSheetOpen}
-                aria-label="Open lyrics"
-                className="absolute bottom-3 left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-4 py-2 text-xs font-medium text-white/75 backdrop-blur-sm transition hover:border-white/35 hover:text-white lg:hidden"
-              >
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden className="h-4 w-4"><path d="m6 14 6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                Lyrics
-              </button>
-
               {lyricsSheetOpen && (
                 <>
                   <button
