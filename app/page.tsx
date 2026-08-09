@@ -6,6 +6,7 @@ import HowItWorksSection from "@/components/how-it-works-section";
 import PricingSection from "@/components/pricing-section";
 import ProductFeatureSection from "@/components/product-feature-section";
 import SampleMusicSection from "@/components/sample-music-section";
+import { AuthProvider } from "@/components/auth-context";
 import { getLandingSampleTracks } from "@/lib/landing-samples";
 
 export const revalidate = 3600;
@@ -16,6 +17,7 @@ export default async function Home() {
   const sampleTracks = await getLandingSampleTracks();
 
   return (
+    <AuthProvider>
     <main className="landing-surface min-h-screen overflow-x-hidden text-white">
       <HeaderSection authAwareCta />
       <HeroSection authAwareCta demoAudioSrc={HERO_DEMO_AUDIO_URL} />
@@ -26,5 +28,6 @@ export default async function Home() {
       <CtaSection authAwareCta />
       <FooterSection />
     </main>
+    </AuthProvider>
   );
 }

@@ -1,0 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+
+:root { font-family: "DM Sans", Arial, sans-serif; color: #f4f1ea; background: #050505; }
+body { background: #050505; }
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+input::placeholder, textarea::placeholder { color: #71717a; }
+::selection { background: rgba(244, 241, 234, .22); color: #fff; }
+
+@keyframes generation-film {
+  0%, 100% { transform: scale(1.06) translate3d(-2%, -1%, 0) rotate(-2deg); filter: blur(1px); }
+  50% { transform: scale(1.18) translate3d(3%, 2%, 0) rotate(2deg); filter: blur(6px); }
+}
+.generation-film {
+  background: radial-gradient(ellipse at 22% 38%, rgba(198, 132, 85, .38), transparent 34%), radial-gradient(ellipse at 72% 62%, rgba(91, 113, 150, .3), transparent 37%), linear-gradient(125deg, #050505, #251c19 48%, #0c1219);
+  animation: generation-film 8s ease-in-out infinite;
+}

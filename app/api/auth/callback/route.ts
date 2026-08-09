@@ -4,9 +4,10 @@ import { createServerClient, setAuthCookies } from "@insforge/sdk/ssr";
 
 import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import { grantFreeCreditSafely } from "@/lib/grantFreeCredit";
+import { sanitizeAuthReturnPath } from "@/lib/auth-return";
 
 function redirectToAuth(request: NextRequest, error: string) {
-  return NextResponse.redirect(new URL(`/auth?error=${error}`, request.url));
+  return NextResponse.redirect(new URL(`/?auth=1&error=${error}`, request.url));
 }
 
 export async function GET(request: NextRequest) {
@@ -47,12 +48,16 @@ export async function GET(request: NextRequest) {
     console.error("free credit grant failed", grantError);
   }
 
-  const response = NextResponse.redirect(new URL("/workspace", request.url));
+  const returnTo = sanitizeAuthReturnPath(
+    cookieStore.get("la_musica_auth_return")?.value ?? null,
+  );
+  const response = NextResponse.redirect(new URL(returnTo, request.url));
   setAuthCookies(response.cookies, {
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
   });
   response.cookies.delete("insforge_code_verifier");
+  response.cookies.delete("la_musica_auth_return");
 
   return response;
 }

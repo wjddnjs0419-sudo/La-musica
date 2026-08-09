@@ -32,7 +32,7 @@ export default function ContactPage() {
               Home
             </Link>
             <div className="hidden sm:block">
-              <GetStartedBadge href="/auth" />
+              <GetStartedBadge href="/?auth=1" />
             </div>
           </nav>
         </div>

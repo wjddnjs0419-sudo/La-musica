@@ -1,23 +1,26 @@
-# RESULT: 메인페이지 리뉴얼 디자인 명세 갱신 - 2026-08-10
+# RESULT: 모달 기반 Google 인증 전환 - 2026-08-10
 
 ## Background
 
-메인페이지 Hero가 리뉴얼 후 추가된 3단계 인터랙티브 데모와 실제 오디오 재생을 기존 디자인 명세가 설명하지 않아, 문서와 구현을 일치시켰다.
+별도 `/auth` 화면이 메인·Workspace의 다크 에디토리얼 경험과 단절되고, OAuth 콜백도 항상 같은 Workspace 화면으로 이동했다.
 
 ## Implementation
 
-- Hero를 고정 표현물 대신 가사 입력 → 생성 진행 → 완성 트랙 재생의 인터랙티브 데모로 정의했다.
-- 녹음실 배경 이미지의 데스크톱·모바일 배치와 고정 데모 오디오의 재생 시간·진행 표시를 명세에 반영했다.
-- 단계 선택 방식, 무자동재생, `prefers-reduced-motion` 적용 범위를 접근성·모션 규칙에 명시했다.
+- 랜딩의 Sign in·Create CTA, 가격 결제의 인증 요구, Workspace bootstrap의 비인증 처리에서 같은 모달 인증 흐름을 사용하도록 전환했다.
+- 모달은 모노크롬 La Musica 마크·Google 단일 버튼·약관 링크·X/배경/Escape 닫기를 제공하며, near-black 표면과 절제된 흰색 UI로 구성했다.
+- Google OAuth 시작 전 안전한 내부 `returnTo`만 httpOnly 임시 쿠키에 보관하고, 기존 code verifier·세션 교환·무료 크레딧 부여를 유지한 채 콜백 뒤 해당 목적지로 복귀하도록 했다.
+- Hero/최종 CTA의 `create=1` 복귀는 Workspace에서 Create song composer 모달을 자동으로 열고 입력에 포커스를 준다. 기존 `/auth` 주소는 랜딩의 인증 모달 진입점으로 호환 처리한다.
 
 ## Verification Matrix
 
 | Change | Checks | Result |
 |---|---|---|
-| Documentation | 구현과 디자인 명세 대조 | Passed |
-| Build | `npm run build` | Passed |
+| Return-path security | `npm test -- lib/auth-return.test.ts` | 5 passed |
+| Production build | `npm run build` | Passed |
 | Lint | `npm run lint` | 0 errors; 기존 `FullScreenPlayer` `<img>` warning 1개 |
+| Diff hygiene | `git diff --check` | Passed |
 
 ## Lessons
 
-- 프레젠테이션용 인터랙션도 구현이 바뀌면 디자인 명세의 동작·접근성 규칙을 함께 갱신해야 한다.
+- OAuth의 원래 목적지 복원은 URL을 그대로 신뢰하지 않고, 서버에서 내부 경로만 허용한 뒤 짧은 수명의 httpOnly state로 보존해야 한다.
+- 인증과 생성 의도는 분리해 저장하면 로그인 후 사용자가 하려던 작업을 즉시 이어갈 수 있다.

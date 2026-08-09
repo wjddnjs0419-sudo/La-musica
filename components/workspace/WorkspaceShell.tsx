@@ -72,12 +72,14 @@ export default function WorkspaceShell({
   const [genRefundStatus, setGenRefundStatus] =
     React.useState<RefundStatus>("pending");
   const [fullscreenOpen, setFullscreenOpen] = React.useState(false);
+  const [createComposerOpen, setCreateComposerOpen] = React.useState(false);
 
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const polling = React.useRef<Map<string, number>>(new Map());
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const genMusicIdRef = React.useRef<string | null>(null);
   const genCallbackRef = React.useRef<(music: Music) => void>(() => {});
+  const composerRef = React.useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => {
     if (!loadInitialData) return;
@@ -97,7 +99,7 @@ export default function WorkspaceShell({
         };
         if (cancelled) return;
         if (response.status === 401) {
-          window.location.assign("/auth");
+          window.location.assign("/?auth=1&returnTo=%2Fworkspace");
           return;
         }
         if (!response.ok) {
@@ -114,6 +116,10 @@ export default function WorkspaceShell({
           onRemainingCreditChange?.(json.credit);
         }
         setError(null);
+        if (new URLSearchParams(window.location.search).get("create") === "1") {
+          setCreateComposerOpen(true);
+          window.history.replaceState({}, "", "/workspace");
+        }
       } catch (err) {
         if (!cancelled) {
           console.error("workspace bootstrap failed", err);
@@ -129,6 +135,12 @@ export default function WorkspaceShell({
       cancelled = true;
     };
   }, [loadInitialData, onRemainingCreditChange, onUserChange]);
+
+  React.useEffect(() => {
+    if (!createComposerOpen || initialLoading) return;
+    const timer = window.setTimeout(() => composerRef.current?.focus(), 0);
+    return () => window.clearTimeout(timer);
+  }, [createComposerOpen, initialLoading]);
 
   const activeTrack = React.useMemo(
     () => tracks.find((t) => t.id === activeTrackId) ?? null,
@@ -603,6 +615,7 @@ export default function WorkspaceShell({
 
       <div className="w-full shrink-0 px-3 pb-4 sm:px-4 sm:pb-6">
         <MusicComposer
+          inputRef={composerRef}
           remainingCredits={remainingCredit}
           error={error}
           onSend={handleSend}
@@ -638,6 +651,31 @@ export default function WorkspaceShell({
           onClose={() => setGenPhase("idle")}
         />
       )}
+      {createComposerOpen ? (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/65 px-3 pb-5 backdrop-blur-sm sm:items-center sm:px-6 sm:pb-6"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) setCreateComposerOpen(false);
+          }}
+        >
+          <section aria-label="Create song" aria-modal="true" role="dialog" className="relative w-full max-w-3xl rounded-2xl border border-white/15 bg-[#101011] p-3 shadow-2xl shadow-black/60 sm:p-5">
+            <div className="mb-4 flex items-center justify-between px-1">
+              <h2 className="font-serif text-2xl text-white">Create your song</h2>
+              <button type="button" aria-label="Close create song" onClick={() => setCreateComposerOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-white/60 transition hover:bg-white/[.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/25">×</button>
+            </div>
+            <MusicComposer
+              inputRef={composerRef}
+              remainingCredits={remainingCredit}
+              error={error}
+              onSend={(payload) => {
+                setCreateComposerOpen(false);
+                handleSend(payload);
+              }}
+            />
+          </section>
+        </div>
+      ) : null}
 
       {genPhase === "failed" && (
         <GenerationFailureDialog

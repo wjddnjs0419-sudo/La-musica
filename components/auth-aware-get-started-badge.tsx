@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import GetStartedBadge from "@/components/get-started-badge";
+import { useAuthModal } from "@/components/auth-context";
 
 let authStatusPromise: Promise<boolean> | null = null;
 
@@ -29,13 +30,14 @@ export default function AuthAwareGetStartedBadge({
   className,
   label,
 }: AuthAwareGetStartedBadgeProps) {
-  const [href, setHref] = React.useState("/auth");
+  const { openAuth } = useAuthModal();
+  const [authenticated, setAuthenticated] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
 
     readAuthStatus().then((authenticated) => {
-      if (!cancelled && authenticated) setHref("/workspace");
+        if (!cancelled) setAuthenticated(authenticated);
     });
 
     return () => {
@@ -43,5 +45,9 @@ export default function AuthAwareGetStartedBadge({
     };
   }, []);
 
-  return <GetStartedBadge href={href} className={className} label={label} />;
+  if (authenticated) {
+    return <GetStartedBadge href="/workspace?create=1" className={className} label={label} />;
+  }
+
+  return <GetStartedBadge onClick={() => openAuth({ returnTo: "/workspace?create=1", intent: "create" })} className={className} label={label} />;
 }

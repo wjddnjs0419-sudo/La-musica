@@ -8,7 +8,7 @@ function getAppOrigin(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const response = NextResponse.redirect(
-    new URL("/auth", getAppOrigin(request)),
+    new URL("/", getAppOrigin(request)),
     { status: 303 },
   );
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { CREDIT_PLANS, type CreditPlanId } from "@/lib/credits";
+import { useAuthModal } from "@/components/auth-context";
 
 type CreditPlan = (typeof CREDIT_PLANS)[number];
 
@@ -94,6 +95,7 @@ function PricingCard({
 }
 
 export default function PricingSection() {
+  const { openAuth } = useAuthModal();
   const [pendingPlan, setPendingPlan] = useState<CreditPlanId | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -112,7 +114,8 @@ export default function PricingSection() {
       });
 
       if (response.status === 401) {
-        window.location.assign("/auth");
+        openAuth({ returnTo: "/#pricing", intent: "signin" });
+        setPendingPlan(null);
         return;
       }
 

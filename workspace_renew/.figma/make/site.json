@@ -1,0 +1,10 @@
+{
+  "description": "Enables users to browse, search, play, and manage AI-generated music tracks while seamlessly creating new songs through a guided multi-step process.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
