@@ -135,7 +135,7 @@ export default function FullScreenPlayer({
         </header>
 
         <main
-          className={`relative mx-auto flex min-h-0 w-full max-w-7xl ${hasLyrics ? "flex-1" : "max-lg:!flex-none"} flex-col gap-5 overflow-hidden px-5 pb-5 pt-2 sm:px-10 sm:py-7 lg:flex-1 lg:grid lg:gap-20 lg:overflow-hidden lg:px-12 lg:[grid-template-columns:minmax(380px,0.95fr)_minmax(300px,0.75fr)] lg:items-center ${
+          className={`relative mx-auto flex min-h-0 w-full max-w-7xl ${lyricsSheetOpen ? "flex-1" : "max-lg:!flex-none"} flex-col gap-5 overflow-hidden px-5 pb-5 pt-2 sm:px-10 sm:py-7 lg:flex-1 lg:grid lg:gap-20 lg:overflow-hidden lg:px-12 lg:[grid-template-columns:minmax(380px,0.95fr)_minmax(300px,0.75fr)] lg:items-center ${
             hasLyrics ? "" : "lg:max-w-3xl lg:grid-cols-1"
           }`}
         >
