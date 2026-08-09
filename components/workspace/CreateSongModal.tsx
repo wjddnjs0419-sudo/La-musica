@@ -68,6 +68,11 @@ export default function CreateSongModal({
   );
   const [advancedOpen, setAdvancedOpen] = React.useState(false);
   const [lyricsAssistantOpen, setLyricsAssistantOpen] = React.useState(false);
+  const [lyricsMode, setLyricsMode] = React.useState<"write" | "ai">("write");
+  const [lyricsIdea, setLyricsIdea] = React.useState("");
+  const [soundMode, setSoundMode] = React.useState<"simple" | "advanced">(
+    "simple",
+  );
   const [elapsedMs, setElapsedMs] = React.useState(0);
 
   React.useEffect(() => {
@@ -92,7 +97,7 @@ export default function CreateSongModal({
 
   const updateForm = (patch: Partial<CreateSongFormState>) =>
     setForm((current) => ({ ...current, ...patch }));
-  const canContinue = form.prompt.trim().length > 0;
+  const canContinue = step === 1 || form.prompt.trim().length > 0;
   const progress = calcGenerationProgress(elapsedMs);
 
   const goToEditor = () => {
@@ -156,6 +161,10 @@ export default function CreateSongModal({
                   <LyricsStep
                     form={form}
                     updateForm={updateForm}
+                    mode={lyricsMode}
+                    idea={lyricsIdea}
+                    onModeChange={setLyricsMode}
+                    onIdeaChange={setLyricsIdea}
                     onOpenAssistant={() => setLyricsAssistantOpen(true)}
                   />
                 )}
@@ -165,6 +174,8 @@ export default function CreateSongModal({
                     updateForm={updateForm}
                     advancedOpen={advancedOpen}
                     onToggleAdvanced={() => setAdvancedOpen((value) => !value)}
+                    mode={soundMode}
+                    onModeChange={setSoundMode}
                   />
                 )}
                 {step === 3 && (
@@ -225,7 +236,7 @@ export default function CreateSongModal({
         open={lyricsAssistantOpen}
         onClose={() => setLyricsAssistantOpen(false)}
         context={{
-          prompt: form.prompt.trim() || undefined,
+          prompt: lyricsIdea.trim() || form.prompt.trim() || undefined,
           genre: form.genre || undefined,
           moods: form.moods.length ? form.moods : undefined,
           vocalMode: form.vocalMode,
@@ -233,6 +244,7 @@ export default function CreateSongModal({
           useCase: form.useCase || undefined,
         }}
         currentLyrics={form.lyrics}
+        initialInstruction={form.lyrics.trim() ? "" : lyricsIdea}
         onApply={(lyrics) => updateForm({ lyrics })}
       />
     </div>
@@ -286,54 +298,106 @@ function StepNavigation({
 function LyricsStep({
   form,
   updateForm,
+  mode,
+  idea,
+  onModeChange,
+  onIdeaChange,
   onOpenAssistant,
 }: {
   form: CreateSongFormState;
   updateForm: (patch: Partial<CreateSongFormState>) => void;
+  mode: "write" | "ai";
+  idea: string;
+  onModeChange: (mode: "write" | "ai") => void;
+  onIdeaChange: (idea: string) => void;
   onOpenAssistant: () => void;
 }) {
   return (
     <div>
       <Eyebrow>Lyrics</Eyebrow>
       <h3 className="mt-2 text-2xl font-medium tracking-[-0.04em]">
-        Start with your idea
+        How do you want to start?
       </h3>
-      <p className="mt-2 text-sm text-white/45">
-        Describe the song first. Add lyrics yourself or let AI help you write
-        them.
-      </p>
-      <label className="mt-7 block text-sm font-medium">
-        What should your song feel like?
-      </label>
-      <textarea
-        value={form.prompt}
-        onChange={(event) => updateForm({ prompt: event.target.value })}
-        rows={4}
-        placeholder="e.g. Dreamy late-night pop with warm piano and soft drums"
-        className="mt-3 w-full resize-none rounded-xl border border-white/15 bg-white/[.04] p-4 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/35"
-      />
-      <div className="mt-7 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium">Lyrics</p>
-          <p className="mt-1 text-xs text-white/40">
-            Leave blank and we&apos;ll write original lyrics for vocal songs.
-          </p>
-        </div>
+      <div className="mt-6 inline-flex border border-white/15 bg-white/[.03] p-1">
         <button
           type="button"
-          onClick={onOpenAssistant}
-          className="shrink-0 rounded-full border border-white/20 px-3 py-2 text-xs font-medium text-white/80 transition hover:border-white/45 hover:text-white"
+          onClick={() => onModeChange("write")}
+          className={cn(
+            "px-4 py-2.5 text-sm transition",
+            mode === "write"
+              ? "bg-white text-black"
+              : "text-white/55 hover:text-white",
+          )}
         >
-          Write with AI
+          Write my own lyrics
+        </button>
+        <button
+          type="button"
+          onClick={() => onModeChange("ai")}
+          className={cn(
+            "px-4 py-2.5 text-sm transition",
+            mode === "ai"
+              ? "bg-white text-black"
+              : "text-white/55 hover:text-white",
+          )}
+        >
+          Generate with AI
         </button>
       </div>
-      <textarea
-        value={form.lyrics}
-        onChange={(event) => updateForm({ lyrics: event.target.value })}
-        rows={7}
-        placeholder="Write or paste lyrics here..."
-        className="mt-3 w-full resize-none rounded-xl border border-white/15 bg-white/[.04] p-4 text-sm leading-6 text-white outline-none placeholder:text-white/30 focus:border-white/35"
-      />
+      {mode === "write" ? (
+        <div className="mt-7">
+          <label className="text-sm font-medium">Your lyrics</label>
+          <textarea
+            value={form.lyrics}
+            onChange={(event) => updateForm({ lyrics: event.target.value })}
+            rows={11}
+            placeholder="Write or paste your lyrics here..."
+            className="mt-3 w-full resize-none border border-white/15 bg-white/[.04] p-4 text-sm leading-6 text-white outline-none placeholder:text-white/30 focus:border-white/35"
+          />
+        </div>
+      ) : (
+        <div className="mt-7">
+          <label className="text-sm font-medium">
+            What should the song be about?
+          </label>
+          <textarea
+            value={idea}
+            onChange={(event) => onIdeaChange(event.target.value)}
+            rows={4}
+            placeholder="e.g. A nostalgic summer love song about a night in Barcelona"
+            className="mt-3 w-full resize-none border border-white/15 bg-white/[.04] p-4 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/35"
+          />
+          <button
+            type="button"
+            onClick={onOpenAssistant}
+            disabled={!idea.trim()}
+            className="mt-5 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90 disabled:pointer-events-none disabled:opacity-35"
+          >
+            Generate lyrics
+          </button>
+          <div className="mt-7">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Generated lyrics</label>
+              {form.lyrics && (
+                <button
+                  type="button"
+                  onClick={onOpenAssistant}
+                  className="text-xs text-white/50 underline underline-offset-4 transition hover:text-white"
+                >
+                  Refine with AI
+                </button>
+              )}
+            </div>
+            <textarea
+              value={form.lyrics}
+              onChange={(event) => updateForm({ lyrics: event.target.value })}
+              rows={9}
+              placeholder="Your AI-generated lyrics will appear here..."
+              className="mt-3 w-full resize-none border border-white/15 bg-white/[.04] p-4 text-sm leading-6 text-white outline-none placeholder:text-white/30 focus:border-white/35"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -343,11 +407,15 @@ function SoundStep({
   updateForm,
   advancedOpen,
   onToggleAdvanced,
+  mode,
+  onModeChange,
 }: {
   form: CreateSongFormState;
   updateForm: (patch: Partial<CreateSongFormState>) => void;
   advancedOpen: boolean;
   onToggleAdvanced: () => void;
+  mode: "simple" | "advanced";
+  onModeChange: (mode: "simple" | "advanced") => void;
 }) {
   const applyPreset = (preset: (typeof CREATE_SONG_PRESETS)[number]) =>
     updateForm({
@@ -366,113 +434,166 @@ function SoundStep({
       <p className="mt-2 text-sm text-white/45">
         Choose the sound, mood, and voice for your track.
       </p>
-      <Field label="Genre">
-        <ChipGroup
-          options={GENRE_OPTIONS}
-          selected={form.genre}
-          onSelect={(genre) => updateForm({ genre: genre as MusicGenre })}
-          allowEmpty
-        />
-      </Field>
-      <Field label="Mood" hint="Choose up to 3">
-        <div className="flex flex-wrap gap-2">
-          {MOOD_OPTIONS.map((option) => (
-            <Chip
-              key={option.value}
-              active={form.moods.includes(option.value)}
-              disabled={
-                !form.moods.includes(option.value) && form.moods.length >= 3
-              }
-              onClick={() =>
-                updateForm({
-                  moods: toggleMoodSelection(form.moods, option.value),
-                })
-              }
-            >
-              {option.label}
-            </Chip>
-          ))}
-        </div>
-      </Field>
-      <Field label="Vocal">
-        <Segmented
-          options={VOCAL_OPTIONS}
-          value={form.vocalMode}
-          onChange={(vocalMode) =>
-            updateForm({ vocalMode: vocalMode as VocalMode })
-          }
-        />
-      </Field>
-      {form.vocalMode === "instrumental" && form.lyrics.trim() && (
-        <p className="-mt-3 mb-5 text-xs text-white/40">
-          Lyrics won&apos;t be used for this generation.
-        </p>
-      )}
-      <Field label="Duration">
-        <Segmented
-          options={[
-            { value: "60", label: "Short · 1 min" },
-            { value: "180", label: "Full · 3 min" },
-          ]}
-          value={String(form.duration)}
-          onChange={(value) =>
-            updateForm({ duration: Number(value) as 60 | 180 })
-          }
-        />
-      </Field>
-      <label className="mb-6 block text-sm font-medium">
-        Anything else about the sound?{" "}
-        <span className="ml-1 text-xs font-normal text-white/35">Optional</span>
-        <textarea
-          value={form.soundDirection}
-          onChange={(event) =>
-            updateForm({ soundDirection: event.target.value })
-          }
-          rows={3}
-          placeholder="e.g. warm piano, soft drums, late-night atmosphere"
-          className="mt-3 w-full resize-none rounded-xl border border-white/15 bg-white/[.04] p-3 text-sm font-normal text-white outline-none placeholder:text-white/30 focus:border-white/35"
-        />
-      </label>
-      <button
-        type="button"
-        onClick={onToggleAdvanced}
-        aria-expanded={advancedOpen}
-        className="flex w-full items-center justify-between border-t border-white/10 py-4 text-sm font-medium text-white/75"
-      >
-        Advanced settings <span>{advancedOpen ? "−" : "+"}</span>
-      </button>
-      {advancedOpen && (
-        <div className="space-y-6 border-b border-white/10 pb-6">
-          <Field label="Language">
-            <Select
-              value={form.language}
-              onChange={(language) => updateForm({ language })}
-              options={LANGUAGE_OPTIONS}
+      <div className="mt-6 inline-flex border border-white/15 bg-white/[.03] p-1">
+        <button
+          type="button"
+          onClick={() => onModeChange("simple")}
+          className={cn(
+            "px-4 py-2.5 text-sm transition",
+            mode === "simple"
+              ? "bg-white text-black"
+              : "text-white/55 hover:text-white",
+          )}
+        >
+          Simple
+        </button>
+        <button
+          type="button"
+          onClick={() => onModeChange("advanced")}
+          className={cn(
+            "px-4 py-2.5 text-sm transition",
+            mode === "advanced"
+              ? "bg-white text-black"
+              : "text-white/55 hover:text-white",
+          )}
+        >
+          Advanced
+        </button>
+      </div>
+      {mode === "simple" ? (
+        <label className="mt-7 block text-sm font-medium">
+          Describe your sound <span className="text-white/40">*</span>
+          <textarea
+            value={form.prompt}
+            onChange={(event) => updateForm({ prompt: event.target.value })}
+            rows={7}
+            placeholder="e.g. Dreamy indie pop with warm female vocals and a nostalgic late-night feel"
+            className="mt-3 w-full resize-none border border-white/15 bg-white/[.04] p-4 text-sm font-normal text-white outline-none placeholder:text-white/30 focus:border-white/35"
+          />
+        </label>
+      ) : (
+        <>
+          <label className="mt-7 block text-sm font-medium">
+            Describe your sound <span className="text-white/40">*</span>
+            <textarea
+              value={form.prompt}
+              onChange={(event) => updateForm({ prompt: event.target.value })}
+              rows={4}
+              placeholder="e.g. Dreamy indie pop with warm female vocals and a nostalgic late-night feel"
+              className="mt-3 w-full resize-none border border-white/15 bg-white/[.04] p-4 text-sm font-normal text-white outline-none placeholder:text-white/30 focus:border-white/35"
+            />
+          </label>
+          <Field label="Genre">
+            <ChipGroup
+              options={GENRE_OPTIONS}
+              selected={form.genre}
+              onSelect={(genre) => updateForm({ genre: genre as MusicGenre })}
+              allowEmpty
             />
           </Field>
-          <Field label="Use case">
-            <Select
-              value={form.useCase}
-              onChange={(useCase) =>
-                updateForm({ useCase: useCase as MusicUseCase | "" })
-              }
-              options={USE_CASE_OPTIONS}
-            />
-          </Field>
-          <Field label="Quick presets">
+          <Field label="Mood" hint="Choose up to 3">
             <div className="flex flex-wrap gap-2">
-              {CREATE_SONG_PRESETS.map((preset) => (
+              {MOOD_OPTIONS.map((option) => (
                 <Chip
-                  key={preset.label}
-                  active={false}
-                  onClick={() => applyPreset(preset)}
+                  key={option.value}
+                  active={form.moods.includes(option.value)}
+                  disabled={
+                    !form.moods.includes(option.value) && form.moods.length >= 3
+                  }
+                  onClick={() =>
+                    updateForm({
+                      moods: toggleMoodSelection(form.moods, option.value),
+                    })
+                  }
                 >
-                  {preset.label}
+                  {option.label}
                 </Chip>
               ))}
             </div>
           </Field>
-        </div>
+          <Field label="Vocal">
+            <Segmented
+              options={VOCAL_OPTIONS}
+              value={form.vocalMode}
+              onChange={(vocalMode) =>
+                updateForm({ vocalMode: vocalMode as VocalMode })
+              }
+            />
+          </Field>
+          {form.vocalMode === "instrumental" && form.lyrics.trim() && (
+            <p className="-mt-3 mb-5 text-xs text-white/40">
+              Lyrics won&apos;t be used for this generation.
+            </p>
+          )}
+          <Field label="Duration">
+            <Segmented
+              options={[
+                { value: "60", label: "Short · 1 min" },
+                { value: "180", label: "Full · 3 min" },
+              ]}
+              value={String(form.duration)}
+              onChange={(value) =>
+                updateForm({ duration: Number(value) as 60 | 180 })
+              }
+            />
+          </Field>
+          <label className="mb-6 block text-sm font-medium">
+            Anything else about the sound?{" "}
+            <span className="ml-1 text-xs font-normal text-white/35">
+              Optional
+            </span>
+            <textarea
+              value={form.soundDirection}
+              onChange={(event) =>
+                updateForm({ soundDirection: event.target.value })
+              }
+              rows={3}
+              placeholder="e.g. warm piano, soft drums, late-night atmosphere"
+              className="mt-3 w-full resize-none rounded-xl border border-white/15 bg-white/[.04] p-3 text-sm font-normal text-white outline-none placeholder:text-white/30 focus:border-white/35"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={onToggleAdvanced}
+            aria-expanded={advancedOpen}
+            className="flex w-full items-center justify-between border-t border-white/10 py-4 text-sm font-medium text-white/75"
+          >
+            Advanced settings <span>{advancedOpen ? "−" : "+"}</span>
+          </button>
+          {advancedOpen && (
+            <div className="space-y-6 border-b border-white/10 pb-6">
+              <Field label="Language">
+                <Select
+                  value={form.language}
+                  onChange={(language) => updateForm({ language })}
+                  options={LANGUAGE_OPTIONS}
+                />
+              </Field>
+              <Field label="Use case">
+                <Select
+                  value={form.useCase}
+                  onChange={(useCase) =>
+                    updateForm({ useCase: useCase as MusicUseCase | "" })
+                  }
+                  options={USE_CASE_OPTIONS}
+                />
+              </Field>
+              <Field label="Quick presets">
+                <div className="flex flex-wrap gap-2">
+                  {CREATE_SONG_PRESETS.map((preset) => (
+                    <Chip
+                      key={preset.label}
+                      active={false}
+                      onClick={() => applyPreset(preset)}
+                    >
+                      {preset.label}
+                    </Chip>
+                  ))}
+                </div>
+              </Field>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

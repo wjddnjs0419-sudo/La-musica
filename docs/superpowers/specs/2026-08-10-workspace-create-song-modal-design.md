@@ -38,12 +38,15 @@ WorkspaceShell
 
 ### Lyrics
 
-- 직접 작성과 AI 가사 작성은 기존 `LyricsAssistantModal` 및 현재 가사 상태를 사용한다.
+- `Write my own lyrics`와 `Generate with AI`를 명시적 탭으로 제공한다.
+- 직접 작성 탭은 가사 textarea만 보인다.
+- AI 탭은 곡 주제 입력과 Generate lyrics를 제공한다. 클릭하면 기존 AI 대화 API를 Create Song과 같은 다크 에디토리얼 대화 모달에서 시작하며, Apply lyrics 결과는 같은 AI 탭의 편집 가능한 Generated lyrics textarea에 돌아온다.
 - 보컬 곡에서 비어 있는 가사는 기존 서버의 자동 가사 생성 동작을 유지한다.
 - Instrumental을 선택해도 이미 작성한 가사는 삭제하지 않는다.
 
 ### Sound
 
+- `Simple`은 필수 Describe your sound 입력만, `Advanced`는 그 입력을 유지한 채 구조화된 설정을 보인다.
 - 핵심 제어: Genre 단일 선택, Mood 최대 3개, Vocal 단일 선택, Duration(60/180초) 단일 선택.
 - `instrumental`과 가사가 함께 존재하면 “Lyrics won't be used for this generation.” 안내를 보인다.
 - Language, Use case, Quick presets는 접힌 Advanced settings에 둔다.
