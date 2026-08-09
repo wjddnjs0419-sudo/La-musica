@@ -558,8 +558,8 @@ export default function WorkspaceShell({
         ref={scrollRef}
         className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
-        <div className="mx-auto flex w-full max-w-none flex-col px-6 py-10 sm:px-10 sm:py-12 lg:px-12">
-          <div className="mb-12 flex items-end justify-between gap-5">
+        <div className="mx-auto flex w-full max-w-none flex-col px-6 py-6 sm:px-10 sm:py-7 lg:px-12">
+          <div className="mb-5 flex items-end justify-between gap-5">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
                 Library
@@ -579,7 +579,7 @@ export default function WorkspaceShell({
               />
             </div>
           </div>
-          <div className="mb-9 flex items-end justify-between gap-5 border-b border-white/10 pb-9">
+          <div className="mb-5 flex items-end justify-between gap-5 border-b border-white/10 pb-5">
             <p className="text-lg text-white/45">
               {filteredTracks.length} generated {filteredTracks.length === 1 ? "track" : "tracks"}
             </p>
