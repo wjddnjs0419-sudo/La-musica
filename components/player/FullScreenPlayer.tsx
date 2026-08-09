@@ -109,7 +109,7 @@ export default function FullScreenPlayer({
       <div className="absolute inset-0 bg-[#090909]/75" />
 
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-5 pt-5 sm:px-8 sm:pt-7 lg:px-12">
+        <header className="flex items-center justify-between px-5 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:px-12">
           <button
             type="button"
             onClick={onClose}
@@ -124,10 +124,10 @@ export default function FullScreenPlayer({
                 strokeLinecap="round"
               />
             </svg>
-            <span className="hidden sm:inline">Back to My music</span>
+            <span className="hidden sm:inline">Back to my music</span>
           </button>
-          <p className="text-[10px] font-medium uppercase tracking-widest text-white/30">
-            Now Playing
+          <p className="text-xs font-medium tracking-[0.14em] text-white/35">
+            Now playing
           </p>
           <div className="h-9 w-9" aria-hidden />
         </header>
@@ -179,19 +179,19 @@ export default function FullScreenPlayer({
           )}
         </main>
 
-        <footer className="shrink-0 border-t border-white/10 px-6 pb-6 pt-3 sm:px-10 sm:pb-8 lg:px-12">
+        <footer className="shrink-0 border-t border-white/10 px-6 pb-3 pt-1 sm:px-10 sm:pb-4 lg:px-12">
           <div className="mx-auto max-w-7xl">
             <PlayerProgressBar
               currentTime={currentTime}
               duration={resolvedDuration}
               onSeek={onSeek}
             />
-            <div className="relative mt-3 flex items-center justify-center gap-7 sm:mt-4 sm:gap-10">
+            <div className="relative mt-2 flex items-center justify-center gap-6 sm:gap-8">
             <button
               type="button"
               onClick={onPrev}
               disabled={!onPrev}
-              className="flex h-11 w-11 items-center justify-center rounded-full text-white/60 transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15 disabled:cursor-default"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-white/60 transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15 disabled:cursor-default"
               aria-label="Previous track"
             >
               <PreviousIcon className={`h-6 w-6 ${!onPrev ? "opacity-30" : ""}`} />
@@ -200,13 +200,13 @@ export default function FullScreenPlayer({
             <button
               type="button"
               onClick={onTogglePlay}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f4f1ea] text-black hover:bg-white focus:outline-none focus:ring-2 focus:ring-white/30 sm:h-16 sm:w-16"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f4f1ea] text-black hover:bg-white focus:outline-none focus:ring-2 focus:ring-white/30 sm:h-14 sm:w-14"
               aria-label={playing ? "Pause" : "Play"}
             >
               {playing ? (
-                <PauseIcon className="h-8 w-8" />
+                <PauseIcon className="h-6 w-6" />
               ) : (
-                <PlayIcon className="h-8 w-8 pl-0.5" />
+                <PlayIcon className="h-6 w-6 pl-0.5" />
               )}
             </button>
 
@@ -214,7 +214,7 @@ export default function FullScreenPlayer({
               type="button"
               onClick={onNext}
               disabled={!onNext}
-              className="flex h-11 w-11 items-center justify-center rounded-full text-white/60 transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15 disabled:cursor-default"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-white/60 transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15 disabled:cursor-default"
               aria-label="Next track"
             >
               <NextIcon className={`h-6 w-6 ${!onNext ? "opacity-30" : ""}`} />

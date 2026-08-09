@@ -10,6 +10,7 @@
 - 검색을 헤더에서 Library의 `generated tracks` 행으로 옮기고, 실제 `query` 상태를 직접 갱신한다. 콘텐츠는 시안처럼 넓은 데스크톱 폭과 큰 수직 여백을 사용한다.
 - Workspace 하단의 `Create song / Describe your music, lyrics, and sound.` 프롬프트는 제거했다. 상단 Create song 버튼은 그대로 유지한다.
 - mini player도 새 고정 바를 제거하고, 기존 카드형 3열 구조와 진행바를 그대로 복원했다. 프롬프트와 같은 `#303030` 표면색으로만 조정했다.
+- Workspace 상단의 과도한 수직 여백을 줄이고, 활성 목록 행의 pause 아이콘은 검정색을 명시했다. Full-screen player는 상단 메타와 본문 사이 여백을 확보하고, 하단 컨트롤/footer 높이를 줄여 제목과 본문이 잘리지 않게 조정했다.
 - Credit modal은 현재 잔액, 3개의 실제 checkout 플랜, 베타 코드 redeem 입력을 시안의 사각 패널·monochrome button hierarchy로 재구성했다. 플랜 패널은 참조 크기로 축소하고 modal 폭은 980px로 제한했다. checkout과 coupon API는 변경하지 않았다.
 
 ## Verification Matrix

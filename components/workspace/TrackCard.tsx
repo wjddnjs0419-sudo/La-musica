@@ -156,7 +156,7 @@ export default function TrackCard({
         {pending ? (
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300/30 border-t-amber-300" />
         ) : playing ? (
-          <PauseIcon className="h-4 w-4" />
+          <PauseIcon className="h-4 w-4 text-black" />
         ) : (
           <PlayIcon className="h-4 w-4" />
         )}

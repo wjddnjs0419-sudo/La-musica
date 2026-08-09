@@ -98,7 +98,7 @@ export default function MiniPlayer({
         </button>
       </div>
 
-      <div className="hidden min-h-16 items-center gap-3 px-3 py-2 lg:grid lg:grid-cols-[minmax(220px,1fr)_minmax(260px,1.2fr)_minmax(180px,0.8fr)]">
+      <div className="hidden min-h-14 items-center gap-3 px-3 py-1.5 lg:grid lg:grid-cols-[minmax(220px,1fr)_minmax(260px,1.2fr)_minmax(180px,0.8fr)]">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
@@ -109,7 +109,7 @@ export default function MiniPlayer({
           >
             <MusicThumbnail
               track={track}
-              className="h-11 w-11"
+              className="h-10 w-10"
               showTitle={Boolean(track.thumbnail_url)}
             />
           </button>

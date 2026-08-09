@@ -558,8 +558,8 @@ export default function WorkspaceShell({
         ref={scrollRef}
         className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
-        <div className="mx-auto flex w-full max-w-none flex-col px-6 py-20 sm:px-10 lg:px-12">
-          <div className="mb-20 flex items-end justify-between gap-5">
+        <div className="mx-auto flex w-full max-w-none flex-col px-6 py-10 sm:px-10 sm:py-12 lg:px-12">
+          <div className="mb-12 flex items-end justify-between gap-5">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
                 Library
