@@ -138,7 +138,7 @@ export default function FullScreenPlayer({
           }`}
         >
           <section className={`min-h-0 ${hasLyrics ? "" : "mx-auto w-full max-w-[570px]"}`}>
-            <div className="aspect-square w-full overflow-hidden bg-white/[0.06] shadow-2xl shadow-black/45">
+            <div className="aspect-square w-full overflow-hidden bg-white/[0.06] shadow-2xl shadow-black/45 lg:max-h-[calc(100dvh-420px)] lg:max-w-[calc(100dvh-420px)]">
               {track.thumbnail_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
