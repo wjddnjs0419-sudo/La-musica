@@ -4,6 +4,22 @@
 
 ---
 
+# RESULT: Workspace Shell Fidelity Correction - 2026-08-10
+
+## Implementation
+
+- Workspace header, Credits/profile controls, Library reading frame, and Credits modal were restyled to match the current near-black system while retaining live credit, checkout, coupon, audio, and Create Song behavior.
+- The bottom Create Song prompt was removed; the existing mini player card layout was retained with a dark-gray surface.
+- Workspace and full-screen player spacing were compacted, including viewport-bounded artwork so track metadata stays above playback controls.
+
+## Verification
+
+- `npm test`: 139 passed.
+- `npm run build`: passed.
+- `npm run lint`: 0 errors; existing FullScreenPlayer background image warning remains.
+
+---
+
 # RESULT: Workspace Library + Music Player 리뉴얼 - 2026-08-10
 
 ## Background

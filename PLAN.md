@@ -9,6 +9,7 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 (none)
 
 ## Done
+- [Done] Privacy/Terms UI 리뉴얼 (2026-08-10) — shared LegalPage를 current La Musica near-black header·legal reading column으로 교체하고 Footer 없이 문서·metadata·링크를 보존. build/lint 오류 0개 통과. See RESULT.md.
 - [Done] Workspace shell fidelity correction (2026-08-10) — 목표 시안 기준의 90px 헤더·Credits/프로필 메뉴·Library 검색/폭·축소된 Credits 모달을 구현하고, 하단 Create Song 프롬프트는 제거하며 mini player는 기존 카드 구조로 유지. 실제 checkout·coupon·오디오·Create Song 로직 보존. build/lint 오류 0개 통과. See RESULT.md.
 - [Done] Workspace Library + Music Player 리뉴얼 (2026-08-10) — 기존 `/workspace`의 실제 검색·곡 관리·오디오·생성 상태를 유지하며 행 기반 Library, 하단 고정 mini player, 앨범아트+가사 2열 전체화면 player 및 모바일 세로 player를 구현. 139 tests/build/lint 오류 0개 통과. See RESULT.md.
 - [Done] Desktop Create Song 모달 레이아웃 교정 (2026-08-10) — 모달 높이를 단계와 무관하게 고정하고, 좌측 Lyrics/Sound/Create 버튼의 폭·높이를 균일화하며 우측 콘텐츠만 스크롤하도록 변경. build/lint/test 통과. See RESULT.md.
@@ -18,7 +19,6 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 - [Done] 메인페이지 리뉴얼 디자인 명세 갱신 (2026-08-10) — Hero의 녹음실 배경, 가사→생성→완성 트랙 3단계 인터랙티브 데모, 단계 선택·실제 데모 오디오 재생·모션/접근성 규칙을 구현과 일치하도록 문서화. build/lint 통과. See RESULT.md.
 - [Done] 메인페이지 UI 리뉴얼 (2026-08-08) — 다크 에디토리얼 랜딩으로 Hero·실제 샘플 4곡·How It Works·실제 옵션 기반 Product proof·가격·CTA·Footer를 재구성. `/auth`→`/workspace`, `CREDIT_PLANS`, checkout, 단일 샘플 재생은 보존. 1440px/390px 반응형 구성, build 통과·lint 오류 0개. See RESULT.md.
 - [Done] 제목 기반 앨범 커버 prediction 병렬화 (2026-07-13) — 신용 예약 직후 제목만으로 Replicate cover prediction을 시작하고 ID를 곡 metadata에 저장. 워크스페이스 3초 폴링이 오디오·커버 prediction을 각각 조회/완료 처리하도록 전환해 `after()` 장시간 실행 의존 제거. 실패 원인(`thumbnail_error`) 저장, 커버 성공 시 InsForge Storage URL/key 반영. 129 tests/build 통과, lint 오류 0개. See RESULT.md.
-- [Done] Gemini 오디오 가사 싱크 기능 삭제 (2026-07-13) — MVP 오버스펙 판단으로 Gemini 기반 정밀 가사 하이라이트 파이프라인 전체 제거: `lib/lyrics/sync.ts`/`ensureLyricsSync.ts` 삭제, 3개 라우트(generate/[id]/reconcile-music)에서 호출 제거, `WorkspaceShell.tsx` 가사 폴링 로직 제거, `LyricsSyncStatus` 타입 제거, 기존 49개 곡의 `lyrics_sync_*`/`lyrics_lrc` metadata 정리 마이그레이션 적용(가사 텍스트는 미변경). API 호출 없는 approximate 균등분배 하이라이트(`lib/player/lyrics.ts`)는 유지. 126 tests/typecheck/build/lint 통과. See RESULT.md.
 
 ## Future / Later
 - 언어 선택 UI 드롭다운 추가 — prompt-box에 Language 선택 컨트롤 추가해 `GenerateRequest.language` 를 실제로 전송. 컴파일러는 이미 vocal 모드에서 `sung in {language}` 주입을 지원함(현재 UI는 `language: undefined` 하드코딩 상태). 한국어/스페인어/프랑스어/영어 등 옵션 + Auto.
