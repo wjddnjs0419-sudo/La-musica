@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/legal-page";
 
 export const metadata: Metadata = {
-  title: "Terms of Service · La Musica",
+  title: "Terms of Service",
   description:
     "Terms for using La Musica, including credits, payments, and content rights.",
+  alternates: {
+    canonical: "/terms",
+  },
 };
 
 const CONTACT_EMAIL = "wjddnjs0419@hufs.ac.kr";

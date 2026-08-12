@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/legal-page";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy · La Musica",
+  title: "Privacy Policy",
   description:
     "How La Musica collects, uses, stores, and shares your information.",
+  alternates: {
+    canonical: "/privacy",
+  },
 };
 
 const CONTACT_EMAIL = "wjddnjs0419@hufs.ac.kr";
@@ -70,6 +73,11 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Google</strong>: social login based on Google accounts.
+          </li>
+          <li>
+            <strong>Google Analytics</strong>: website usage information, such
+            as page views, interactions, and device or browser data, to help us
+            understand and improve the Service.
           </li>
           <li>
             <strong>Stripe</strong>: credit payment processing.

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
+
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,15 +17,22 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://la-musica.vercel.app"),
-  title: "La musica",
-  description: "La musica는 AI로 음악을 생성하는 웹페이지입니다.",
+  title: {
+    default: "AI Music Generator | La Musica",
+    template: "%s | La Musica",
+  },
+  description:
+    "Create original songs from lyrics and ideas with La Musica, an AI music generator for everyone.",
+  applicationName: "La Musica",
+  keywords: ["AI music generator", "AI song generator", "lyrics to song", "AI music creation"],
   icons: {
     icon: [{ url: "/logo icon.png", type: "image/png" }],
     apple: [{ url: "/logo icon.png", type: "image/png" }],
   },
   openGraph: {
-    title: "La musica",
-    description: "La musica는 AI로 음악을 생성하는 웹페이지입니다.",
+    title: "AI Music Generator | La Musica",
+    description:
+      "Turn your lyrics and ideas into complete songs with AI. No experience or equipment needed.",
     url: "https://la-musica.vercel.app",
     siteName: "La musica",
     images: [{ url: "/og-image.png", width: 1731, height: 909, alt: "La musica" }],
@@ -31,8 +41,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "La musica",
-    description: "La musica는 AI로 음악을 생성하는 웹페이지입니다.",
+    title: "AI Music Generator | La Musica",
+    description:
+      "Turn your lyrics and ideas into complete songs with AI. No experience or equipment needed.",
     images: ["/og-image.png"],
   },
 };
@@ -50,6 +61,20 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}
       </body>
+      {gaMeasurementId ? (
+        <>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}
+            strategy="afterInteractive"
+          />
+          <Script id="google-analytics" strategy="afterInteractive">
+            {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${gaMeasurementId}');`}
+          </Script>
+        </>
+      ) : null}
     </html>
   );
 }

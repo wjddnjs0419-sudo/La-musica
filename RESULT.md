@@ -1,13 +1,13 @@
-# RESULT: Mobile CTA Background Image - 2026-08-10
+# RESULT: Credit Card CTA Alignment - 2026-08-12
 
 ## Background
 
-On narrow screens, the landscape CTA image was center-cropped to its dark middle region, making the section appear almost black.
+The Creator credit card includes a Popular badge, which made its CTA sit lower than the Starter and Viral Pack cards.
 
 ## Implementation
 
-- Moved the supplied 1080×1350 image to `public/images/cta-studio-mobile.png`.
-- Use the new portrait image below the `md` breakpoint and retain the existing landscape CTA image at `md` and above.
+- Kept each card's existing equal-height flex-column layout.
+- Applied `mt-auto` to the CTA so it always anchors to the card's bottom edge, independently of content above it.
 
 ## Verification
 
@@ -15,8 +15,8 @@ On narrow screens, the landscape CTA image was center-cropped to its dark middle
 |---|---|
 | `npm run build` | Passed |
 | `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
-| `git diff --check` | Passed |
+| Production deployment | Ready; alias is `https://la-musica.vercel.app` |
 
 ## Lessons
 
-- Responsive source selection prevents a landscape image's dark central crop from becoming the whole mobile CTA background.
+- In equal-height purchase cards, the CTA should consume remaining vertical space with automatic top margin rather than relying on equal content height.

@@ -59,7 +59,7 @@ function CreditPlanCard({
         <p className="mt-5 text-3xl font-medium tracking-[-0.04em] text-[#f4f1ea]">{price}</p>
         <p className="mt-2 text-sm text-white/45">{credits} songs</p>
       </div>
-      <span className="rounded-full bg-[#f4f1ea] px-5 py-2.5 text-center text-sm font-medium text-black">{loading ? "Opening..." : "Get credits"}</span>
+      <span className="mt-auto rounded-full bg-[#f4f1ea] px-5 py-2.5 text-center text-sm font-medium text-black">{loading ? "Opening..." : "Get credits"}</span>
     </button>
   );
 }

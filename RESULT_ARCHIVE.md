@@ -4,6 +4,88 @@
 
 ---
 
+# RESULT: Google Analytics 4 Integration - 2026-08-12
+
+## Background
+
+La Musica needed first-party product traffic visibility after Search Console setup. A GA4 web stream was created for the production site.
+
+## Implementation
+
+- Registered `NEXT_PUBLIC_GA_MEASUREMENT_ID` in local development and Vercel Production.
+- Added the GA4 Google tag to the root layout with Next.js `Script` and deferred loading after hydration.
+- Updated the privacy policy to disclose Google Analytics website usage collection.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| Production deployment | Ready; alias is `https://la-musica.vercel.app` |
+| Production HTML | Google tag URL and configured measurement ID present |
+
+## Lessons
+
+- The GA4 measurement ID is a public client identifier, but storing it in a deployment environment variable keeps local and production configuration aligned without source hardcoding.
+
+---
+
+# RESULT: Google Search Indexing and Technical SEO - 2026-08-12
+
+## Background
+
+La Musica was not discoverable in Google Search. Search Console ownership was verified, but the production site did not expose a robots file or sitemap and only provided generic page metadata.
+
+## Implementation
+
+- Added the Google Search Console verification file under `public/` and deployed it to the production alias.
+- Added Next.js metadata routes for `/robots.txt` and `/sitemap.xml`; the sitemap contains only public landing, contact, privacy, and terms URLs.
+- Improved page titles, descriptions, canonical URLs, Open Graph/Twitter copy, and added `Organization` plus `WebApplication` JSON-LD on the landing page.
+- Explicitly excluded authentication, workspace, and API URLs from indexing.
+- Audited heading hierarchy: all public pages have one document `h1` followed by section-level `h2` headings.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed; `/robots.txt` and `/sitemap.xml` generated as static routes |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| Production deployment | Ready; alias is `https://la-musica.vercel.app` |
+| `https://la-musica.vercel.app/robots.txt` | 200; public crawl rules and sitemap reference verified |
+| `https://la-musica.vercel.app/sitemap.xml` | 200; 4 public URLs verified |
+
+## Lessons
+
+- Search Console verification establishes ownership, while robots, sitemap, canonical URLs, and page-specific metadata give Google a clear, maintainable indexing path.
+
+---
+
+# RESULT: Mobile CTA Background Image - 2026-08-10
+
+## Background
+
+On narrow screens, the landscape CTA image was center-cropped to its dark middle region, making the section appear almost black.
+
+## Implementation
+
+- Moved the supplied 1080×1350 image to `public/images/cta-studio-mobile.png`.
+- Use the new portrait image below the `md` breakpoint and retain the existing landscape CTA image at `md` and above.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- Responsive source selection prevents a landscape image's dark central crop from becoming the whole mobile CTA background.
+
+---
+
 # RESULT: Brand Asset Replacement - 2026-08-10
 
 ## Background
