@@ -47,7 +47,7 @@ export default function TermsPage() {
         <ul>
           <li>Starter — $2.99 / 5 songs</li>
           <li>Creator — $7.99 / 20 songs</li>
-          <li>Viral Pack — $14.99 / 50 songs</li>
+          <li>Viral Pack — $14.99 / 35 songs</li>
         </ul>
         <p>
           Credits are deducted when you submit a generation request. Credits

@@ -30,7 +30,7 @@ const PRICING_COPY: Record<
     features: [
       "Made for high-volume production.",
       "Fuel reels, shorts, and full playlists.",
-      "Our lowest cost per finished track.",
+      "A focused pack for larger creative runs.",
     ],
   },
 };
