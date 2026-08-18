@@ -20,7 +20,6 @@ import { buildThumbnailPrompt } from "@/lib/prompts/buildThumbnailPrompt";
 import { generateAutoLyricsForSong } from "@/lib/lyrics-assistant/generateAutoLyrics";
 import { buildCostLogRow } from "@/lib/cost-logging";
 import type {
-  MusicGenre,
   MusicMood,
   MusicUseCase,
   VocalMode,

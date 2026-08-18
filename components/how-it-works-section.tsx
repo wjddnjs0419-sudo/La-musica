@@ -1,6 +1,6 @@
 const steps = [
   ["01", "Write your lyrics", "Start with your own words, a feeling, or a simple idea."],
-  ["02", "Shape your sound", "Choose a genre, mood, and the details that fit your track."],
+  ["02", "Shape your sound", "Choose a Reggaeton style, mood, and scene that fit your track."],
   ["03", "Get your song", "La Musica turns the input into a complete track you can hear."],
 ] as const;
 

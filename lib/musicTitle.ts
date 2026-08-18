@@ -35,6 +35,8 @@ const MOOD_LABELS: Record<MusicMood, string> = {
   nostalgic: "Nostalgic",
   romantic: "Romantic",
   aggressive: "Aggressive",
+  confident: "Confident",
+  chill: "Chill",
   festival: "Festival",
 };
 

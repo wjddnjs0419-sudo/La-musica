@@ -63,7 +63,6 @@ export default function CreateSongModal({
   const [form, setForm] = React.useState<CreateSongFormState>(
     CREATE_SONG_INITIAL_STATE,
   );
-  const [advancedOpen, setAdvancedOpen] = React.useState(false);
   const [lyricsAssistantOpen, setLyricsAssistantOpen] = React.useState(false);
   const [lyricsMode, setLyricsMode] = React.useState<"write" | "ai">("write");
   const [lyricsIdea, setLyricsIdea] = React.useState("");
@@ -170,8 +169,6 @@ export default function CreateSongModal({
                   <SoundStep
                     form={form}
                     updateForm={updateForm}
-                    advancedOpen={advancedOpen}
-                    onToggleAdvanced={() => setAdvancedOpen((value) => !value)}
                     mode={soundMode}
                     onModeChange={setSoundMode}
                   />
@@ -403,15 +400,11 @@ function LyricsStep({
 function SoundStep({
   form,
   updateForm,
-  advancedOpen,
-  onToggleAdvanced,
   mode,
   onModeChange,
 }: {
   form: CreateSongFormState;
   updateForm: (patch: Partial<CreateSongFormState>) => void;
-  advancedOpen: boolean;
-  onToggleAdvanced: () => void;
   mode: "simple" | "advanced";
   onModeChange: (mode: "simple" | "advanced") => void;
 }) {

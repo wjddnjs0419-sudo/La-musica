@@ -13,9 +13,9 @@ import { getLandingSampleTracks } from "@/lib/landing-samples";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "AI Music Generator — Create Songs from Lyrics",
+  title: "Create Your Reggaeton Track with AI | La Musica",
   description:
-    "Create original songs from your lyrics and ideas with La Musica's AI music generator. Start free — no music production experience needed.",
+    "Create your own Reggaeton track with AI — your vibe, lyrics, and sound. No music production experience needed.",
   alternates: {
     canonical: "/",
   },
@@ -41,7 +41,7 @@ export default async function Home() {
         applicationCategory: "MusicApplication",
         operatingSystem: "Web",
         description:
-          "An AI music generator that turns lyrics and ideas into complete songs.",
+          "A Reggaeton-first AI music creation app that turns lyrics and ideas into complete tracks.",
         offers: {
           "@type": "Offer",
           price: "0",

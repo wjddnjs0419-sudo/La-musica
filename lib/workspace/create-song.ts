@@ -1,17 +1,15 @@
 import type { GenerateRequest } from "@/lib/music";
-import type { MusicGenre, MusicMood, MusicUseCase, ReggaetonScene, ReggaetonStyle, VocalMode } from "@/lib/music-prompt/types";
+import type { MusicMood, ReggaetonScene, ReggaetonStyle, VocalMode } from "@/lib/music-prompt/types";
 import type { ReggaetonSimplePreset } from "@/lib/music-prompt/reggaeton";
 
 export type CreateSongFormState = {
   prompt: string;
   soundDirection: string;
   lyrics: string;
-  genre: MusicGenre | "";
   style: ReggaetonStyle | "";
   scene: ReggaetonScene | "";
   simplePreset: ReggaetonSimplePreset | "";
   moods: MusicMood[];
-  useCase: MusicUseCase | "";
   vocalMode: VocalMode;
   language: string;
   duration: 60 | 180;
@@ -21,12 +19,10 @@ export const CREATE_SONG_INITIAL_STATE: CreateSongFormState = {
   prompt: "",
   soundDirection: "",
   lyrics: "",
-  genre: "reggaeton",
   style: "",
   scene: "",
   simplePreset: "",
   moods: [],
-  useCase: "",
   vocalMode: "auto",
   language: "",
   duration: 180,
@@ -43,9 +39,6 @@ export const STYLE_OPTIONS: Array<{ value: ReggaetonStyle; label: string; hint: 
   { value: "old_school", label: "Old School", hint: "Raw, classic dembow" }, { value: "reggaeton_pop", label: "Reggaeton Pop", hint: "Polished & catchy" }, { value: "perreo", label: "Perreo", hint: "Heavy & club-ready" }, { value: "romantic", label: "Romantic", hint: "Smooth & sensual" }, { value: "trapeton", label: "Trapetón", hint: "Dark 808s & trap influence" }, { value: "neoperreo", label: "Neoperreo", hint: "Experimental & futuristic" },
 ];
 export const SCENE_OPTIONS: Array<{ value: ReggaetonScene; label: string }> = [{ value: "club", label: "Club" }, { value: "late_night", label: "Late Night" }, { value: "beach", label: "Beach" }, { value: "party", label: "Party" }];
-export const GENRE_OPTIONS: Array<{ value: MusicGenre; label: string }> = [{ value: "reggaeton", label: "Reggaeton" }];
-export const USE_CASE_OPTIONS: Array<{ value: MusicUseCase; label: string }> = [];
-export const CREATE_SONG_PRESETS: Array<{ label: string; genre?: MusicGenre; moods?: MusicMood[]; useCase?: MusicUseCase; vocalMode?: VocalMode; duration?: 60 | 180 }> = [];
 
 export const MOOD_OPTIONS: Array<{ value: MusicMood; label: string }> = [
   { value: "energetic", label: "Energetic" },
