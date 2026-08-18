@@ -31,7 +31,8 @@ export default function HeroSection({ ctaHref, authAwareCta = false, demoAudioSr
   const cta = authAwareCta ? <AuthAwareGetStartedBadge label="Create Your Track" className="!rounded-full !border-white !bg-white !px-6 !py-3 !font-semibold !text-black hover:!bg-white/85" /> : <GetStartedBadge href={ctaHref} label="Create Your Track" className="!rounded-full !border-white !bg-white !px-6 !py-3 !font-semibold !text-black hover:!bg-white/85" />;
   return <section className="relative isolate overflow-hidden px-5 pb-20 pt-16 sm:px-8 sm:pb-28 lg:aspect-video lg:px-0 lg:py-0">
     <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[34rem] w-full opacity-60 sm:inset-y-0 sm:h-auto sm:opacity-65 lg:w-full">
-      <div className="absolute inset-0 bg-[url('/hero.jpg')] bg-contain bg-right-top bg-no-repeat lg:bg-cover lg:bg-center" />
+      <div className="absolute inset-0 bg-[url('/hero%20mobile.png')] bg-cover bg-center bg-no-repeat sm:hidden" />
+      <div className="absolute inset-0 hidden bg-[url('/hero.jpg')] bg-cover bg-center bg-no-repeat sm:block" />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,.72)_0%,rgba(0,0,0,.48)_38%,rgba(0,0,0,.15)_65%,rgba(0,0,0,.05)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0)_20%,rgba(5,5,5,0.35)_62%,#050505_100%)] sm:hidden" />
     </div>
