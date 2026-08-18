@@ -80,6 +80,14 @@ Provider implementations normalize those details to the three lifecycle
 states. A future provider may add internal capabilities without widening the
 application boundary until a product requirement needs them.
 
+The provider implementation also owns model-specific prompt preparation and
+music-cost estimation. This moves ACE-Step's 500-character refinement target,
+ACE-Step-only Gemini instruction, version pin, input field names,
+instrumental sentinel, default duration, and per-second cost out of shared
+routes and generic utility modules. The shared Gemini utility remains
+model-neutral by accepting an explicit prompt-preparation policy from the
+provider.
+
 ## Architecture and data flow
 
 ```text
@@ -101,21 +109,27 @@ Create a focused `lib/music-generation/` boundary:
 - `types.ts`: provider-neutral request, start result, and status types.
 - `provider.ts`: resolver for the configured active provider and persisted
   provider IDs. It is server-only and rejects unknown IDs safely.
-- `providers/replicate-ace-step.ts`: current ACE-Step version pin, input
-  adaptation, Replicate prediction creation, status mapping, and output URL
-  extraction.
+- `providers/replicate-ace-step.ts`: current ACE-Step prompt-preparation
+  policy, version pin, input adaptation, Replicate prediction creation, status
+  mapping, output URL extraction, and music-cost estimate.
 
 The ACE-Step-only constants and input construction move out of the generic
 `lib/music.ts` domain file and into this implementation. `lib/music.ts`
 retains persistent music domain types and UI request types that are not tied to
 any provider.
 
+`lib/refineStylePrompt.ts` becomes a model-neutral Gemini rewriter, while
+`lib/cost-logging.ts` accepts a provider-supplied estimated music cost instead
+of calculating an ACE-Step-specific rate itself.
+
 ### Generation creation
 
 `POST /api/music/generate` continues to reserve credit and insert the pending
-music row before starting external generation. It gets the configured active
-provider, calls `start`, and stores the returned provider identity, job ID, and
-model in:
+music row before starting external generation. It gives the compiled intent to
+the configured active provider; the provider performs any model-specific
+prompt preparation, calls `start`, and returns its provider identity, job ID,
+model, effective prompt, and estimated music cost. The route stores the
+provider identity, job ID, and model in:
 
 ```ts
 metadata.generation = {
@@ -125,10 +139,11 @@ metadata.generation = {
 }
 ```
 
-The database `model` column is assigned from the provider start result so it
-continues to be a readable record of the model that created a track. The route
-does not know whether the provider uses a model name, a version hash, a REST
-endpoint, or a hosted queue.
+The database `model` column is assigned from the configured provider's readable
+model identifier before the job starts and kept consistent with the start
+result. The route does not know whether the provider uses a model name, a
+version hash, a REST endpoint, or a hosted queue. Cost logging records the
+provider-returned estimate together with the existing Gemini-step estimate.
 
 ### Polling and reconciliation
 

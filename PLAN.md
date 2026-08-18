@@ -7,6 +7,7 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 
 ## In Progress
 - Workspace/Create Song 모바일 밀도 최적화 (2026-08-10) — 단계별 모달 크기 변동을 고정 프레임·내부 스크롤로 제거하고, workspace의 모바일 상단·목록·mini player 여백을 균형 있게 압축.
+- 음악 생성 provider 추상화 (2026-08-18) — ACE-Step/Replicate 직접 결합을 provider 어댑터로 분리하고, MiniMax/MusicGen 튜닝 지식을 레거시 레퍼런스로 보존.
 
 ## Done
 - [Done] Viral Pack 크레딧 정책 35곡 정합성 복구 (2026-08-18) — 앱 플랜 정의·checkout 메타데이터·랜딩/약관 표시·README를 실제 DB 정산 기준으로 통일. 141 tests/build 통과, lint 오류 0개. See RESULT.md.
