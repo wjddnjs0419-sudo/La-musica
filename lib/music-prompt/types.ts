@@ -28,6 +28,9 @@ export type MusicMood =
   | "aggressive"
   | "festival";
 
+export type ReggaetonStyle = "old_school" | "reggaeton_pop" | "perreo" | "romantic" | "trapeton" | "neoperreo";
+export type ReggaetonScene = "club" | "late_night" | "beach" | "party";
+
 export type MusicUseCase =
   | "workout"
   | "club"
@@ -55,6 +58,8 @@ export type ResolvedVocalMode = Exclude<VocalMode, "auto">;
 export interface BuildMusicPromptInput {
   userDescription: string;
   genre?: MusicGenre;
+  style?: ReggaetonStyle;
+  scene?: ReggaetonScene;
   moods?: MusicMood[];
   useCase?: MusicUseCase;
   vocalMode?: VocalMode;
@@ -70,6 +75,8 @@ export interface CompiledPromptMetadata {
   final_music_prompt: string;
   prompt_version: string;
   genre?: MusicGenre;
+  style?: ReggaetonStyle;
+  scene?: ReggaetonScene;
   moods?: MusicMood[];
   use_case?: MusicUseCase;
   vocal_mode: ResolvedVocalMode;

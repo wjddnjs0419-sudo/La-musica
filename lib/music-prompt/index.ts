@@ -1,5 +1,6 @@
 export * from "./types";
 export { buildMusicPrompt } from "./buildMusicPrompt";
+export * from "./reggaeton";
 export { sanitizeReferences } from "./sanitizeReferences";
 export { buildLyricsPayload } from "./buildLyricsPayload";
 export {

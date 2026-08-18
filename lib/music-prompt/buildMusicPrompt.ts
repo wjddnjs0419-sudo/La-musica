@@ -12,6 +12,7 @@ import {
 } from "./presets";
 import { sanitizeReferences } from "./sanitizeReferences";
 import { buildLyricsPayload } from "./buildLyricsPayload";
+import { REGGAETON_SCENE_GUIDANCE, REGGAETON_STYLE_GUIDANCE, isReggaetonScene, isReggaetonStyle } from "./reggaeton";
 
 const MAX_PROMPT_CHARS = 2000;
 
@@ -64,6 +65,8 @@ export function buildMusicPrompt(input: BuildMusicPromptInput): CompiledPrompt {
     const genrePreset = GENRE_PRESETS[input.genre];
     if (genrePreset) parts.push(`secondary style details: ${genrePreset}`);
   }
+  if (isReggaetonStyle(input.style)) parts.push(`reggaeton style: ${REGGAETON_STYLE_GUIDANCE[input.style]}`);
+  if (isReggaetonScene(input.scene)) parts.push(`scene: ${REGGAETON_SCENE_GUIDANCE[input.scene]}`);
 
   // 3. Mood guidance. Apply only the first few moods to avoid adjective soup.
   const moods = (input.moods ?? [])
@@ -114,6 +117,8 @@ export function buildMusicPrompt(input: BuildMusicPromptInput): CompiledPrompt {
       final_music_prompt: prompt,
       prompt_version: PROMPT_COMPILER_VERSION,
       genre: input.genre && VALID_GENRES.has(input.genre) ? input.genre : undefined,
+      style: isReggaetonStyle(input.style) ? input.style : undefined,
+      scene: isReggaetonScene(input.scene) ? input.scene : undefined,
       moods: input.moods?.filter((m) => VALID_MOODS.has(m)),
       use_case: input.useCase && VALID_USE_CASES.has(input.useCase) ? input.useCase : undefined,
       vocal_mode: vocalMode,
