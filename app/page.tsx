@@ -59,7 +59,7 @@ export default async function Home() {
     />
     <main className="landing-surface min-h-screen overflow-x-hidden text-white">
       <HeaderSection authAwareCta />
-      <HeroSection authAwareCta demoAudioSrc={HERO_DEMO_AUDIO_URL} />
+      <HeroSection authAwareCta />
       <SampleMusicSection tracks={sampleTracks} />
       <HowItWorksSection />
       <ProductFeatureSection />
