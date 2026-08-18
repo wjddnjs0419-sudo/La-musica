@@ -21,8 +21,6 @@ export const metadata: Metadata = {
   },
 };
 
-const HERO_DEMO_AUDIO_URL = "https://e99zrxhb.ap-southeast.insforge.app/api/storage/buckets/musics/objects/0133b4b8-2146-4c43-9c2b-0d32aacae317%2F210e157b-8865-445f-bc68-7788f4b1a102.mp3?v=06b09f35f078cc16967e1dedb660fa67";
-
 export default async function Home() {
   const sampleTracks = await getLandingSampleTracks();
   const structuredData = {
