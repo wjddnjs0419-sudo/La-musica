@@ -52,6 +52,8 @@ export const MOOD_OPTIONS: Array<{ value: MusicMood; label: string }> = [
   { value: "dark", label: "Dark" },
   { value: "sexy", label: "Sexy" },
   { value: "romantic", label: "Romantic" },
+  { value: "confident", label: "Confident" },
+  { value: "chill", label: "Chill" },
 ];
 
 export const VOCAL_OPTIONS: Array<{ value: VocalMode; label: string }> = [
