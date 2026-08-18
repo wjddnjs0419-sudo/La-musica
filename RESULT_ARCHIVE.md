@@ -4,6 +4,26 @@
 
 ---
 
+# RESULT: Replicate Google Lyria 3 Pro 전환 - 2026-08-18
+
+## Background
+
+음악 생성 모델을 ACE-Step에서 Replicate의 공식 `google/lyria-3-pro`로 변경했고, 기존 비동기 생성·폴링·스토리지 흐름을 유지했다.
+
+## Implementation
+
+- 활성 provider를 `replicate-google-lyria-3-pro`로 전환하고 Lyria 단일 prompt를 구성했다.
+- 출력 오디오 정규화와 ACE-Step job 조회 호환을 유지했다.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm test` | 26 files, 151 tests passed |
+| `npm run build` | Passed |
+
+---
+
 # RESULT: 음악 생성 Provider 추상화 - 2026-08-18
 
 ## Background

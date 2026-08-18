@@ -1,25 +1,25 @@
-# RESULT: Replicate Google Lyria 3 Pro 전환 - 2026-08-18
+# RESULT: Reggaeton-first repositioning - 2026-08-18
 
 ## Background
 
-음악 생성 모델을 ACE-Step에서 Replicate의 공식 `google/lyria-3-pro`로 변경해야 했다. 사용자 경험의 비동기 생성·폴링·스토리지 저장 흐름과 이미 처리 중인 ACE-Step 작업의 완료 처리는 유지해야 했다.
+La Musica를 범용 AI music generator가 아닌 Reggaeton-first creation product로 재배치했다. 기존 lyrics, credit, storage, polling, reconciliation lifecycle과 Google Lyria 3 Pro provider는 유지한다.
 
 ## Implementation
 
-- `replicate-google-lyria-3-pro` provider를 추가하고, 새 생성의 활성 provider로 지정했다.
-- 음악 지시·목표 길이·섹션 태그 가사를 Lyria의 단일 `prompt` 입력으로 결합했다. instrumental 요청은 명시적으로 무보컬 트랙으로 지시한다.
-- Replicate 모델 slug를 사용해 최신 Lyria 3 Pro prediction을 만들고, 출력 URL 문자열과 SDK 파일 객체 모두 완료 오디오로 정규화한다.
-- Lyria의 파일당 $0.08 비용과 최대 180초 목표 길이를 기록한다. ACE-Step provider는 과거 job 폴링 호환을 위해 계속 등록한다.
+- 신규 생성의 genre를 서버에서 `reggaeton`으로 고정하고 Style, Scene, Mood를 compiler metadata와 Lyria prompt guidance에 연결했다.
+- Simple에 Club Heat, After Midnight, Dangerous Love, Summer Nights preset을 추가하고, free text 또는 preset 중 하나를 요구했다. Advanced는 Style, Mood, Scene, Vocal, Duration, Language, escape-hatch text로 단순화했다.
+- Auto + 빈 가사는 Spanish를 기본으로 하며, Spanglish는 자연스러운 Spanish/English 혼합 가사 지시를 사용한다.
+- 제공된 클럽 이미지를 Hero/CTA에 적용하고, Reggaeton positioning copy·SEO metadata·supporting landing copy를 갱신했다.
 
 ## Verification
 
 | Check | Result |
 |---|---|
-| `npm test` | 26 files, 151 tests passed |
+| `npm test` | 28 files, 157 tests passed |
 | `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
-| `npm run build` | Passed |
+| `npm run build` | Passed; InsForge admin 미설정에 따른 landing samples log만 발생 |
 | `git diff --check` | Passed |
 
 ## Lessons
 
-- Replicate의 모델 slug 기반 provider는 API 토큰과 비동기 lifecycle을 그대로 재사용하면서 모델별 입력 계약만 교체할 수 있다.
+- Simple preset만 선택해도 compiler에 최소 Reggaeton seed를 보내야 API의 non-empty prompt invariant와 UX validation이 일치한다.
