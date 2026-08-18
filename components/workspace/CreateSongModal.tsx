@@ -466,16 +466,6 @@ function SoundStep({
         </>
       ) : (
         <>
-          <label className="mt-7 block text-sm font-medium">
-            Describe your sound <span className="text-white/40">*</span>
-            <textarea
-              value={form.prompt}
-              onChange={(event) => updateForm({ prompt: event.target.value })}
-              rows={4}
-              placeholder="e.g. Dreamy indie pop with warm female vocals and a nostalgic late-night feel"
-              className="mt-3 w-full resize-none border border-white/15 bg-white/[.04] p-4 text-sm font-normal text-white outline-none placeholder:text-white/30 focus:border-white/35"
-            />
-          </label>
           <Field label="Style">
             <ChipGroup
               options={STYLE_OPTIONS}
@@ -483,6 +473,7 @@ function SoundStep({
               onSelect={(style) => updateSound({ style: style as CreateSongFormState["style"] })}
               allowEmpty
             />
+            {form.style ? <p className="mt-2 text-xs text-white/45">{STYLE_OPTIONS.find((option) => option.value === form.style)?.hint}</p> : null}
           </Field>
           <Field label="Mood">
             <div className="flex flex-wrap gap-2">

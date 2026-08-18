@@ -123,7 +123,7 @@ export function buildCreateSongRequest(
   );
 
   return {
-    prompt: promptParts.join(". "),
+    prompt: promptParts.join(". ") || "Reggaeton track",
     lyrics: state.lyrics.trim() || undefined,
     instrumental: state.vocalMode === "instrumental",
     genre: "reggaeton",

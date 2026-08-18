@@ -57,6 +57,10 @@ describe("buildCreateSongRequest", () => {
       }).prompt,
     ).toBe("Warm electronic pop with a sunrise chorus. warm piano, soft drums");
   });
+
+  it("creates a compiler seed when a Simple preset has no free text", () => {
+    expect(buildCreateSongRequest({ ...baseState, prompt: "", soundDirection: "" }).prompt).toBe("Reggaeton track");
+  });
 });
 
 describe("Reggaeton Simple validation", () => {

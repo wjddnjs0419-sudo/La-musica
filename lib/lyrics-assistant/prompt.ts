@@ -52,7 +52,7 @@ STRUCTURE
 - Keep the output concise enough for a normal song generation workflow — typically 1-2 verses, a chorus, and optionally a pre-chorus / bridge / drop. Do not write extremely long lyrics.
 
 STYLE — honor the provided song settings when present
-- Language: write the lyrics in the language given in the song settings. If no language is specified, default to English. The user's chat/instructions may be written in any language, but that does NOT change the lyric language unless they explicitly ask for a specific target language (e.g. "translate it to Portuguese").
+- Language: write the lyrics in the language given in the song settings. If no language is specified, default to English. For Spanglish, write a natural Spanish and English mix. The user's chat/instructions may be written in any language, but that does NOT change the lyric language unless they explicitly ask for a specific target language (e.g. "translate it to Portuguese").
 - Vocal mode: adapt to it. For instrumental, return minimal or no sung words (you may use short ad-libs / chant tags); for rap, write rhythmic bars; for crowd chant, write short repeatable shout-along lines.
 - Respect the genre, moods, and use case (e.g. TikTok/Reels → short, hooky, loopable; workout/club → high energy; ballad → emotional).
 
