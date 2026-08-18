@@ -466,15 +466,17 @@ function SoundStep({
         </>
       ) : (
         <>
-          <Field label="Style">
-            <ChipGroup
-              options={STYLE_OPTIONS}
-              selected={form.style}
-              onSelect={(style) => updateSound({ style: style as CreateSongFormState["style"] })}
-              allowEmpty
-            />
-            {form.style ? <p className="mt-2 text-xs text-white/45">{STYLE_OPTIONS.find((option) => option.value === form.style)?.hint}</p> : null}
-          </Field>
+          <div className="mt-7">
+            <Field label="Style">
+              <ChipGroup
+                options={STYLE_OPTIONS}
+                selected={form.style}
+                onSelect={(style) => updateSound({ style: style as CreateSongFormState["style"] })}
+                allowEmpty
+              />
+              {form.style ? <p className="mt-2 text-xs text-white/45">{STYLE_OPTIONS.find((option) => option.value === form.style)?.hint}</p> : null}
+            </Field>
+          </div>
           <Field label="Mood">
             <div className="flex flex-wrap gap-2">
               {MOOD_OPTIONS.map((option) => (
@@ -865,7 +867,6 @@ function Select({
       onChange={(event) => onChange(event.target.value)}
       className="w-full rounded-xl border border-white/15 bg-white/[.04] px-3 py-2.5 text-sm text-white outline-none focus:border-white/35"
     >
-      <option value="">Auto</option>
       {options.map((option) => (
         <option
           key={option.value}

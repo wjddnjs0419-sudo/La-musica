@@ -26,8 +26,8 @@ export const metadata: Metadata = {
   applicationName: "La Musica",
   keywords: ["AI music generator", "AI song generator", "lyrics to song", "AI music creation"],
   icons: {
-    icon: [{ url: "/logo icon.png", type: "image/png" }],
-    apple: [{ url: "/logo icon.png", type: "image/png" }],
+    icon: [{ url: "/logo.png", type: "image/png" }],
+    apple: [{ url: "/logo.png", type: "image/png" }],
   },
   openGraph: {
     title: "AI Music Generator | La Musica",

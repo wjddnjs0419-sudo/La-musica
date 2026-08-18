@@ -4,6 +4,111 @@
 
 ---
 
+# RESULT: 신규 로고 자산 전환 - 2026-08-18
+
+## Background
+
+새 `logo.png`와 `wordmark.png`를 기존 로고 자산 대신 모든 사용자 노출 위치와 아이콘 메타데이터에 사용한다.
+
+## Implementation
+
+- 공용 `Logo` 컴포넌트의 아이콘과 워드마크 경로·intrinsic dimensions를 새 PNG 자산으로 교체했다.
+- 브라우저 파비콘과 Apple touch icon 메타데이터를 `logo.png`로 변경했다.
+- 랜딩 페이지의 Organization 구조화 데이터에 남아 있던 기존 SVG 경로를 새 아이콘으로 변경했다.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- 공용 로고 컴포넌트와 메타데이터를 단일 변경 지점으로 유지하면 자산 교체 시 전체 브랜드 노출을 빠짐없이 갱신할 수 있다.
+
+---
+
+# RESULT: Create Song 단계별 필드 여백 정합성 점검 - 2026-08-18
+
+## Background
+
+Create Song Step 2 Advanced 모드에서 Simple/Advanced 선택기와 첫 Style 필드가 붙어 보이는 여백 불일치를 해소하고, Step 1~3의 그룹 간 간격을 점검한다.
+
+## Implementation
+
+- Advanced의 첫 Style 필드를 `mt-7` 래퍼로 감싸 모드 선택기 아래에 28px 간격을 추가했다.
+- Step 1의 모드 선택기→첫 입력 그룹 및 Step 2 Simple의 모드 선택기→Quick presets 간격이 같은 28px임을 확인했다.
+- Step 2의 이어지는 Field 그룹과 Step 3의 정보 블록도 기존 간격이 일관됨을 확인했다.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- 첫 필드만 별도 래퍼로 보정하면 공용 Field 컴포넌트의 그룹 간 기본 간격을 유지할 수 있다.
+
+---
+
+# RESULT: Hero 서브카피 줄바꿈·보조 문구 대비 조정 - 2026-08-18
+
+## Background
+
+Hero 서브카피의 마지막 단어만 다음 줄로 밀려나는 어색한 줄바꿈을 개선하고, 무료 체험 안내의 가독성을 높인다.
+
+## Implementation
+
+- 서브카피를 `Create a reggaeton track with AI — your vibe, your lyrics, your sound.`으로 압축했다.
+- `First song free · No subscription`의 색상 대비를 `text-white/55`에서 `text-white/60`으로 높였다.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- Hero의 보조 문구는 CTA와 위계를 분리하되, disabled 상태로 오해되지 않을 최소 대비를 확보해야 한다.
+
+---
+
+# RESULT: Reggaeton-first repositioning - 2026-08-18
+
+## Background
+
+La Musica를 범용 AI music generator가 아닌 Reggaeton-first creation product로 재배치했다. 기존 lyrics, credit, storage, polling, reconciliation lifecycle과 Google Lyria 3 Pro provider는 유지한다.
+
+## Implementation
+
+- 신규 생성의 genre를 서버에서 `reggaeton`으로 고정하고 Style, Scene, Mood를 compiler metadata와 Lyria prompt guidance에 연결했다.
+- Simple에 Club Heat, After Midnight, Dangerous Love, Summer Nights preset을 추가하고, free text 또는 preset 중 하나를 요구했다. Advanced는 Style, Mood, Scene, Vocal, Duration, Language, escape-hatch text로 단순화했다.
+- Auto + 빈 가사는 Spanish를 기본으로 하며, Spanglish는 자연스러운 Spanish/English 혼합 가사 지시를 사용한다.
+- 제공된 클럽 이미지를 Hero/CTA에 적용하고, Reggaeton positioning copy·SEO metadata·supporting landing copy를 갱신했다.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm test` | 28 files, 157 tests passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `npm run build` | Passed; InsForge admin 미설정에 따른 landing samples log만 발생 |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- Simple preset만 선택해도 compiler에 최소 Reggaeton seed를 보내야 API의 non-empty prompt invariant와 UX validation이 일치한다.
+
+---
+
 # RESULT: Replicate Google Lyria 3 Pro 전환 - 2026-08-18
 
 ## Background

@@ -30,7 +30,7 @@ export default async function Home() {
         "@type": "Organization",
         name: "La Musica",
         url: "https://la-musica.vercel.app",
-        logo: "https://la-musica.vercel.app/logo-icon-dark.svg",
+        logo: "https://la-musica.vercel.app/logo.png",
       },
       {
         "@type": "WebApplication",

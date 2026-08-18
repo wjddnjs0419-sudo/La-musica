@@ -19,8 +19,8 @@ export default function HeroSection({ ctaHref, authAwareCta = false }: HeroSecti
       <div>
         <p className="inline-flex rounded-full border border-white/15 px-3 py-1 text-xs font-medium tracking-wide text-white/65">LA MUSICA</p>
         <h1 className="mt-7 max-w-3xl text-5xl font-semibold leading-[.96] tracking-[-.06em] text-white sm:text-7xl lg:text-[clamp(4rem,6vw,6.6rem)]">What if the club played your <span className="font-serif font-normal italic tracking-[-.045em]">song tonight?</span></h1>
-        <p className="mt-7 max-w-xl text-base leading-7 text-white/75 sm:text-lg">Create your own reggaeton track with AI — your vibe, your lyrics, your sound.</p>
-        <div className="mt-9 flex flex-wrap items-center gap-4">{cta}<p className="text-sm text-white/55">First song free · No subscription</p></div>
+        <p className="mt-7 max-w-xl text-base leading-7 text-white/75 sm:text-lg">Create a reggaeton track with AI — your vibe, your lyrics, your sound.</p>
+        <div className="mt-9 flex flex-wrap items-center gap-4">{cta}<p className="text-sm text-white/60">First song free · No subscription</p></div>
       </div>
     </div>
   </section>;
