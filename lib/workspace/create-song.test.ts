@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCreateSongRequest,
+  canContinueFromSound,
   toggleMoodSelection,
   type CreateSongFormState,
 } from "./create-song";
@@ -53,6 +54,13 @@ describe("buildCreateSongRequest", () => {
         soundDirection: "warm piano, soft drums",
       }).prompt,
     ).toBe("Warm electronic pop with a sunrise chorus. warm piano, soft drums");
+  });
+});
+
+describe("Reggaeton Simple validation", () => {
+  it("requires either a description or a preset", () => {
+    expect(canContinueFromSound({ ...baseState, prompt: "", simplePreset: "" } as never, "simple")).toBe(false);
+    expect(canContinueFromSound({ ...baseState, prompt: "", simplePreset: "club_heat" } as never, "simple")).toBe(true);
   });
 });
 

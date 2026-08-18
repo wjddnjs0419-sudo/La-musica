@@ -30,6 +30,13 @@ export const CREATE_SONG_INITIAL_STATE: CreateSongFormState = {
   duration: 180,
 };
 
+export function canContinueFromSound(
+  state: Pick<CreateSongFormState, "prompt"> & { simplePreset?: string },
+  mode: "simple" | "advanced",
+) {
+  return mode === "advanced" || Boolean(state.prompt.trim() || state.simplePreset);
+}
+
 export const GENRE_OPTIONS: Array<{ value: MusicGenre; label: string }> = [
   { value: "edm", label: "EDM" },
   { value: "reggaeton", label: "Reggaeton" },
