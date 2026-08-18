@@ -6,6 +6,7 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 (none)
 
 ## In Progress
+- Reggaeton-first repositioning (2026-08-18) — Reggaeton 전용 Sound 입력·프롬프트 계약과 랜딩 Hero/CTA 전환을 설계하고, Lyria 3 Pro 및 기존 생성 lifecycle 호환을 검증.
 - Workspace/Create Song 모바일 밀도 최적화 (2026-08-10) — 단계별 모달 크기 변동을 고정 프레임·내부 스크롤로 제거하고, workspace의 모바일 상단·목록·mini player 여백을 균형 있게 압축.
 
 ## Done
