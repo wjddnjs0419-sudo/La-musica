@@ -1,16 +1,15 @@
 import type { GenerateRequest } from "@/lib/music";
-import type {
-  MusicGenre,
-  MusicMood,
-  MusicUseCase,
-  VocalMode,
-} from "@/lib/music-prompt/types";
+import type { MusicGenre, MusicMood, MusicUseCase, ReggaetonScene, ReggaetonStyle, VocalMode } from "@/lib/music-prompt/types";
+import type { ReggaetonSimplePreset } from "@/lib/music-prompt/reggaeton";
 
 export type CreateSongFormState = {
   prompt: string;
   soundDirection: string;
   lyrics: string;
   genre: MusicGenre | "";
+  style: ReggaetonStyle | "";
+  scene: ReggaetonScene | "";
+  simplePreset: ReggaetonSimplePreset | "";
   moods: MusicMood[];
   useCase: MusicUseCase | "";
   vocalMode: VocalMode;
@@ -22,7 +21,10 @@ export const CREATE_SONG_INITIAL_STATE: CreateSongFormState = {
   prompt: "",
   soundDirection: "",
   lyrics: "",
-  genre: "",
+  genre: "reggaeton",
+  style: "",
+  scene: "",
+  simplePreset: "",
   moods: [],
   useCase: "",
   vocalMode: "auto",
@@ -37,31 +39,19 @@ export function canContinueFromSound(
   return mode === "advanced" || Boolean(state.prompt.trim() || state.simplePreset);
 }
 
-export const GENRE_OPTIONS: Array<{ value: MusicGenre; label: string }> = [
-  { value: "edm", label: "EDM" },
-  { value: "reggaeton", label: "Reggaeton" },
-  { value: "hiphop_trap", label: "Hip-hop / Trap" },
-  { value: "techno", label: "Techno" },
-  { value: "korean_ballad", label: "Korean Ballad" },
-  { value: "brazilian_funk", label: "Brazilian Funk" },
-  { value: "afropop_festival", label: "Afropop Festival" },
-  { value: "french_maghreb_hiphop", label: "French Maghreb Hip-hop" },
-  { value: "football_chant", label: "Football Chant" },
+export const STYLE_OPTIONS: Array<{ value: ReggaetonStyle; label: string; hint: string }> = [
+  { value: "old_school", label: "Old School", hint: "Raw, classic dembow" }, { value: "reggaeton_pop", label: "Reggaeton Pop", hint: "Polished & catchy" }, { value: "perreo", label: "Perreo", hint: "Heavy & club-ready" }, { value: "romantic", label: "Romantic", hint: "Smooth & sensual" }, { value: "trapeton", label: "Trapetón", hint: "Dark 808s & trap influence" }, { value: "neoperreo", label: "Neoperreo", hint: "Experimental & futuristic" },
 ];
+export const SCENE_OPTIONS: Array<{ value: ReggaetonScene; label: string }> = [{ value: "club", label: "Club" }, { value: "late_night", label: "Late Night" }, { value: "beach", label: "Beach" }, { value: "party", label: "Party" }];
+export const GENRE_OPTIONS: Array<{ value: MusicGenre; label: string }> = [{ value: "reggaeton", label: "Reggaeton" }];
+export const USE_CASE_OPTIONS: Array<{ value: MusicUseCase; label: string }> = [];
+export const CREATE_SONG_PRESETS: Array<{ label: string; genre?: MusicGenre; moods?: MusicMood[]; useCase?: MusicUseCase; vocalMode?: VocalMode; duration?: 60 | 180 }> = [];
 
 export const MOOD_OPTIONS: Array<{ value: MusicMood; label: string }> = [
-  { value: "hard", label: "Hard" },
   { value: "energetic", label: "Energetic" },
   { value: "dark", label: "Dark" },
-  { value: "happy", label: "Happy" },
-  { value: "emotional", label: "Emotional" },
   { value: "sexy", label: "Sexy" },
-  { value: "epic", label: "Epic" },
-  { value: "funny", label: "Funny" },
-  { value: "nostalgic", label: "Nostalgic" },
   { value: "romantic", label: "Romantic" },
-  { value: "aggressive", label: "Aggressive" },
-  { value: "festival", label: "Festival" },
 ];
 
 export const VOCAL_OPTIONS: Array<{ value: VocalMode; label: string }> = [
@@ -70,19 +60,17 @@ export const VOCAL_OPTIONS: Array<{ value: VocalMode; label: string }> = [
   { value: "male_vocal", label: "Male vocal" },
   { value: "female_vocal", label: "Female vocal" },
   { value: "rap_vocal", label: "Rap vocal" },
-  { value: "crowd_chant", label: "Crowd chant" },
 ];
 
 export const LANGUAGE_OPTIONS = [
+  { value: "", label: "Auto" },
   { value: "English", label: "English" },
-  { value: "Korean", label: "한국어" },
   { value: "Spanish", label: "Español" },
-  { value: "French", label: "Français" },
   { value: "Portuguese", label: "Português" },
-  { value: "Arabic", label: "العربية" },
+  { value: "Spanglish", label: "Spanglish" },
 ];
 
-export const USE_CASE_OPTIONS: Array<{ value: MusicUseCase; label: string }> = [
+/*export const USE_CASE_OPTIONS: Array<{ value: MusicUseCase; label: string }> = [
   { value: "workout", label: "Workout" },
   { value: "club", label: "Club" },
   { value: "party", label: "Party" },
@@ -93,9 +81,9 @@ export const USE_CASE_OPTIONS: Array<{ value: MusicUseCase; label: string }> = [
   { value: "comedy_roast", label: "Comedy Roast" },
   { value: "background", label: "Background" },
   { value: "personal_song", label: "Personal Song" },
-];
+];*/
 
-export const CREATE_SONG_PRESETS: Array<{
+/*export const CREATE_SONG_PRESETS: Array<{
   label: string;
   genre?: MusicGenre;
   moods?: MusicMood[];
@@ -122,14 +110,13 @@ export const CREATE_SONG_PRESETS: Array<{
     moods: ["energetic", "epic", "aggressive"],
     useCase: "sports_chant",
   },
-];
+];*/
 
 export function toggleMoodSelection(
   current: MusicMood[],
   mood: MusicMood,
 ): MusicMood[] {
   if (current.includes(mood)) return current.filter((item) => item !== mood);
-  if (current.length >= 3) return current;
   return [...current, mood];
 }
 
@@ -144,9 +131,10 @@ export function buildCreateSongRequest(
     prompt: promptParts.join(". "),
     lyrics: state.lyrics.trim() || undefined,
     instrumental: state.vocalMode === "instrumental",
-    genre: state.genre || undefined,
+    genre: "reggaeton",
+    style: state.style || undefined,
+    scene: state.scene || undefined,
     moods: state.moods.length ? state.moods : undefined,
-    useCase: state.useCase || undefined,
     vocalMode: state.vocalMode,
     language: state.language || undefined,
     duration: state.duration,

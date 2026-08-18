@@ -4,6 +4,8 @@ import type {
   MusicGenre,
   MusicMood,
   MusicUseCase,
+  ReggaetonScene,
+  ReggaetonStyle,
   VocalMode,
 } from "@/lib/music-prompt/types";
 
@@ -42,6 +44,8 @@ export interface GenerateRequest {
   lyrics?: string;
   instrumental?: boolean;
   genre?: MusicGenre;
+  style?: ReggaetonStyle;
+  scene?: ReggaetonScene;
   moods?: MusicMood[];
   useCase?: MusicUseCase;
   vocalMode?: VocalMode;

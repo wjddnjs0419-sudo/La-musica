@@ -10,9 +10,10 @@ import {
 const baseState: CreateSongFormState = {
   prompt: "  Warm electronic pop with a sunrise chorus  ",
   lyrics: "  Keep the lights on  ",
-  genre: "edm",
+  style: "perreo",
+  scene: "club",
+  simplePreset: "club_heat",
   moods: ["energetic", "epic"],
-  useCase: "workout",
   vocalMode: "female_vocal",
   language: "English",
   duration: 180,
@@ -25,9 +26,10 @@ describe("buildCreateSongRequest", () => {
       prompt: "Warm electronic pop with a sunrise chorus",
       lyrics: "Keep the lights on",
       instrumental: false,
-      genre: "edm",
+      genre: "reggaeton",
+      style: "perreo",
+      scene: "club",
       moods: ["energetic", "epic"],
-      useCase: "workout",
       vocalMode: "female_vocal",
       language: "English",
       duration: 180,
@@ -65,11 +67,12 @@ describe("Reggaeton Simple validation", () => {
 });
 
 describe("toggleMoodSelection", () => {
-  it("does not add a fourth mood", () => {
+  it("allows multiple Reggaeton moods", () => {
     expect(toggleMoodSelection(["hard", "dark", "epic"], "happy")).toEqual([
       "hard",
       "dark",
       "epic",
+      "happy",
     ]);
   });
 
