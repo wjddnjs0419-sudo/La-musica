@@ -1,24 +1,25 @@
-# RESULT: Viral Pack 35곡 정책 정합성 복구 - 2026-08-18
+# RESULT: 음악 생성 Provider 추상화 - 2026-08-18
 
 ## Background
 
-배포된 DB 정산 함수는 Viral Pack 구매를 35크레딧으로 검증했지만, 앱의 플랜 정의·사용자 가격 표시·README는 50곡으로 남아 있었다. 이 상태에서는 checkout 메타데이터와 DB 검증값이 달라 결제 충전이 거부될 수 있었다.
+ACE-Step/Replicate 모델 세부사항이 생성, 폴링, cron, 프롬프트 정제, 비용 계산에 직접 흩어져 있어 다음 모델 전환 때 여러 경로를 수정해야 했다. 과거 MiniMax/MusicGen 튜닝 지식도 현재 지침과 분리돼 있지 않았다.
 
 ## Implementation
 
-- `lib/credits.ts`의 Viral Pack을 `$14.99 / 35 credits`로 변경해 가격 카드와 checkout 메타데이터를 DB 기준에 맞췄다.
-- 약관과 README의 Viral Pack 표기를 35곡으로 수정하고, README 곡당 단가를 `$0.43`으로 정정했다.
-- 35곡 기준에서 더는 성립하지 않는 “최저 곡당 단가” 가격 카드 문구와 단가 우위 테스트를 정책값 검증으로 교체했다.
+- `MusicGenerationProvider` 계약과 `replicate-ace-step` 구현을 추가해 모델 입력, 상태 정규화, 비용 산정을 어댑터로 옮겼다.
+- 생성 라우트, 사용자 폴링, cron reconciliation이 provider 계약을 사용한다. 신규 job은 `metadata.generation`을 저장하고, 기존 `prediction_id` job도 계속 복구한다.
+- 공통 프롬프트 정제와 비용 로깅에서 ACE-Step 고정값을 제거하고, provider 정책·산정값을 받도록 변경했다.
+- MiniMax/MusicGen의 검증된 튜닝 원칙과 모델 특화 가정을 `docs/legacy`에 보존했다.
 
 ## Verification
 
 | Check | Result |
 |---|---|
-| `npm test` | 22 files, 141 tests passed |
+| `npm test` | 25 files, 148 tests passed |
 | `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
 | `npm run build` | Passed |
 | `git diff --check` | Passed |
 
 ## Lessons
 
-- 결제 플랜 수량은 프론트엔드 노출, checkout 메타데이터, DB 정산 검증, 문서에서 단일 기준으로 유지해야 한다.
+- 공급자별 입력·상태·비용은 adapter 경계에 가둬야 모델 교체 시 UI와 데이터 lifecycle을 안정적으로 보존할 수 있다.

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { resolveRenameTitle, buildAceStepInput, ACE_STEP_DURATION_SECONDS } from "./music";
+import { resolveRenameTitle } from "./music";
+import { buildAceStepInput, ACE_STEP_DURATION_SECONDS } from "./music-generation/providers/replicate-ace-step";
 
 describe("resolveRenameTitle", () => {
   it("returns the trimmed title when it is a real change", () => {

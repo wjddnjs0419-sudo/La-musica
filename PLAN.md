@@ -7,9 +7,9 @@ Completed work is summarized in `RESULT.md`. Keep this file to active/planned wo
 
 ## In Progress
 - Workspace/Create Song 모바일 밀도 최적화 (2026-08-10) — 단계별 모달 크기 변동을 고정 프레임·내부 스크롤로 제거하고, workspace의 모바일 상단·목록·mini player 여백을 균형 있게 압축.
-- 음악 생성 provider 추상화 (2026-08-18) — ACE-Step/Replicate 직접 결합을 provider 어댑터로 분리하고, MiniMax/MusicGen 튜닝 지식을 레거시 레퍼런스로 보존.
 
 ## Done
+- [Done] 음악 생성 provider 추상화 (2026-08-18) — ACE-Step/Replicate 음악 lifecycle을 provider adapter로 분리하고, 기존 prediction_id 복구 호환성과 MiniMax/MusicGen 레거시 레퍼런스를 추가. 148 tests/build 통과, lint 오류 0개. See RESULT.md.
 - [Done] Viral Pack 크레딧 정책 35곡 정합성 복구 (2026-08-18) — 앱 플랜 정의·checkout 메타데이터·랜딩/약관 표시·README를 실제 DB 정산 기준으로 통일. 141 tests/build 통과, lint 오류 0개. See RESULT.md.
 - [Done] Credit 구매 카드 CTA 정렬 보정 (2026-08-12) — Popular 배지가 있는 Creator 카드를 포함해 모든 Get credits 버튼을 카드 하단 기준선에 고정. build 통과, lint 오류 0개. See RESULT.md.
 - [Done] Google Analytics 4 연결 (2026-08-12) — production 환경변수·전역 GA4 태그·개인정보처리방침 고지를 적용하고 production HTML의 측정 ID를 검증. build 통과, lint 오류 0개. See RESULT.md.

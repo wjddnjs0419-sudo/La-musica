@@ -10,15 +10,11 @@ import Replicate from "replicate";
 import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import { createThumbnailPrediction } from "@/lib/image/generateThumbnail";
 import {
-  ACE_STEP_MODEL,
-  ACE_STEP_VERSION,
-  ACE_STEP_DURATION_SECONDS,
-  buildAceStepInput,
   type Music,
 } from "@/lib/music";
+import { getActiveMusicGenerationProvider } from "@/lib/music-generation/provider";
 import { compileMusicPrompt, buildLyricsPayload } from "@/lib/music-prompt";
 import { translateToEnglish } from "@/lib/translatePrompt";
-import { refineStylePrompt } from "@/lib/refineStylePrompt";
 import { buildFallbackMusicTitle } from "@/lib/musicTitle";
 import { buildThumbnailPrompt } from "@/lib/prompts/buildThumbnailPrompt";
 import { generateAutoLyricsForSong } from "@/lib/lyrics-assistant/generateAutoLyrics";
@@ -35,7 +31,7 @@ type AuthTokens = {
   refreshToken?: string | null;
 };
 
-// Kick off an async fishaudio/ace-step-1.5 prediction and persist a
+// Kick off an asynchronous music-provider job and persist a
 // `processing` row. The client polls GET /api/music/[id] until it resolves.
 export async function POST(request: NextRequest) {
   let body: {
@@ -94,6 +90,7 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createInsforgeAdminClient();
+  const musicProvider = getActiveMusicGenerationProvider();
   const availableCredit = await readRemainingCredit(admin, user.id);
   if (availableCredit <= 0) {
     return jsonWithAuthCookies(
@@ -165,20 +162,12 @@ export async function POST(request: NextRequest) {
   });
   const thumbnailPrompt = buildThumbnailPrompt({ title: generatedTitle });
 
-  // Refine the compiled "comma soup" into a coherent ACE-Step style prompt via
-  // a separate Gemini pass (presets stay as guardrails). Falls back to the
-  // compiled prompt on any failure, so this never blocks generation.
-  const refinedPromptPromise = refineStylePrompt(
-    compiled.prompt,
-    compiled.instrumental,
-  );
-
-  // For vocal songs, resolve the lyrics payload for ACE-Step. Both paths run
+  // For vocal songs, resolve the provider-ready lyrics payload. Both paths run
   // through buildLyricsPayload so section tags are canonical and the payload
   // is capped at MAX_LYRICS_CHARS regardless of source.
   // - user lyrics: compile step already called buildLyricsPayload; use compiled.lyrics
   // - auto lyrics: Gemini output, normalize now via buildLyricsPayload
-  // - instrumental: undefined → buildAceStepInput inserts "[Instrumental]"
+  // - instrumental: undefined; the provider selects its own instrumental signal
   const aceLyricsPayload = compiled.instrumental
     ? undefined
     : lyricsSource === "user"
@@ -211,7 +200,7 @@ export async function POST(request: NextRequest) {
       p_user_id: user.id,
       p_prompt: prompt,
       p_title: generatedTitle,
-      p_model: ACE_STEP_MODEL,
+      p_model: musicProvider.model,
       p_metadata: initialMetadata,
     },
   );
@@ -243,21 +232,17 @@ export async function POST(request: NextRequest) {
     replicate,
     thumbnailPrompt,
   );
-  const refinedPrompt = await refinedPromptPromise;
 
   // The cover prediction began as soon as the credit reservation permitted it.
   // Await only its creation response alongside the audio prediction creation;
   // neither waits for GPU generation to finish.
   const [musicPredictionResult, thumbnailPredictionResult] =
     await Promise.allSettled([
-      replicate.predictions.create({
-        version: ACE_STEP_VERSION,
-        input: buildAceStepInput({
-          prompt: refinedPrompt,
+      musicProvider.start({
+          prompt: compiled.prompt,
           lyrics: aceLyricsPayload,
           instrumental: compiled.instrumental,
           duration,
-        }),
       }),
       thumbnailPredictionPromise,
     ]);
@@ -276,7 +261,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const predictionId = musicPredictionResult.value.id;
+  const predictionId = musicPredictionResult.value.jobId;
   const thumbnailStarted = thumbnailPredictionResult.status === "fulfilled";
   const thumbnailMetadata = thumbnailStarted
     ? { thumbnail_prediction_id: thumbnailPredictionResult.value.id }
@@ -294,8 +279,12 @@ export async function POST(request: NextRequest) {
       thumbnail_status: thumbnailStarted ? "pending" : "failed",
       metadata: {
         ...music.metadata,
-        prediction_id: predictionId,
-        final_music_prompt: refinedPrompt,
+        final_music_prompt: musicPredictionResult.value.effectivePrompt,
+        generation: {
+          provider: musicPredictionResult.value.provider,
+          job_id: predictionId,
+          model: musicPredictionResult.value.model,
+        },
         ...thumbnailMetadata,
       },
     })
@@ -315,9 +304,10 @@ export async function POST(request: NextRequest) {
   const costRow = buildCostLogRow({
     userId: user.id,
     musicId: music.id,
-    predictionId,
-    musicModel: ACE_STEP_MODEL,
-    durationSeconds: duration ?? ACE_STEP_DURATION_SECONDS,
+    generationJobId: predictionId,
+    musicModel: musicPredictionResult.value.model,
+    durationSeconds: musicPredictionResult.value.durationSeconds,
+    estimatedMusicCostUsd: musicPredictionResult.value.estimatedMusicCostUsd,
     lyricsSource,
     translationUsed: userDescription !== userDescriptionRaw,
     styleRefineUsed: true,

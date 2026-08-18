@@ -4,6 +4,32 @@
 
 ---
 
+# RESULT: Viral Pack 35곡 정책 정합성 복구 - 2026-08-18
+
+## Background
+
+배포된 DB 정산 함수는 Viral Pack 구매를 35크레딧으로 검증했지만, 앱의 플랜 정의·사용자 가격 표시·README는 50곡으로 남아 있었다.
+
+## Implementation
+
+- `lib/credits.ts`, 약관, README의 Viral Pack을 `$14.99 / 35 credits` 기준으로 통일했다.
+- DB 정산 기준과 맞지 않는 가격 카드 단가 문구·테스트를 정책값 검증으로 교체했다.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm test` | 22 files, 141 tests passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `npm run build` | Passed |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- 결제 플랜 수량은 노출, checkout, DB 정산, 문서에서 단일 기준으로 유지해야 한다.
+
+---
+
 # RESULT: Credit Card CTA Alignment - 2026-08-12
 
 ## Background

@@ -2,24 +2,20 @@
 // `compileMusicPrompt` concatenates preset descriptors into a dense, redundant
 // "comma soup" (allowed to run up to buildMusicPrompt's own 2000-char limit);
 // this rewrites it into a single coherent, descriptor-style prompt short
-// enough for ACE-Step's ~500-char `prompt` field, while keeping every musical
+// enough for the active provider's input field, while keeping every musical
 // descriptor the presets guaranteed. Mirrors the free-tier Gemini REST pattern
 // in `translatePrompt.ts` (no SDK; GEMINI_API_KEY / GEMINI_MODEL). Separate
 // Gemini call from translation. Never blocks generation: any failure returns
 // the original compiled prompt unchanged (which is then hard-clamped to
-// ACE_STEP's limit downstream in `buildAceStepInput`, so an over-long fallback
-// still can't reach Replicate uncapped).
+// provider-specific limit downstream, so an over-long fallback still cannot
+// reach an external provider uncapped).
 
 import { COPYRIGHT_LINE } from "./music-prompt/buildMusicPrompt";
 import { fetchGeminiWithRetry } from "./geminiFetch";
 
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
 
-// ACE-Step prompt hard limit — shorter than buildMusicPrompt.ts's own
-// 2000-char pre-refine clamp on purpose: this is the limit on what actually
-// reaches ACE-Step (via buildAceStepInput in lib/music.ts), not on the
-// intermediate comma-soup this function receives as input.
-const MAX_PROMPT_CHARS = 500;
+export type RefinementPolicy = { modelLabel: string; maxPromptChars: number; targetChars: number };
 
 // Any descriptor clause that is really a copyright/imitation directive. The LLM
 // often paraphrases the instruction ("do not imitate any artist", "no copyright")
@@ -51,19 +47,20 @@ function stripCopyrightClauses(text: string): string {
 // ACE-Step's `prompt` field instead of MiniMax's). Empty refined output — or
 // output that is nothing but copyright text — falls back to the original
 // prompt.
-export function finalizeRefined(refinedText: string, fallback: string): string {
+export function finalizeRefined(refinedText: string, fallback: string, maxPromptChars = 500): string {
   const trimmed = refinedText.replace(/\s+/g, " ").trim();
   if (!trimmed) return fallback;
 
   const stripped = stripCopyrightClauses(trimmed);
   if (!stripped) return fallback;
 
-  const body = stripped.slice(0, MAX_PROMPT_CHARS - COPYRIGHT_LINE.length - 2);
+  const body = stripped.slice(0, maxPromptChars - COPYRIGHT_LINE.length - 2);
   return `${body}, ${COPYRIGHT_LINE}`.replace(/\s+/g, " ").trim();
 }
 
-const SYSTEM_INSTRUCTION =
-  "You are a prompt engineer for the ACE-Step music generation model. You receive a machine-assembled style prompt whose descriptors come from genre/mood/use-case presets and may be redundant or disorganized. Rewrite it into ONE coherent, dense, comma-separated descriptor prompt (NOT prose, NOT sentences), no more than 400 characters — the copyright clause is appended automatically afterward and needs the remaining room, so a longer output will be truncated. Preserve the most important musical descriptors, BPM, key, and vocal/instrumental direction, dropping lower-priority descriptors first if you must cut for length. Do NOT include any copyright, 'original composition', or 'do not imitate' clause — that is appended automatically afterward, so omit it entirely. Remove duplicate or contradictory descriptors and order them naturally (overall style first, then rhythm, instrumentation, mix, vocals). Do not add new genres or instruments that were not implied. Output ONLY the rewritten prompt, no labels or commentary.";
+function systemInstruction(policy: RefinementPolicy) {
+  return `You are a prompt engineer for the ${policy.modelLabel} music generation model. Rewrite the supplied descriptor prompt as one coherent, dense, comma-separated prompt (not prose) in no more than ${policy.targetChars} characters. Preserve musical descriptors, BPM, key, and vocal direction. Output only the prompt; do not include copyright or imitation clauses.`;
+}
 
 // Free-tier Gemini can stall; without a deadline a single slow call blocks every
 // generation. Bound it and fall back to the compiled prompt on timeout.
@@ -74,6 +71,7 @@ const REFINE_TIMEOUT_MS = 8000;
 export async function refineStylePrompt(
   compiledPrompt: string,
   instrumental: boolean,
+  policy: RefinementPolicy,
 ): Promise<string> {
   const input = compiledPrompt.trim();
   if (!input) return compiledPrompt;
@@ -98,7 +96,7 @@ export async function refineStylePrompt(
           "x-goog-api-key": apiKey,
         },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+          system_instruction: { parts: [{ text: systemInstruction(policy) }] },
           contents: [
             { role: "user", parts: [{ text: `${directive}\n\n${input}` }] },
           ],
@@ -118,7 +116,7 @@ export async function refineStylePrompt(
       .join("")
       .trim();
 
-    return out ? finalizeRefined(out, compiledPrompt) : compiledPrompt;
+    return out ? finalizeRefined(out, compiledPrompt, policy.maxPromptChars) : compiledPrompt;
   } catch {
     return compiledPrompt;
   }

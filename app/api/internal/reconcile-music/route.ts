@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import Replicate from "replicate";
 import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import { MUSICS_BUCKET, type Music } from "@/lib/music";
 import { reconcileMusicRow } from "@/lib/reconcile-music";
+import { getMusicGenerationProvider } from "@/lib/music-generation/provider";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 const BATCH_LIMIT = 50;
@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
     .from("musics")
     .select()
     .eq("status", "processing")
-    .not("metadata->prediction_id", "is", null)
     .order("created_at", { ascending: true })
     .limit(BATCH_LIMIT);
 
@@ -42,12 +41,10 @@ export async function POST(request: NextRequest) {
   }
 
   const musics = (rows ?? []) as Music[];
-  const replicate = new Replicate();
-
   const results = await Promise.allSettled(
     musics.map((music) =>
       reconcileMusicRow(music, {
-        getPrediction: (id) => replicate.predictions.get(id),
+        getProvider: getMusicGenerationProvider,
         downloadAudio: async (url) => {
           const res = await fetch(url);
           if (!res.ok) throw new Error(`download failed: ${res.status}`);

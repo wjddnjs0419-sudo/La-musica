@@ -1,14 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { buildCostLogRow, ACE_STEP_COST_PER_SECOND_USD, GEMINI_FLASH_LITE_COST_PER_CALL_USD } from "./cost-logging";
+import { buildCostLogRow, GEMINI_FLASH_LITE_COST_PER_CALL_USD } from "./cost-logging";
 
 describe("buildCostLogRow", () => {
   it("includes music model and duration in row", () => {
     const row = buildCostLogRow({
       userId: "user-1",
       musicId: "music-1",
-      predictionId: "pred-1",
+      generationJobId: "pred-1",
       musicModel: "fishaudio/ace-step-1.5",
       durationSeconds: 180,
+      estimatedMusicCostUsd: 0.03204,
       lyricsSource: "user",
     });
 
@@ -23,14 +24,15 @@ describe("buildCostLogRow", () => {
     const row = buildCostLogRow({
       userId: "user-1",
       musicId: "music-1",
-      predictionId: "pred-1",
+      generationJobId: "pred-1",
       musicModel: "fishaudio/ace-step-1.5",
       durationSeconds: 180,
+      estimatedMusicCostUsd: 0.03204,
       lyricsSource: "user",
     });
 
     expect(row.estimated_music_cost_usd).toBeCloseTo(
-      180 * ACE_STEP_COST_PER_SECOND_USD,
+      0.03204,
       6,
     );
   });
@@ -39,9 +41,10 @@ describe("buildCostLogRow", () => {
     const row = buildCostLogRow({
       userId: "user-1",
       musicId: "music-1",
-      predictionId: "pred-1",
+      generationJobId: "pred-1",
       musicModel: "fishaudio/ace-step-1.5",
       durationSeconds: 180,
+      estimatedMusicCostUsd: 0.03204,
       lyricsSource: "user",
       translationUsed: true,
     });
@@ -54,18 +57,20 @@ describe("buildCostLogRow", () => {
     const rowWithAutoLyrics = buildCostLogRow({
       userId: "user-1",
       musicId: "music-1",
-      predictionId: "pred-1",
+      generationJobId: "pred-1",
       musicModel: "fishaudio/ace-step-1.5",
       durationSeconds: 180,
+      estimatedMusicCostUsd: 0.03204,
       lyricsSource: "auto",
     });
 
     const rowWithUserLyrics = buildCostLogRow({
       userId: "user-1",
       musicId: "music-1",
-      predictionId: "pred-1",
+      generationJobId: "pred-1",
       musicModel: "fishaudio/ace-step-1.5",
       durationSeconds: 180,
+      estimatedMusicCostUsd: 0.03204,
       lyricsSource: "user",
     });
 
@@ -79,9 +84,10 @@ describe("buildCostLogRow", () => {
     const row = buildCostLogRow({
       userId: "user-1",
       musicId: "music-1",
-      predictionId: "pred-1",
+      generationJobId: "pred-1",
       musicModel: "fishaudio/ace-step-1.5",
       durationSeconds: 180,
+      estimatedMusicCostUsd: 0.03204,
       lyricsSource: "auto",
       translationUsed: true,
       styleRefineUsed: true,
@@ -96,9 +102,10 @@ describe("buildCostLogRow", () => {
     const row = buildCostLogRow({
       userId: "user-1",
       musicId: "music-1",
-      predictionId: "pred-1",
+      generationJobId: "pred-1",
       musicModel: "fishaudio/ace-step-1.5",
       durationSeconds: 60,
+      estimatedMusicCostUsd: 0.01068,
       lyricsSource: "instrumental",
       translationUsed: true,
       styleRefineUsed: true,
@@ -109,8 +116,7 @@ describe("buildCostLogRow", () => {
     expect(row.lyrics_generation_used).toBe(false);
   });
 
-  it("exports positive cost constants", () => {
-    expect(ACE_STEP_COST_PER_SECOND_USD).toBeGreaterThan(0);
+  it("exports a positive Gemini cost constant", () => {
     expect(GEMINI_FLASH_LITE_COST_PER_CALL_USD).toBeGreaterThan(0);
   });
 });

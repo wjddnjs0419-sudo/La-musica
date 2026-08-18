@@ -1,10 +1,13 @@
 import type { Music } from "./music";
+import { getMusicGenerationProvider } from "./music-generation/provider";
+import { resolveGenerationReference } from "./music-generation/reference";
+import type { MusicGenerationProvider } from "./music-generation/types";
 
 // How long a row may stay in "processing" before it is declared timed out.
 export const PROCESSING_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 export interface ReconcileDeps {
-  getPrediction(predictionId: string): Promise<{ status: string; output?: unknown; error?: unknown }>;
+  getProvider?: (id: string) => MusicGenerationProvider | null;
   downloadAudio(url: string): Promise<Uint8Array>;
   uploadAudio(key: string, bytes: Uint8Array): Promise<{ url: string; key: string }>;
   getAudioUrl(key: string): string;
@@ -30,23 +33,22 @@ export async function reconcileMusicRow(
   music: Music,
   deps: ReconcileDeps,
 ): Promise<ReconcileResult> {
-  const predictionId = music.metadata?.prediction_id as string | undefined;
-
-  if (!predictionId) {
+  const reference = resolveGenerationReference(music);
+  const provider = reference && (deps.getProvider ?? getMusicGenerationProvider)(reference.provider);
+  if (!reference || !provider) {
     await deps.refundAndMarkFailed(music.id, music.user_id, "missing prediction id");
     return { outcome: "no_prediction_id" };
   }
 
   const ageMs = Date.now() - new Date(music.created_at).getTime();
-  const prediction = await deps.getPrediction(predictionId);
+  const generation = await provider.getStatus(reference.jobId);
 
-  if (prediction.status === "failed" || prediction.status === "canceled") {
-    const reason = prediction.error ? String(prediction.error) : "generation failed";
-    await deps.refundAndMarkFailed(music.id, music.user_id, reason);
+  if (generation.state === "failed") {
+    await deps.refundAndMarkFailed(music.id, music.user_id, generation.error);
     return { outcome: "failed" };
   }
 
-  if (prediction.status !== "succeeded") {
+  if (generation.state !== "succeeded") {
     if (ageMs > PROCESSING_TIMEOUT_MS) {
       await deps.refundAndMarkFailed(music.id, music.user_id, "generation timeout");
       return { outcome: "timed_out" };
@@ -63,14 +65,7 @@ export async function reconcileMusicRow(
     return { outcome: "completed" };
   }
 
-  const audioUrl = Array.isArray(prediction.output)
-    ? (prediction.output[0] as string)
-    : (prediction.output as string | undefined);
-
-  if (!audioUrl) {
-    await deps.refundAndMarkFailed(music.id, music.user_id, "empty prediction output");
-    return { outcome: "failed" };
-  }
+  const audioUrl = generation.audioUrl;
 
   const bytes = await deps.downloadAudio(audioUrl);
   const uploadKey = `${music.user_id}/${music.id}.mp3`;

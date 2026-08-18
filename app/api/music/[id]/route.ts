@@ -5,6 +5,8 @@ import Replicate from "replicate";
 import { reconcileThumbnailPrediction } from "@/lib/image/ensureThumbnail";
 import { createInsforgeAdminClient } from "@/lib/insforge-admin";
 import { MUSICS_BUCKET, type Music } from "@/lib/music";
+import { reconcileMusicRow } from "@/lib/reconcile-music";
+import { getMusicGenerationProvider } from "@/lib/music-generation/provider";
 
 // Poll endpoint: resolves a `processing` row by checking the Replicate
 // prediction, copying the finished mp3 into Storage, and finalizing the row.
@@ -58,93 +60,37 @@ export async function GET(
     return NextResponse.json({ music: await thumbnailResolution });
   }
 
-  const predictionId = music.metadata?.prediction_id as string | undefined;
-  if (!predictionId) {
-    const failed = await refundAndMarkFailed(user.id, id, "missing prediction id");
-    return NextResponse.json({ music: withThumbnailResult(failed ?? music, await thumbnailResolution) });
-  }
-
-  let prediction;
+  let resolvedMusic = music;
   try {
-    prediction = await replicate.predictions.get(predictionId);
+    await reconcileMusicRow(music, {
+      getProvider: getMusicGenerationProvider,
+      downloadAudio: async (audioUrl) => {
+        const res = await fetch(audioUrl);
+        if (!res.ok) throw new Error(`download ${res.status}`);
+        return new Uint8Array(await res.arrayBuffer());
+      },
+      uploadAudio: async (key, bytes) => {
+        const file = new File([Buffer.from(bytes)], `${id}.mp3`, { type: "audio/mpeg" });
+        const { data: uploaded, error: uploadError } = await client.storage.from(MUSICS_BUCKET).upload(key, file);
+        if (uploadError || !uploaded) throw uploadError ?? new Error("upload failed");
+        return { url: uploaded.url, key: uploaded.key };
+      },
+      getAudioUrl: (key) => `${process.env.INSFORGE_URL ?? process.env.NEXT_PUBLIC_INSFORGE_URL}/storage/v1/object/public/${MUSICS_BUCKET}/${key}`,
+      markCompleted: async (musicId, audioUrl, audioKey) => {
+        const { data: updated, error: updateError } = await client.database.from("musics").update({ status: "completed", audio_url: audioUrl, audio_key: audioKey }).eq("id", musicId).eq("status", "processing").select();
+        if (updateError || !updated?.[0]) throw updateError ?? new Error("music finalize failed");
+        resolvedMusic = updated[0] as Music;
+      },
+      refundAndMarkFailed: async (_musicId, _userId, reason) => {
+        resolvedMusic = (await refundAndMarkFailed(user.id, id, reason)) ?? music;
+      },
+    });
   } catch (err) {
-    console.error("replicate get failed", err);
+    console.error("music reconcile failed", err);
     return NextResponse.json({ music: await thumbnailResolution }); // transient; let client retry
   }
 
-  if (prediction.status === "failed" || prediction.status === "canceled") {
-    const failed = await refundAndMarkFailed(
-      user.id,
-      id,
-      prediction.error ? String(prediction.error) : "generation failed",
-    );
-    return NextResponse.json({ music: withThumbnailResult(failed ?? music, await thumbnailResolution) });
-  }
-
-  if (prediction.status !== "succeeded") {
-    return NextResponse.json({ music: await thumbnailResolution }); // still starting/processing
-  }
-
-  // Succeeded: extract audio URL from prediction output.
-  const audioUrl = Array.isArray(prediction.output)
-    ? prediction.output[0]
-    : (prediction.output as string | undefined);
-
-  if (!audioUrl) {
-    const failed = await refundAndMarkFailed(user.id, id, "empty output");
-    return NextResponse.json({ music: withThumbnailResult(failed ?? music, await thumbnailResolution) });
-  }
-
-  // Idempotency: if a previous poll already uploaded the audio (audio_key set)
-  // but the DB update to "completed" failed, skip re-upload and go straight to
-  // the DB update to avoid a duplicate storage object.
-  let key: string;
-  let url: string;
-  if (music.audio_key && music.audio_url) {
-    key = music.audio_key;
-    url = music.audio_url;
-  } else {
-    // Copy the mp3 into our Storage bucket so it survives Replicate's TTL.
-    try {
-      const res = await fetch(audioUrl);
-      if (!res.ok) throw new Error(`download ${res.status}`);
-      const bytes = new Uint8Array(await res.arrayBuffer());
-      const file = new File([bytes], `${id}.mp3`, { type: "audio/mpeg" });
-
-      const uploadKey = `${user.id}/${id}.mp3`;
-      const { data: uploaded, error: uploadError } = await client.storage
-        .from(MUSICS_BUCKET)
-        .upload(uploadKey, file);
-
-      if (uploadError || !uploaded) throw uploadError ?? new Error("upload failed");
-      key = uploaded.key;
-      url = uploaded.url;
-    } catch (err) {
-      console.error("audio persist failed", err);
-      const failed = await refundAndMarkFailed(user.id, id, "could not store audio");
-      return NextResponse.json({ music: withThumbnailResult(failed ?? music, await thumbnailResolution) });
-    }
-  }
-
-  const { data: updated, error: updateError } = await client.database
-    .from("musics")
-    .update({
-      status: "completed",
-      audio_url: url,
-      audio_key: key,
-    })
-    .eq("id", id)
-    .eq("status", "processing") // guard against double-write (parity with reconcile-music)
-    .select();
-
-  if (updateError || !updated?.[0]) {
-    console.error("music finalize failed", updateError);
-    return NextResponse.json({ music: await thumbnailResolution }); // audio is stored; client can retry
-  }
-
-  return NextResponse.json({
-    music: withThumbnailResult(updated[0] as Music, await thumbnailResolution),
-  });
+  return NextResponse.json({ music: withThumbnailResult(resolvedMusic, await thumbnailResolution) });
 }
 
 export async function PATCH(

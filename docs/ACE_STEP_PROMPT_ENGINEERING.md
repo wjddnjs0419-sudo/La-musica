@@ -1,5 +1,7 @@
 # ACE-Step Prompt Engineering — The Music Prompt Compiler
 
+> 현재 `replicate-ace-step` provider 구현의 입력 지침입니다. 이전 MiniMax/MusicGen 튜닝 기록은 [레거시 문서](legacy/minimax-musicgen-tuning.md)를 참고하세요.
+
 Developer reference for `lib/music-prompt/`, the server-side module that turns a
 simple user intent + a few structured options into a dense English prompt for
 the ACE-Step music model on Replicate.

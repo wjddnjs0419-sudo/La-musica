@@ -90,7 +90,11 @@ describe("refineStylePrompt", () => {
       .mockResolvedValueOnce(geminiResponse(`festival big-room edm, 128 bpm, ${COPYRIGHT_LINE}`));
     vi.stubGlobal("fetch", fetchMock);
 
-    const out = await refineStylePrompt(compiled, false);
+    const out = await refineStylePrompt(compiled, false, {
+      modelLabel: "Test model",
+      maxPromptChars: 500,
+      targetChars: 400,
+    });
 
     expect(out).toContain("128 bpm");
     expect(fetchMock).toHaveBeenCalledTimes(2);

@@ -12,7 +12,7 @@
 |---|---|
 | 프레임워크 | Next.js 16 (App Router, Turbopack) + React 19 |
 | 백엔드(BaaS) | [InsForge](https://insforge.dev) — Postgres DB · 인증 · 스토리지 |
-| 음악 생성 | [Replicate](https://replicate.com) `fishaudio/ace-step-1.5` (ACE-Step, mp3) |
+| 음악 생성 | provider 어댑터 — 현재 [Replicate](https://replicate.com) `fishaudio/ace-step-1.5` (ACE-Step, mp3) |
 | AI 보조 | Gemini — 프롬프트 번역 · 스타일 정제 · 자동 가사 생성 |
 | 결제 | [Polar](https://polar.sh) — 크레딧 팩 checkout |
 | 스타일 | Tailwind CSS v4 |

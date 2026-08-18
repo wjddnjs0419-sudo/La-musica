@@ -10,7 +10,7 @@ export { CANONICAL_SECTION_TAGS };
 
 // Build the lyrics field sent to the music model. Instrumental songs carry no
 // sung words (compileMusicPrompt returns `lyrics: undefined` for instrumental
-// mode; buildAceStepInput turns that into the literal "[Instrumental]" value
+// mode; the active music provider applies its own instrumental signal
 // downstream). For vocal songs, preserve the user's words and normalize
 // section tags; wrap unstructured input in a single [Verse] tag.
 export function buildLyricsPayload(
