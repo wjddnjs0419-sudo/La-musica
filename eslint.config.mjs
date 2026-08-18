@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Design-reference export; this nested app is not part of the deployable source tree.
     "AI Music Creation Landing Page/**",
     "workspace_renew/**",
+    // Local linked worktrees are separate repositories, never app source.
+    ".worktrees/**",
   ]),
 ]);
 
