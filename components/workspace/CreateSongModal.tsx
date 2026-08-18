@@ -7,21 +7,18 @@ import MusicThumbnail from "@/components/music-thumbnail";
 import type { GenerationPhase, RefundStatus } from "@/lib/generation/progress";
 import { calcGenerationProgress } from "@/lib/generation/progress";
 import type { GenerateRequest, Music } from "@/lib/music";
-import type {
-  MusicGenre,
-  MusicUseCase,
-  VocalMode,
-} from "@/lib/music-prompt/types";
+import type { VocalMode } from "@/lib/music-prompt/types";
+import { getMatchingReggaetonSimplePreset, REGGAETON_SIMPLE_PRESETS, type ReggaetonSimplePreset } from "@/lib/music-prompt/reggaeton";
 import { formatDuration } from "@/lib/player/time";
 import {
   buildCreateSongRequest,
   CREATE_SONG_INITIAL_STATE,
-  CREATE_SONG_PRESETS,
-  GENRE_OPTIONS,
+  canContinueFromSound,
   LANGUAGE_OPTIONS,
   MOOD_OPTIONS,
+  SCENE_OPTIONS,
+  STYLE_OPTIONS,
   toggleMoodSelection,
-  USE_CASE_OPTIONS,
   VOCAL_OPTIONS,
   type CreateSongFormState,
 } from "@/lib/workspace/create-song";
@@ -97,7 +94,7 @@ export default function CreateSongModal({
 
   const updateForm = (patch: Partial<CreateSongFormState>) =>
     setForm((current) => ({ ...current, ...patch }));
-  const canContinue = step === 1 || form.prompt.trim().length > 0;
+  const canContinue = step === 1 || step === 3 || canContinueFromSound(form, soundMode);
   const progress = calcGenerationProgress(elapsedMs);
 
   const goToEditor = () => {
@@ -239,11 +236,10 @@ export default function CreateSongModal({
         onClose={() => setLyricsAssistantOpen(false)}
         context={{
           prompt: lyricsIdea.trim() || form.prompt.trim() || undefined,
-          genre: form.genre || undefined,
+          genre: "reggaeton",
           moods: form.moods.length ? form.moods : undefined,
           vocalMode: form.vocalMode,
           language: form.language || undefined,
-          useCase: form.useCase || undefined,
         }}
         currentLyrics={form.lyrics}
         initialInstruction={form.lyrics.trim() ? "" : lyricsIdea}
@@ -419,14 +415,11 @@ function SoundStep({
   mode: "simple" | "advanced";
   onModeChange: (mode: "simple" | "advanced") => void;
 }) {
-  const applyPreset = (preset: (typeof CREATE_SONG_PRESETS)[number]) =>
-    updateForm({
-      genre: preset.genre ?? "",
-      moods: preset.moods ?? [],
-      useCase: preset.useCase ?? "",
-      vocalMode: preset.vocalMode ?? "auto",
-      duration: preset.duration ?? 180,
-    });
+  const updateSound = (patch: Partial<CreateSongFormState>) => {
+    const next = { ...form, ...patch };
+    updateForm({ ...patch, simplePreset: getMatchingReggaetonSimplePreset(next.style, next.moods, next.scene) });
+  };
+  const applyPreset = (preset: ReggaetonSimplePreset) => updateForm({ ...REGGAETON_SIMPLE_PRESETS[preset], simplePreset: preset });
   return (
     <div>
       <Eyebrow>Sound</Eyebrow>
@@ -463,16 +456,21 @@ function SoundStep({
         </button>
       </div>
       {mode === "simple" ? (
+        <><div className="mt-7">
+          <p className="text-sm font-medium">Quick presets</p>
+          <div className="mt-3 flex flex-wrap gap-2">{(["club_heat", "after_midnight", "dangerous_love", "summer_nights"] as ReggaetonSimplePreset[]).map((preset) => <Chip key={preset} active={form.simplePreset === preset} onClick={() => applyPreset(preset)}>{({ club_heat: "Club Heat", after_midnight: "After Midnight", dangerous_love: "Dangerous Love", summer_nights: "Summer Nights" })[preset]}</Chip>)}</div>
+        </div>
         <label className="mt-7 block text-sm font-medium">
-          Describe your sound <span className="text-white/40">*</span>
+          Describe your sound <span className="text-xs font-normal text-white/40">Optional</span>
           <textarea
             value={form.prompt}
             onChange={(event) => updateForm({ prompt: event.target.value })}
             rows={7}
-            placeholder="e.g. Dreamy indie pop with warm female vocals and a nostalgic late-night feel"
+            placeholder="Smooth late-night reggaeton with a catchy hook"
             className="mt-3 w-full resize-none border border-white/15 bg-white/[.04] p-4 text-sm font-normal text-white outline-none placeholder:text-white/30 focus:border-white/35"
           />
         </label>
+        </>
       ) : (
         <>
           <label className="mt-7 block text-sm font-medium">
@@ -485,25 +483,22 @@ function SoundStep({
               className="mt-3 w-full resize-none border border-white/15 bg-white/[.04] p-4 text-sm font-normal text-white outline-none placeholder:text-white/30 focus:border-white/35"
             />
           </label>
-          <Field label="Genre">
+          <Field label="Style">
             <ChipGroup
-              options={GENRE_OPTIONS}
-              selected={form.genre}
-              onSelect={(genre) => updateForm({ genre: genre as MusicGenre })}
+              options={STYLE_OPTIONS}
+              selected={form.style}
+              onSelect={(style) => updateSound({ style: style as CreateSongFormState["style"] })}
               allowEmpty
             />
           </Field>
-          <Field label="Mood" hint="Choose up to 3">
+          <Field label="Mood">
             <div className="flex flex-wrap gap-2">
               {MOOD_OPTIONS.map((option) => (
                 <Chip
                   key={option.value}
                   active={form.moods.includes(option.value)}
-                  disabled={
-                    !form.moods.includes(option.value) && form.moods.length >= 3
-                  }
                   onClick={() =>
-                    updateForm({
+                    updateSound({
                       moods: toggleMoodSelection(form.moods, option.value),
                     })
                   }
@@ -512,6 +507,9 @@ function SoundStep({
                 </Chip>
               ))}
             </div>
+          </Field>
+          <Field label="Scene">
+            <ChipGroup options={SCENE_OPTIONS} selected={form.scene} onSelect={(scene) => updateSound({ scene: scene as CreateSongFormState["scene"] })} allowEmpty />
           </Field>
           <Field label="Vocal">
             <Segmented
@@ -550,51 +548,11 @@ function SoundStep({
                 updateForm({ soundDirection: event.target.value })
               }
               rows={3}
-              placeholder="e.g. warm piano, soft drums, late-night atmosphere"
+              placeholder="e.g. Heavy bass, hypnotic chorus, minimal percussion"
               className="mt-3 w-full resize-none rounded-xl border border-white/15 bg-white/[.04] p-3 text-sm font-normal text-white outline-none placeholder:text-white/30 focus:border-white/35"
             />
           </label>
-          <button
-            type="button"
-            onClick={onToggleAdvanced}
-            aria-expanded={advancedOpen}
-            className="flex w-full items-center justify-between border-t border-white/10 py-4 text-sm font-medium text-white/75"
-          >
-            Advanced settings <span>{advancedOpen ? "−" : "+"}</span>
-          </button>
-          {advancedOpen && (
-            <div className="space-y-6 border-b border-white/10 pb-6">
-              <Field label="Language">
-                <Select
-                  value={form.language}
-                  onChange={(language) => updateForm({ language })}
-                  options={LANGUAGE_OPTIONS}
-                />
-              </Field>
-              <Field label="Use case">
-                <Select
-                  value={form.useCase}
-                  onChange={(useCase) =>
-                    updateForm({ useCase: useCase as MusicUseCase | "" })
-                  }
-                  options={USE_CASE_OPTIONS}
-                />
-              </Field>
-              <Field label="Quick presets">
-                <div className="flex flex-wrap gap-2">
-                  {CREATE_SONG_PRESETS.map((preset) => (
-                    <Chip
-                      key={preset.label}
-                      active={false}
-                      onClick={() => applyPreset(preset)}
-                    >
-                      {preset.label}
-                    </Chip>
-                  ))}
-                </div>
-              </Field>
-            </div>
-          )}
+          <Field label="Language"><Select value={form.language} onChange={(language) => updateForm({ language })} options={LANGUAGE_OPTIONS} /></Field>
         </>
       )}
     </div>

@@ -25,6 +25,7 @@ import type {
   MusicUseCase,
   VocalMode,
 } from "@/lib/music-prompt/types";
+import { resolveReggaetonGenerationInput } from "@/lib/music-prompt/reggaeton-request";
 
 type AuthTokens = {
   accessToken: string;
@@ -43,6 +44,8 @@ export async function POST(request: NextRequest) {
     useCase?: unknown;
     vocalMode?: unknown;
     language?: unknown;
+    style?: unknown;
+    scene?: unknown;
     duration?: unknown;
   };
   try {
@@ -59,8 +62,8 @@ export async function POST(request: NextRequest) {
   const lyrics = typeof body.lyrics === "string" ? body.lyrics.trim() : "";
   const instrumental = body.instrumental === true;
 
-  const genre =
-    typeof body.genre === "string" ? (body.genre as MusicGenre) : undefined;
+  const normalized = resolveReggaetonGenerationInput({ style: body.style, scene: body.scene, language: typeof body.language === "string" ? body.language : undefined, lyrics: typeof body.lyrics === "string" ? body.lyrics : undefined });
+  const genre = normalized.genre;
   const moods = Array.isArray(body.moods)
     ? (body.moods.filter((m): m is MusicMood => typeof m === "string").slice(0, 12))
     : undefined;
@@ -72,8 +75,7 @@ export async function POST(request: NextRequest) {
     typeof body.vocalMode === "string"
       ? (body.vocalMode as VocalMode)
       : undefined;
-  const language =
-    typeof body.language === "string" ? body.language : undefined;
+  const language = normalized.language;
   const duration =
     typeof body.duration === "number" && body.duration > 0
       ? Math.min(Math.round(body.duration), 300)
@@ -113,6 +115,8 @@ export async function POST(request: NextRequest) {
   const compiled = compileMusicPrompt({
     userDescription,
     genre,
+    style: normalized.style,
+    scene: normalized.scene,
     moods,
     useCase,
     vocalMode: vocalMode ?? (instrumental ? "instrumental" : undefined),

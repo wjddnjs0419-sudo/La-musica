@@ -32,6 +32,8 @@ export const MOOD_PRESETS: Record<MusicMood, string> = {
   nostalgic: "warm texture, bittersweet harmony, reflective feel",
   romantic: "soft dynamics, dreamy space, intimate warmth",
   aggressive: "bold drums, hard-hitting accents, rebellious pressure",
+  confident: "assured attitude, bold rhythmic presence, self-possessed energy",
+  chill: "relaxed flow, airy warmth, unhurried late-night ease",
   festival: "outdoor-stage energy, big chorus lift, celebratory motion",
 };
 
@@ -110,6 +112,8 @@ export const VALID_MOODS = new Set<string>([
   "nostalgic",
   "romantic",
   "aggressive",
+  "confident",
+  "chill",
   "festival",
 ]);
 

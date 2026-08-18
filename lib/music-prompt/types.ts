@@ -26,6 +26,8 @@ export type MusicMood =
   | "nostalgic"
   | "romantic"
   | "aggressive"
+  | "confident"
+  | "chill"
   | "festival";
 
 export type ReggaetonStyle = "old_school" | "reggaeton_pop" | "perreo" | "romantic" | "trapeton" | "neoperreo";
