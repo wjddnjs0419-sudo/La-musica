@@ -6,18 +6,20 @@ type PlayerProgressBarProps = {
   currentTime: number;
   duration: number;
   onSeek: (seconds: number) => void;
+  flush?: boolean;
 };
 
 export default function PlayerProgressBar({
   currentTime,
   duration,
   onSeek,
+  flush = false,
 }: PlayerProgressBarProps) {
   const seekMax = duration || 1;
   const progressValue = duration ? Math.min(currentTime, duration) : 0;
 
   return (
-    <div className="px-3 pt-2">
+    <div className={flush ? "pt-2" : "px-3 pt-2"}>
       <div className="relative -my-2 py-2">
         <div className="relative h-1 bg-white/10">
           <progress

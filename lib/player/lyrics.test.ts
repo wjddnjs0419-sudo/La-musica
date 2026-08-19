@@ -3,7 +3,6 @@ import {
   parseMusicLyrics,
   parseLrcLyrics,
   approximateLyricTimings,
-  findActiveLineIndex,
 } from "./lyrics";
 
 describe("parseMusicLyrics", () => {
@@ -148,33 +147,5 @@ describe("approximateLyricTimings", () => {
 
   it("returns empty array when lines is empty", () => {
     expect(approximateLyricTimings([], 60)).toEqual([]);
-  });
-});
-
-describe("findActiveLineIndex", () => {
-  const lines = [
-    { startMs: 0, text: "A" },
-    { startMs: 10000, text: "B" },
-    { startMs: 20000, text: "C" },
-  ];
-
-  it("returns the first index once current time reaches the first line's start", () => {
-    expect(findActiveLineIndex(lines, 0)).toBe(0);
-  });
-
-  it("returns -1 before the first line's start (no line highlighted yet)", () => {
-    const shifted = [
-      { startMs: 15000, text: "A" },
-      { startMs: 25000, text: "B" },
-    ];
-    expect(findActiveLineIndex(shifted, 3000)).toBe(-1);
-  });
-
-  it("returns correct index mid-song", () => {
-    expect(findActiveLineIndex(lines, 15000)).toBe(1);
-  });
-
-  it("returns last index after the last line starts", () => {
-    expect(findActiveLineIndex(lines, 25000)).toBe(2);
   });
 });

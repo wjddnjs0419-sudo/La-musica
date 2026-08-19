@@ -128,9 +128,6 @@ export default function FullScreenPlayer({
             </svg>
             <span className="hidden sm:inline">Back to my music</span>
           </button>
-          <p className="text-xs font-medium tracking-[0.14em] text-white/35">
-            Now playing
-          </p>
           <div className="h-9 w-9" aria-hidden />
         </header>
 
@@ -181,13 +178,9 @@ export default function FullScreenPlayer({
 
           {hasLyrics && (
             <section className="hidden min-h-0 flex-1 flex-col overflow-hidden lg:flex lg:h-full lg:max-h-[min(620px,calc(100dvh-250px))]">
-              <p className="mb-4 shrink-0 text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
-                Lyrics
-              </p>
               <div className="min-h-0 flex-1 overflow-hidden">
                 <LyricsView
                   lines={lyricLines}
-                  currentTimeMs={currentTime * 1000}
                   instrumental={false}
                 />
               </div>
@@ -212,7 +205,7 @@ export default function FullScreenPlayer({
                       </button>
                     </header>
                     <div className="min-h-0 flex-1 overflow-hidden">
-                      <LyricsView lines={lyricLines} currentTimeMs={currentTime * 1000} instrumental={false} />
+                      <LyricsView lines={lyricLines} instrumental={false} />
                     </div>
                   </section>
                 </>
@@ -221,13 +214,16 @@ export default function FullScreenPlayer({
           )}
         </main>
 
-        <footer className="shrink-0 border-t border-white/10 px-6 pb-3 pt-1 sm:px-10 sm:pb-4 lg:px-12">
+        <footer className="shrink-0 border-t border-white/10 px-5 pb-3 pt-1 sm:px-8 sm:pb-4 lg:px-12">
           <div className="mx-auto max-w-7xl">
-            <PlayerProgressBar
-              currentTime={currentTime}
-              duration={resolvedDuration}
-              onSeek={onSeek}
-            />
+            <div className="lg:pr-6">
+              <PlayerProgressBar
+                currentTime={currentTime}
+                duration={resolvedDuration}
+                onSeek={onSeek}
+                flush
+              />
+            </div>
             <div className="relative mt-2 flex items-center justify-center gap-6 sm:gap-8">
             <button
               type="button"

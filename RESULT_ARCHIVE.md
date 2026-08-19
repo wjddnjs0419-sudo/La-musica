@@ -4,6 +4,132 @@
 
 ---
 
+# RESULT: 전체화면 플레이어 Now playing 라벨 제거 - 2026-08-18
+
+## Background
+
+전체화면 플레이어 헤더의 중앙 상태 라벨을 제거해 화면을 단순화한다.
+
+## Implementation
+
+- 헤더 중앙의 `Now playing` 텍스트를 제거했다.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+
+## Lessons
+
+- 상태가 별도 컨트롤이나 시각적 피드백을 제공하지 않을 때는 제거해 플레이어 크롬을 줄일 수 있다.
+
+---
+
+# RESULT: 전체화면 플레이어 가사 라벨·진행바 정렬 보정 - 2026-08-18
+
+## Background
+
+전체화면 플레이어의 불필요한 데스크톱 가사 라벨을 제거하고, 진행바 양끝을 관련 컨트롤과 정렬한다.
+
+## Implementation
+
+- 데스크톱 가사 패널의 `LYRICS` 라벨을 제거했다.
+- 전체화면용 진행바에만 내부 좌우 여백을 없애, 왼쪽 끝을 헤더의 닫기 X와 정렬했다.
+- 데스크톱에서는 진행바 오른쪽에 24px 여백을 둬 볼륨 슬라이더의 끝과 맞췄다.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- 공용 진행바는 기본 여백을 유지하고, 전체화면에서만 flush 옵션을 사용하면 Mini Player 레이아웃에 영향을 주지 않는다.
+
+---
+
+# RESULT: 전체화면 플레이어 런타임 가사 하이라이트 제거 - 2026-08-18
+
+## Background
+
+전체화면 플레이어는 가사를 계속 표시하되, 재생 시간에 따른 가사 줄 강조와 자동 스크롤을 제거한다.
+
+## Implementation
+
+- FullScreenPlayer가 LyricsView에 재생 시간을 전달하지 않도록 변경했다.
+- LyricsView에서 활성 줄 계산과 자동 스크롤 상태를 제거했다.
+- 모든 가사 줄을 동일한 대비로 정적으로 표시하고, 더 이상 사용되지 않는 `findActiveLineIndex`와 관련 테스트를 제거했다.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm test -- lib/player/lyrics.test.ts` | 16 tests passed |
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- 정적 가사 표시에는 타임코드 파싱을 유지할 수 있지만, 현재 시간 전달·줄 상태·스크롤 효과가 없어야 라이브 하이라이트가 재발하지 않는다.
+
+---
+
+# RESULT: 음악 목록 일시정지 재생 아이콘 대비 보정 - 2026-08-18
+
+## Background
+
+음악 재생을 일시정지했을 때 목록의 활성 트랙 재생 버튼에서 Play 아이콘이 흰 배경에 묻히는 문제를 해결한다.
+
+## Implementation
+
+- 활성 상태지만 재생 중이 아닌 TrackCard의 Play 아이콘에 `text-black`을 명시했다.
+- 비활성 트랙은 기존의 밝은 아이콘 색상을 유지한다.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- 버튼 배경색이 상태에 따라 달라질 때 아이콘 색상도 해당 상태에서 명시해야 CSS 클래스 우선순위의 영향을 피할 수 있다.
+
+---
+
+# RESULT: Create Song 언어 Auto 중복 제거 - 2026-08-18
+
+## Background
+
+Create Song Step 2 Advanced의 Language 선택 메뉴에서 Auto가 두 번 표시되는 문제를 해결한다.
+
+## Implementation
+
+- 공용 `Select` 컴포넌트의 하드코딩된 빈 값 Auto 옵션을 제거했다.
+- `LANGUAGE_OPTIONS`의 Auto 항목만 렌더링해 선택 목록의 단일 기준을 유지했다.
+
+## Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` | Passed |
+| `npm run lint` | 0 errors; existing FullScreenPlayer `<img>` warning 1개 |
+| `git diff --check` | Passed |
+
+## Lessons
+
+- 옵션 배열을 선택 메뉴의 단일 기준으로 두면 기본값 중복을 방지할 수 있다.
+
+---
+
 # RESULT: 신규 로고 자산 전환 - 2026-08-18
 
 ## Background

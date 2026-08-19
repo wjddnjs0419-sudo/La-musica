@@ -9,7 +9,6 @@ import { calcGenerationProgress } from "@/lib/generation/progress";
 import type { GenerateRequest, Music } from "@/lib/music";
 import type { VocalMode } from "@/lib/music-prompt/types";
 import { getMatchingReggaetonSimplePreset, REGGAETON_SIMPLE_PRESETS, type ReggaetonSimplePreset } from "@/lib/music-prompt/reggaeton";
-import { formatDuration } from "@/lib/player/time";
 import {
   buildCreateSongRequest,
   CREATE_SONG_INITIAL_STATE,
@@ -103,7 +102,7 @@ export default function CreateSongModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-5 backdrop-blur-sm sm:p-6"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget && phase !== "generating")
           onClose();
@@ -113,7 +112,7 @@ export default function CreateSongModal({
         aria-label="Create song"
         aria-modal="true"
         role="dialog"
-        className="relative flex h-[min(760px,calc(100dvh-1rem))] max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#101011] text-[#f4f1ea] shadow-2xl shadow-black/60 sm:h-[min(860px,calc(100dvh-6rem))] sm:max-h-[90dvh] sm:rounded-2xl"
+        className="relative flex h-[min(600px,calc(100dvh-2.5rem))] max-h-[calc(100dvh-2.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#101011] text-[#f4f1ea] shadow-2xl shadow-black/60 sm:h-[min(600px,calc(100dvh-3rem))] sm:max-h-[calc(100dvh-3rem)]"
       >
         {phase === "generating" ? (
           <GeneratingState progress={progress} onClose={onClose} />
@@ -132,7 +131,7 @@ export default function CreateSongModal({
           />
         ) : (
           <>
-            <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4 sm:px-7">
+            <header className="flex shrink-0 items-center justify-between border-b border-white/10 p-5 sm:p-6">
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/40">
                   New generation
@@ -153,7 +152,7 @@ export default function CreateSongModal({
             <div className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[190px_minmax(0,1fr)]">
               <StepNavigation step={step} onStepChange={setStep} />
               <div className="flex min-h-0 flex-1 flex-col">
-                <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-7 sm:py-8">
+                <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
                   {step === 1 && (
                   <LyricsStep
                     form={form}
@@ -182,7 +181,7 @@ export default function CreateSongModal({
                   </p>
                 )}
                 </div>
-                <footer className="flex shrink-0 items-center justify-between border-t border-white/10 px-5 py-4 sm:px-7 sm:py-5">
+                <footer className="flex shrink-0 items-center justify-between border-t border-white/10 p-5 sm:p-6">
                   <button
                     type="button"
                     onClick={() =>
@@ -588,7 +587,7 @@ function GeneratingState({
   onClose: () => void;
 }) {
   return (
-    <div className="relative flex min-h-[560px] flex-1 overflow-hidden">
+    <div className="relative flex flex-1 overflow-hidden">
       <video
         src="/videos/workspace-generation.mp4"
         autoPlay
@@ -600,7 +599,7 @@ function GeneratingState({
       />
       <div className="absolute inset-0 bg-black/65" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(5,5,5,.25),rgba(5,5,5,.82))]" />
-      <div className="relative z-10 flex w-full flex-col items-center justify-center px-8 text-center">
+      <div className="relative z-10 flex w-full flex-col items-center justify-center p-5 text-center sm:p-6">
         <Eyebrow>La Musica</Eyebrow>
         <h2 className="mt-5 text-4xl font-medium tracking-[-0.05em]">
           Creating your song
@@ -639,7 +638,7 @@ function ReadyState({
   onListenNow: (music: Music) => void;
 }) {
   return (
-    <div className="flex min-h-[560px] flex-col items-center justify-center px-8 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center p-5 text-center sm:p-6">
       <Eyebrow>Your song is ready</Eyebrow>
       <MusicThumbnail
         track={music}
@@ -649,9 +648,6 @@ function ReadyState({
       <h2 className="mt-7 text-3xl font-medium tracking-[-0.05em]">
         {music.title}
       </h2>
-      <p className="mt-2 text-sm text-white/45">
-        {formatDuration(music.duration_seconds)}
-      </p>
       <div className="mt-9 flex flex-wrap justify-center gap-3">
         <button
           type="button"
@@ -691,7 +687,7 @@ function FailureState({
         : "Your credit refund is being processed.";
 
   return (
-    <div className="flex min-h-[560px] flex-col items-center justify-center px-8 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center p-5 text-center sm:p-6">
       <div className="flex h-14 w-14 items-center justify-center rounded-full border border-red-400/20 bg-red-400/[.08] text-xl text-red-200">
         !
       </div>

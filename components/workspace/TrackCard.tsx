@@ -158,7 +158,7 @@ export default function TrackCard({
         ) : playing ? (
           <PauseIcon className="h-4 w-4 text-black" />
         ) : (
-          <PlayIcon className="h-4 w-4" />
+          <PlayIcon className={cn("h-4 w-4", active && "text-black")} />
         )}
       </button>
 

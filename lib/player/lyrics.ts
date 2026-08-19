@@ -98,13 +98,3 @@ function withEndTimes(lines: LyricLine[]): LyricLine[] {
     endMs: lines[index + 1]?.startMs,
   }));
 }
-
-export function findActiveLineIndex(
-  lines: LyricLine[],
-  currentTimeMs: number,
-): number {
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (currentTimeMs >= lines[i].startMs) return i;
-  }
-  return -1;
-}
